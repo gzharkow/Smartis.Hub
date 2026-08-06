@@ -38,6 +38,8 @@ export default async function FolderPage({
     },
     include: {
       _count: { select: { items: true, shareLinks: true } },
+      // Бренд организации — фоллбэк для плитки, если у хаба свой не задан.
+      organization: { select: { brandColor: true, logoUrl: true } },
       ...(user.role === "ADMIN"
         ? { owner: { select: { id: true, name: true, email: true } } }
         : {}),
@@ -57,6 +59,8 @@ export default async function FolderPage({
       "owner" in h && h.owner
         ? { id: h.owner.id, label: ownerLabel(h.owner) }
         : null,
+    brandColor: h.brandColor ?? h.organization.brandColor ?? "#2563eb",
+    logoUrl: h.logoUrl ?? h.organization.logoUrl ?? "/logo.png",
   }));
 
   return (

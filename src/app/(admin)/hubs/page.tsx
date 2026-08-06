@@ -33,6 +33,8 @@ export default async function HubsPage() {
     include: {
       _count: { select: { items: true, shareLinks: true } },
       folder: { select: { name: true } },
+      // Бренд организации — фоллбэк для плитки, если у хаба свой не задан.
+      organization: { select: { brandColor: true, logoUrl: true } },
       // Только чтобы показать бейдж автора администратору — у него список
       // содержит хабы разных сотрудников вперемешку.
       ...(user.role === "ADMIN"
@@ -54,6 +56,8 @@ export default async function HubsPage() {
       "owner" in h && h.owner
         ? { id: h.owner.id, label: ownerLabel(h.owner) }
         : null,
+    brandColor: h.brandColor ?? h.organization.brandColor ?? "#2563eb",
+    logoUrl: h.logoUrl ?? h.organization.logoUrl ?? "/logo.png",
   }));
 
   return (

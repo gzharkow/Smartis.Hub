@@ -2,10 +2,14 @@ import Link from "next/link";
 import { withPlural, WORDS } from "@/lib/plural";
 import { OwnerBadge } from "@/components/owner-badge";
 import {
-  VIEW_GRID_CLASS,
   VIEW_LIST_CLASS,
   type ViewMode,
 } from "@/lib/view-mode";
+
+// Своя, более крупная сетка для плитки хабов — в отличие от общего
+// VIEW_GRID_CLASS (материалы/папки/статистика), тут плитка несёт превью
+// витрины и должна быть заметно больше, чтобы картинка читалась.
+const HUB_TILE_GRID_CLASS = "grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3";
 
 export type HubRow = {
   id: string;
@@ -23,6 +27,9 @@ export type HubRow = {
    * список и так только его собственный, поле остаётся null.
    */
   owner?: { id: string; label: string } | null;
+  /** Брендинг хаба — уже с фоллбэком на бренд организации, см. страницу-источник. */
+  brandColor: string;
+  logoUrl: string;
 };
 
 function statusLabel(status: string): string {
@@ -31,17 +38,77 @@ function statusLabel(status: string): string {
   return "Черновик";
 }
 
-/** Мелкая подпись статуса над названием — одинаковая в списке и в плитке. */
-function StatusCaption({ status }: { status: string }) {
+/**
+ * Мелкая подпись статуса над названием. В плитке лежит поверх фото витрины —
+ * там нужны более светлые, контрастные оттенки, чем на нейтральном фоне списка.
+ */
+function StatusCaption({ status, grid = false }: { status: string; grid?: boolean }) {
   return (
     <span
       className={`text-[11px] leading-none font-medium tracking-wide uppercase ${
         status === "PUBLISHED"
-          ? "text-green-700 dark:text-green-400"
-          : "text-muted"
+          ? grid
+            ? "text-green-300"
+            : "text-green-700 dark:text-green-400"
+          : grid
+            ? "text-white/70"
+            : "text-muted"
       }`}
     >
       {statusLabel(status)}
+    </span>
+  );
+}
+
+/**
+ * Уменьшенная копия фона витрины (см. ShowcaseBackdrop) — фон плитки хаба.
+ * Контраст подобран отдельно: плитка маленькая и текст лежит по всей её
+ * площади, а не только снизу, как на настоящей витрине.
+ */
+function HubTilePreview({
+  brandColor,
+  logoUrl,
+}: {
+  brandColor: string;
+  logoUrl: string;
+}) {
+  return (
+    <div
+      aria-hidden="true"
+      className="absolute inset-0 overflow-hidden rounded-[inherit] bg-[#0b0f14]"
+    >
+      <div
+        className="absolute inset-0 bg-cover bg-center"
+        style={{ backgroundImage: "url('/hub-bg.jpg')" }}
+      />
+      <div
+        className="absolute inset-0 opacity-30 mix-blend-screen"
+        style={{
+          background: `radial-gradient(70% 60% at 15% 0%, ${brandColor}, transparent 65%)`,
+        }}
+      />
+      {/* Лого — водяной знак по центру, а не чёткая метка в углу: все четыре
+          угла карточки уже заняты текстом (статус, автор, счётчики, дата). */}
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src={logoUrl}
+        alt=""
+        className="absolute top-1/2 left-1/2 h-16 w-auto -translate-x-1/2 -translate-y-1/2 opacity-15"
+      />
+      <div className="absolute inset-0 bg-gradient-to-b from-black/55 via-black/20 to-black/60" />
+    </div>
+  );
+}
+
+/** Бейдж автора в плитке — без цветной палитры OwnerBadge: на фото её тёмный
+ * текст теряет контраст, здесь нужен гарантированно читаемый вариант. */
+function GridOwnerChip({ label }: { label: string }) {
+  return (
+    <span
+      className="w-fit shrink-0 truncate rounded-full bg-black/35 px-2 py-0.5 text-xs font-medium text-white backdrop-blur-sm"
+      title={label}
+    >
+      {label}
     </span>
   );
 }
@@ -59,7 +126,7 @@ export function HubList({
   const grid = view === "grid";
 
   return (
-    <ul className={grid ? VIEW_GRID_CLASS : VIEW_LIST_CLASS}>
+    <ul className={grid ? HUB_TILE_GRID_CLASS : VIEW_LIST_CLASS}>
       {hubs.map((hub) => {
         const archived = hub.status === "ARCHIVED";
 
@@ -69,8 +136,8 @@ export function HubList({
         // независимо от длины названия; в списке — просто идёт следом.
         const metaRow = (
           <span
-            className={`flex items-center justify-between gap-3 text-xs text-muted ${
-              grid ? "mt-auto pt-1" : "mt-0.5"
+            className={`relative z-10 flex items-center justify-between gap-3 text-xs ${
+              grid ? "mt-auto pt-1 text-white/80" : "mt-0.5 text-muted"
             }`}
           >
             <span className="truncate">
@@ -88,16 +155,27 @@ export function HubList({
           <li key={hub.id}>
             <Link
               href={`/hubs/${hub.id}`}
-              className={`flex flex-col gap-0.5 rounded-xl border border-border px-4 py-3 transition hover:border-muted ${
-                archived ? "opacity-60" : "bg-surface"
-              } ${grid ? "h-full" : ""}`}
+              className={`relative flex flex-col gap-0.5 overflow-hidden rounded-xl border border-border transition hover:border-muted ${
+                grid
+                  ? `min-h-[180px] p-4 text-white ${archived ? "opacity-60" : ""}`
+                  : `px-4 py-3 ${archived ? "opacity-60" : "bg-surface"}`
+              }`}
             >
-              <span className="flex items-center justify-between gap-2">
-                <StatusCaption status={hub.status} />
-                {hub.owner ? <OwnerBadge id={hub.owner.id} label={hub.owner.label} /> : null}
+              {grid ? (
+                <HubTilePreview brandColor={hub.brandColor} logoUrl={hub.logoUrl} />
+              ) : null}
+              <span className="relative z-10 flex items-center justify-between gap-2">
+                <StatusCaption status={hub.status} grid={grid} />
+                {hub.owner ? (
+                  grid ? (
+                    <GridOwnerChip label={hub.owner.label} />
+                  ) : (
+                    <OwnerBadge id={hub.owner.id} label={hub.owner.label} />
+                  )
+                ) : null}
               </span>
               <span
-                className={grid ? "line-clamp-2 font-medium" : "truncate font-medium"}
+                className={`relative z-10 ${grid ? "line-clamp-2 font-medium" : "truncate font-medium"}`}
               >
                 {hub.title}
               </span>
