@@ -6,10 +6,10 @@ import {
   type ViewMode,
 } from "@/lib/view-mode";
 
-// Своя, более крупная сетка для плитки хабов — в отличие от общего
-// VIEW_GRID_CLASS (материалы/папки/статистика), тут плитка несёт превью
-// витрины и должна быть заметно больше, чтобы картинка читалась.
-const HUB_TILE_GRID_CLASS = "grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3";
+// Плитка фиксированного размера: колонки авто-заполняются (auto-fill) под
+// доступную ширину — окно шире → плиток в ряду больше, но сама плитка
+// не растягивается ни при какой ширине/масштабе.
+const HUB_TILE_GRID_CLASS = "grid grid-cols-[repeat(auto-fill,220px)] gap-4";
 
 export type HubRow = {
   id: string;
@@ -157,7 +157,7 @@ export function HubList({
               href={`/hubs/${hub.id}`}
               className={`relative flex flex-col gap-0.5 overflow-hidden rounded-xl border border-border transition hover:border-muted ${
                 grid
-                  ? `min-h-[180px] p-4 text-white ${archived ? "opacity-60" : ""}`
+                  ? `h-[248px] p-4 text-white ${archived ? "opacity-60" : ""}`
                   : `px-4 py-3 ${archived ? "opacity-60" : "bg-surface"}`
               }`}
             >
