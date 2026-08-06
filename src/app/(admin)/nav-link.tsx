@@ -46,8 +46,8 @@ export function NavLink({
         collapsed ? "justify-center" : ""
       } ${
         active
-          ? "bg-border/70 font-medium"
-          : "text-muted hover:bg-border/40 hover:text-foreground"
+          ? "bg-border/70 font-medium text-brand"
+          : "text-muted hover:bg-border/40 hover:text-brand"
       }`}
     >
       <span className="shrink-0">{icon}</span>

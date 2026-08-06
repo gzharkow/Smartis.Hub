@@ -19,11 +19,11 @@ function Icon({
       viewBox="0 0 24 24"
       fill="none"
       stroke="currentColor"
-      strokeWidth="1.8"
+      strokeWidth="2.2"
       strokeLinecap="round"
       strokeLinejoin="round"
       aria-hidden="true"
-      className={size === "lg" ? "size-6" : "size-[18px]"}
+      className={size === "lg" ? "size-[26px]" : "size-5"}
     >
       {children}
     </svg>

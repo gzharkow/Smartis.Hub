@@ -22,6 +22,10 @@
   --border: #e4e7ec;
   --muted: #667085;
 
+  /* Фирменный зелёный — цвет «жучка» в логотипе Smartis (тот же, что в
+     quote-pdf.ts/quote-preview.tsx и theme_color манифеста). */
+  --brand: #7ca82d;
+
   /* Чтобы в тон теме были и системные части: полосы прокрутки,
      выпадающие списки, курсор в полях ввода. */
   color-scheme: light;
@@ -43,6 +47,7 @@
   --color-surface: var(--surface);
   --color-border: var(--border);
   --color-muted: var(--muted);
+  --color-brand: var(--brand);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }

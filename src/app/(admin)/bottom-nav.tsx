@@ -49,7 +49,7 @@ function BottomTabLink({
       aria-label={label}
       aria-current={active ? "page" : undefined}
       className={`flex h-full flex-1 flex-col items-center justify-center gap-0.5 text-xs transition ${
-        active ? "text-foreground" : "text-muted"
+        active ? "text-brand" : "text-muted"
       }`}
     >
       <span className={active ? "" : "opacity-80"}>{icon}</span>
@@ -76,7 +76,7 @@ function BottomTabButton({
       aria-label={label}
       aria-pressed={active}
       className={`flex h-full flex-1 flex-col items-center justify-center gap-0.5 text-xs transition ${
-        active ? "text-foreground" : "text-muted"
+        active ? "text-brand" : "text-muted"
       }`}
     >
       <span className={active ? "" : "opacity-80"}>{icon}</span>
