@@ -13,12 +13,14 @@ export const getCurrentUser = cache(async () => {
 
   const user = await db.user.findUnique({
     where: { id: session.userId },
-    include: { organization: true },
+    include: { organization: true, accessLevel: true },
   });
 
   // Кука валидна, а пользователя нет — значит, его удалили после входа.
   return user ?? null;
 });
+
+export type CurrentUser = NonNullable<Awaited<ReturnType<typeof getCurrentUser>>>;
 
 export async function requireUser() {
   const user = await getCurrentUser();

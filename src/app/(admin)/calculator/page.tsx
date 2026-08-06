@@ -1,9 +1,11 @@
 import Link from "next/link";
 import Decimal from "decimal.js";
 import { cookies } from "next/headers";
-import { requireUser } from "@/lib/auth";
+import { requireSectionView, hasEdit } from "@/lib/permissions";
 import { db } from "@/lib/db";
 import { formatHubCreated } from "@/lib/hub-format";
+import { ownerLabel } from "@/lib/owner-color";
+import { OwnerBadge } from "@/components/owner-badge";
 import { calculateQuote, formatMoney } from "@/lib/quote-calc";
 import {
   parseQuoteSort,
@@ -13,10 +15,10 @@ import {
 import { QuoteSortControl } from "@/components/quote-sort-control";
 import { CreateQuoteForm } from "./create-quote-form";
 import { QuoteListRowActions } from "./quote-list-row-actions";
-import { CalculatorTabs } from "./calculator-tabs";
+import { CalculatorTabs, calculatorTabVisibleKeys } from "./calculator-tabs";
 
 export default async function CalculatorPage() {
-  const user = await requireUser();
+  const user = await requireSectionView("calculator");
   const jar = await cookies();
   const sort = parseQuoteSort(jar.get(QUOTE_SORT_COOKIE)?.value);
 
@@ -32,6 +34,11 @@ export default async function CalculatorPage() {
       // (СА) от остальных (Решения) — без явной сортировки Prisma не гарантирует
       // порядок вложенной выборки.
       sections: { orderBy: { position: "asc" }, include: { lines: true } },
+      // Только чтобы показать бейдж автора администратору — у него список
+      // содержит расчёты разных сотрудников вперемешку.
+      ...(user.role === "ADMIN"
+        ? { owner: { select: { id: true, name: true, email: true } } }
+        : {}),
     },
     // «Сумма» считается уже после выборки (см. quoteOrderBy) — тогда сюда
     // передаём дефолтный порядок, а сортируем готовые строки ниже.
@@ -73,10 +80,10 @@ export default async function CalculatorPage() {
             Расчёты стоимости для клиентов — замена общей таблицы
           </p>
         </div>
-        <CreateQuoteForm />
+        {hasEdit(user, "calculator") ? <CreateQuoteForm /> : null}
       </div>
 
-      <CalculatorTabs current="quotes" />
+      <CalculatorTabs current="quotes" visibleKeys={calculatorTabVisibleKeys(user)} />
 
       {rows.length === 0 ? (
         <div className="rounded-xl border border-dashed border-border py-16 text-center">
@@ -99,7 +106,12 @@ export default async function CalculatorPage() {
                   className="grid min-w-0 flex-1 grid-cols-1 gap-2 rounded-xl border border-border bg-surface px-4 py-3 transition hover:border-muted sm:grid-cols-[1fr_auto] sm:items-center"
                 >
                   <div className="min-w-0">
-                    <p className="truncate font-medium">{quote.clientName}</p>
+                    <div className="flex items-center gap-2">
+                      <p className="truncate font-medium">{quote.clientName}</p>
+                      {"owner" in quote && quote.owner ? (
+                        <OwnerBadge id={quote.owner.id} label={ownerLabel(quote.owner)} />
+                      ) : null}
+                    </div>
                     <p className="mt-0.5 text-sm text-muted">
                       Изменён {formatHubCreated(quote.updatedAt)}
                     </p>
@@ -116,7 +128,7 @@ export default async function CalculatorPage() {
                   </div>
                 </Link>
                 <div className="flex items-center">
-                  <QuoteListRowActions quoteId={quote.id} />
+                  <QuoteListRowActions quoteId={quote.id} canEdit={hasEdit(user, "calculator")} />
                 </div>
               </li>
             ))}

@@ -2,8 +2,10 @@ import { Readable } from "node:stream";
 import { NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
 import { getCurrentUser } from "@/lib/auth";
+import { hasEdit } from "@/lib/permissions";
 import { db } from "@/lib/db";
 import { storage, storageKeys } from "@/lib/storage";
+import { permissionKeyForSection } from "@/lib/asset-sections";
 
 const MAX_THUMB_BYTES = 2 * 1024 * 1024;
 
@@ -55,6 +57,9 @@ export async function POST(
 
   if (!asset || asset.organizationId !== user.organizationId) {
     return NextResponse.json({ error: "Материал не найден." }, { status: 404 });
+  }
+  if (!hasEdit(user, permissionKeyForSection(asset.section))) {
+    return NextResponse.json({ error: "Недостаточно прав." }, { status: 403 });
   }
 
   const form = await request.formData();

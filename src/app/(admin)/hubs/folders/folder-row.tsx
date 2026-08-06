@@ -15,9 +15,12 @@ export type FolderRowData = {
 export function FolderRow({
   folder,
   view = "list",
+  canEdit = true,
 }: {
   folder: FolderRowData;
   view?: ViewMode;
+  /** Право «Изменение» на «Хабы → Папки» — см. hubs/folders/page.tsx. */
+  canEdit?: boolean;
 }) {
   const [mode, setMode] = useState<"view" | "rename" | "confirm">("view");
   const [name, setName] = useState(folder.name);
@@ -128,7 +131,7 @@ export function FolderRow({
             Отмена
           </button>
         </>
-      ) : (
+      ) : canEdit ? (
         <>
           <button
             type="button"
@@ -145,7 +148,7 @@ export function FolderRow({
             Удалить
           </button>
         </>
-      );
+      ) : null;
 
   if (grid) {
     return (

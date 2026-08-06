@@ -1,4 +1,6 @@
 import Link from "next/link";
+import { hasView } from "@/lib/permissions";
+import type { CurrentUser } from "@/lib/auth";
 
 /**
  * Разделы страницы калькулятора. Как и у хабов/материалов, дублируют
@@ -16,18 +18,33 @@ export const CALCULATOR_TABS = [
 
 export type CalculatorTabKey = (typeof CALCULATOR_TABS)[number]["key"];
 
+/** Ключи подразделов, доступные пользователю по матрице — прокидывать в `visibleKeys`. */
+export function calculatorTabVisibleKeys(user: CurrentUser): string[] {
+  return hasView(user, "calculator.files") ? ["calculator.files"] : [];
+}
+
 export function CalculatorTabs({
   current,
   right,
+  visibleKeys,
 }: {
   current: CalculatorTabKey;
   /** Правый край ряда вкладок — сюда кладём переключатель вида/сортировки. */
   right?: React.ReactNode;
+  /** См. hubTabVisibleKeys в hubs/hub-tabs.tsx — не передан, значит показываем все. */
+  visibleKeys?: string[];
 }) {
+  const tabs = CALCULATOR_TABS.filter(
+    (tab) =>
+      tab.key === "quotes" ||
+      !visibleKeys ||
+      visibleKeys.includes(`calculator.${tab.key}`),
+  );
+
   return (
     <div className="mb-6 flex flex-wrap items-center gap-x-3 gap-y-2">
       <nav className="flex shrink-0 gap-1.5">
-        {CALCULATOR_TABS.map((tab) => {
+        {tabs.map((tab) => {
           const active = tab.key === current;
           return (
             <Link

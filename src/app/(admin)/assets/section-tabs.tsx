@@ -1,5 +1,7 @@
 import Link from "next/link";
-import { SECTIONS } from "@/lib/asset-sections";
+import { SECTIONS, permissionKeyForSection } from "@/lib/asset-sections";
+import { hasView } from "@/lib/permissions";
+import type { CurrentUser } from "@/lib/auth";
 
 /**
  * Переключатель разделов на самой странице материалов.
@@ -11,18 +13,36 @@ import { SECTIONS } from "@/lib/asset-sections";
  * Обычные ссылки, без клиентского кода: какая вкладка выбрана, видно
  * из адреса, и страница всё равно перерисовывается на сервере.
  */
+/** Ключи разделов, доступные пользователю по матрице — прокидывать в `visibleKeys`. */
+export function sectionTabVisibleKeys(user: CurrentUser): string[] {
+  return [
+    ...(hasView(user, "assets") ? ["assets"] : []),
+    ...SECTIONS.filter((s) => hasView(user, permissionKeyForSection(s.value))).map((s) =>
+      permissionKeyForSection(s.value),
+    ),
+  ];
+}
+
 export function SectionTabs({
   current,
   right,
+  visibleKeys,
 }: {
   current: string | null;
   /** Правый край ряда вкладок — сюда кладём переключатель вида. */
   right?: React.ReactNode;
+  /** См. hubTabVisibleKeys в hubs/hub-tabs.tsx — не передан, значит показываем все. */
+  visibleKeys?: string[];
 }) {
-  const tabs = [
-    { slug: null, label: "Все" },
-    ...SECTIONS.map((s) => ({ slug: s.slug, label: s.label })),
+  const allTabs = [
+    { slug: null, key: "assets", label: "Все" },
+    ...SECTIONS.map((s) => ({
+      slug: s.slug,
+      key: permissionKeyForSection(s.value),
+      label: s.label,
+    })),
   ];
+  const tabs = allTabs.filter((tab) => !visibleKeys || visibleKeys.includes(tab.key));
 
   return (
     <div className="mb-6 flex items-center gap-3">

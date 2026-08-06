@@ -4,10 +4,15 @@ import { randomBytes } from "node:crypto";
 import { z } from "zod";
 import { revalidatePath } from "next/cache";
 import { requireUser } from "@/lib/auth";
+import { hasEdit } from "@/lib/permissions";
 import { db } from "@/lib/db";
 
 async function ownedHub(hubId: string) {
   const user = await requireUser();
+  if (!hasEdit(user, "hubs")) {
+    throw new Error("Недостаточно прав.");
+  }
+
   const hub = await db.hub.findUnique({ where: { id: hubId } });
 
   if (!hub || hub.organizationId !== user.organizationId) {

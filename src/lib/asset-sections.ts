@@ -62,3 +62,8 @@ export function slugOfSection(value: AssetSection): string {
 export function parseSection(value: unknown): AssetSection | null {
   return SECTIONS.find((s) => s.value === value)?.value ?? null;
 }
+
+/** Ключ подраздела в матрице доступа (src/lib/permission-sections.ts) для раздела материалов. */
+export function permissionKeyForSection(value: AssetSection): string {
+  return `assets.${slugOfSection(value)}`;
+}

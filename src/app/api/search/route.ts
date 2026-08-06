@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
+import { hasView } from "@/lib/permissions";
 import { db } from "@/lib/db";
 
 // Сквозной поиск для строки в шапке: один запрос — хабы, папки, материалы
@@ -16,53 +17,64 @@ export async function GET(request: Request) {
   const q = new URL(request.url).searchParams.get("q")?.trim() ?? "";
   if (!q) return NextResponse.json({ hubs: [], folders: [], assets: [] });
 
+  // Каждый раздел ищется, только если он вообще виден пользователю —
+  // иначе поиск утекал бы названия хабов/материалов из разделов, которые
+  // матрица доступа явно скрывает из меню и блокирует по прямой ссылке.
   const [hubs, folders, assets, quotes] = await Promise.all([
-    db.hub.findMany({
-      where: {
-        organizationId: user.organizationId,
-        // Продавец видит свои хабы, администратор — все, как и в разделе «Хабы».
-        ...(user.role === "ADMIN" ? {} : { ownerId: user.id }),
-        status: { not: "ARCHIVED" },
-        title: { contains: q, mode: "insensitive" },
-      },
-      select: { id: true, title: true },
-      orderBy: { updatedAt: "desc" },
-      take: TAKE,
-    }),
-    db.hubFolder.findMany({
-      where: {
-        organizationId: user.organizationId,
-        name: { contains: q, mode: "insensitive" },
-      },
-      select: { id: true, name: true },
-      orderBy: { name: "asc" },
-      take: TAKE,
-    }),
-    db.asset.findMany({
-      where: {
-        organizationId: user.organizationId,
-        archivedAt: null,
-        // PDF калькулятора — не материал библиотеки; расчёт, из которого он
-        // сделан, и так находится ниже через db.quote.findMany.
-        quoteId: null,
-        title: { contains: q, mode: "insensitive" },
-      },
-      select: { id: true, title: true, section: true },
-      orderBy: { createdAt: "desc" },
-      take: TAKE,
-    }),
-    db.quote.findMany({
-      where: {
-        organizationId: user.organizationId,
-        // Та же логика видимости, что у хабов: продавец — только свои.
-        ...(user.role === "ADMIN" ? {} : { ownerId: user.id }),
-        archivedAt: null,
-        clientName: { contains: q, mode: "insensitive" },
-      },
-      select: { id: true, clientName: true },
-      orderBy: { updatedAt: "desc" },
-      take: TAKE,
-    }),
+    hasView(user, "hubs")
+      ? db.hub.findMany({
+          where: {
+            organizationId: user.organizationId,
+            // Продавец видит свои хабы, администратор — все, как и в разделе «Хабы».
+            ...(user.role === "ADMIN" ? {} : { ownerId: user.id }),
+            status: { not: "ARCHIVED" },
+            title: { contains: q, mode: "insensitive" },
+          },
+          select: { id: true, title: true },
+          orderBy: { updatedAt: "desc" },
+          take: TAKE,
+        })
+      : [],
+    hasView(user, "hubs.folders")
+      ? db.hubFolder.findMany({
+          where: {
+            organizationId: user.organizationId,
+            name: { contains: q, mode: "insensitive" },
+          },
+          select: { id: true, name: true },
+          orderBy: { name: "asc" },
+          take: TAKE,
+        })
+      : [],
+    hasView(user, "assets")
+      ? db.asset.findMany({
+          where: {
+            organizationId: user.organizationId,
+            archivedAt: null,
+            // PDF калькулятора — не материал библиотеки; расчёт, из которого он
+            // сделан, и так находится ниже через db.quote.findMany.
+            quoteId: null,
+            title: { contains: q, mode: "insensitive" },
+          },
+          select: { id: true, title: true, section: true },
+          orderBy: { createdAt: "desc" },
+          take: TAKE,
+        })
+      : [],
+    hasView(user, "calculator")
+      ? db.quote.findMany({
+          where: {
+            organizationId: user.organizationId,
+            // Та же логика видимости, что у хабов: продавец — только свои.
+            ...(user.role === "ADMIN" ? {} : { ownerId: user.id }),
+            archivedAt: null,
+            clientName: { contains: q, mode: "insensitive" },
+          },
+          select: { id: true, clientName: true },
+          orderBy: { updatedAt: "desc" },
+          take: TAKE,
+        })
+      : [],
   ]);
 
   return NextResponse.json({

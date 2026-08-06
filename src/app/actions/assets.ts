@@ -2,8 +2,9 @@
 
 import { revalidatePath } from "next/cache";
 import { requireUser } from "@/lib/auth";
+import { hasEdit } from "@/lib/permissions";
 import { db } from "@/lib/db";
-import { parseSection } from "@/lib/asset-sections";
+import { parseSection, permissionKeyForSection } from "@/lib/asset-sections";
 import { checkLink, downloadLinkImage } from "@/lib/link-check";
 import { storage, storageKeys } from "@/lib/storage";
 
@@ -53,6 +54,19 @@ async function ownedAsset(assetId: string) {
   // выяснять, что есть в чужих организациях.
   if (!asset || asset.organizationId !== user.organizationId) {
     throw new Error("Материал не найден.");
+  }
+  // Право «Изменение» проверяется по РАЗДЕЛУ, в котором материал лежит
+  // сейчас — Материалы видны всем с доступом к разделу целиком, но менять
+  // можно только там, где явно разрешено (см. permission-sections.ts).
+  // Исключение — PDF из «Генератора КП» (quoteId не пуст): у них
+  // asset.section всегда COMMON, но живут они не в «Материалах», а в
+  // «Генератор КП → Файлы», и это именно тот ключ матрицы, который
+  // должен решать, можно ли их удалять/восстанавливать.
+  const permissionKey = asset.quoteId
+    ? "calculator.files"
+    : permissionKeyForSection(asset.section);
+  if (!hasEdit(user, permissionKey)) {
+    throw new Error("Недостаточно прав.");
   }
   return { user, asset };
 }
@@ -115,6 +129,9 @@ export async function addLinkAsset(
   if (!url) return { error: "Введите адрес ссылки." };
 
   const section = parseSection(formData.get("section")) ?? "COMMON";
+  if (!hasEdit(user, permissionKeyForSection(section))) {
+    return { error: "Недостаточно прав." };
+  }
   const typed = String(formData.get("title") ?? "").trim();
 
   let checked;
@@ -187,7 +204,14 @@ export async function setAssetSection(assetId: string, section: string) {
   const value = parseSection(section);
   if (!value) throw new Error("Неизвестный раздел.");
 
-  const { asset } = await ownedAsset(assetId);
+  const { user, asset } = await ownedAsset(assetId);
+
+  // ownedAsset уже проверила права на ИСХОДНЫЙ раздел — здесь дополнительно
+  // проверяем ЦЕЛЕВОЙ: иначе материал можно было бы переложить в раздел,
+  // редактировать который не разрешено.
+  if (!hasEdit(user, permissionKeyForSection(value))) {
+    throw new Error("Недостаточно прав.");
+  }
 
   await db.asset.update({
     where: { id: asset.id },

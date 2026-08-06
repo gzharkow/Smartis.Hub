@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import Link from "next/link";
 import { purgeHub, restoreHub } from "@/app/actions/hubs";
 import { plural, withPlural, WORDS } from "@/lib/plural";
+import { OwnerBadge } from "@/components/owner-badge";
 import type { ViewMode } from "@/lib/view-mode";
 
 const DAY: [string, string, string] = ["день", "дня", "дней"];
@@ -15,14 +16,19 @@ export type TrashRowData = {
   links: number;
   /** Сколько дней осталось до окончательного удаления. null — срок неизвестен. */
   daysLeft: number | null;
+  /** Кто создал — заполнено только у администратора, см. hub-list.tsx. */
+  owner?: { id: string; label: string } | null;
 };
 
 export function TrashRow({
   hub,
   view = "list",
+  canEdit = true,
 }: {
   hub: TrashRowData;
   view?: ViewMode;
+  /** Право «Изменение» на «Хабы → Недавно удалённые» — см. hubs/trash/page.tsx. */
+  canEdit?: boolean;
 }) {
   const [confirming, setConfirming] = useState(false);
   const [pending, startTransition] = useTransition();
@@ -58,7 +64,7 @@ export function TrashRow({
     </span>
   );
 
-  const actions = confirming ? (
+  const actions = !canEdit ? null : confirming ? (
         <span className="flex flex-wrap items-center gap-2">
           {/* Здесь предупреждение жёстче, чем при обычном удалении: это
               единственное место в сервисе, где данные исчезают навсегда. */}
@@ -101,9 +107,12 @@ export function TrashRow({
         </>
       );
 
+  const owner = hub.owner ? <OwnerBadge id={hub.owner.id} label={hub.owner.label} /> : null;
+
   if (grid) {
     return (
       <li className="flex h-full flex-col gap-2 rounded-xl border border-border px-4 py-3 opacity-80">
+        {owner}
         {title}
         <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
           {meta}
@@ -119,6 +128,7 @@ export function TrashRow({
   return (
     <li className="flex flex-wrap items-center gap-3 rounded-xl border border-border px-4 py-3 opacity-80">
       {title}
+      {owner}
       {meta}
       {daysLeft}
       {actions}

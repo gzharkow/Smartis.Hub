@@ -76,11 +76,14 @@ export function HubShareLinks({
   links,
   baseUrl,
   published,
+  canEdit = true,
 }: {
   hubId: string;
   links: Link[];
   baseUrl: string;
   published: boolean;
+  /** Право «Изменение» на «Хабы» — см. hubs/[id]/page.tsx. */
+  canEdit?: boolean;
 }) {
   const [state, action, pending] = useActionState<CreateLinkState, FormData>(
     createShareLink,
@@ -97,6 +100,7 @@ export function HubShareLinks({
         </p>
       ) : null}
 
+      {canEdit ? (
       <form action={action} className="grid grid-cols-1 gap-3 rounded-lg border border-border p-4">
         <input type="hidden" name="hubId" value={hubId} />
 
@@ -157,6 +161,7 @@ export function HubShareLinks({
           </button>
         </div>
       </form>
+      ) : null}
 
       {links.length === 0 ? (
         <p className="text-sm text-muted">Ссылок пока нет.</p>
@@ -192,20 +197,22 @@ export function HubShareLinks({
                     </span>
                   )}
 
-                  <button
-                    type="button"
-                    disabled={busy}
-                    onClick={() =>
-                      startTransition(() =>
-                        link.revoked
-                          ? restoreShareLink(hubId, link.id)
-                          : revokeShareLink(hubId, link.id),
-                      )
-                    }
-                    className="shrink-0 rounded px-2 py-1 text-xs text-muted transition hover:bg-border/60 hover:text-foreground disabled:opacity-50"
-                  >
-                    {link.revoked ? "Вернуть" : "Отозвать"}
-                  </button>
+                  {canEdit ? (
+                    <button
+                      type="button"
+                      disabled={busy}
+                      onClick={() =>
+                        startTransition(() =>
+                          link.revoked
+                            ? restoreShareLink(hubId, link.id)
+                            : revokeShareLink(hubId, link.id),
+                        )
+                      }
+                      className="shrink-0 rounded px-2 py-1 text-xs text-muted transition hover:bg-border/60 hover:text-foreground disabled:opacity-50"
+                    >
+                      {link.revoked ? "Вернуть" : "Отозвать"}
+                    </button>
+                  ) : null}
                 </div>
 
                 <div className="flex items-center gap-2">

@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { requireUser } from "@/lib/auth";
+import { requireSectionView, hasEdit } from "@/lib/permissions";
 import { db } from "@/lib/db";
 import { formatFileSize, KIND_LABELS } from "@/lib/assets";
 import { parseContactMethods } from "@/lib/contact-methods";
@@ -34,7 +34,7 @@ export default async function HubPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const user = await requireUser();
+  const user = await requireSectionView("hubs");
 
   const hub = await db.hub.findUnique({
     where: { id },
@@ -54,6 +54,7 @@ export default async function HubPage({
   if (!hub || hub.organizationId !== user.organizationId) notFound();
   if (user.role !== "ADMIN" && hub.ownerId !== user.id) notFound();
 
+  const canEdit = hasEdit(user, "hubs");
   const archived = hub.status === "ARCHIVED";
 
   // Сколько ссылок реально работает у клиентов прямо сейчас — это и есть
@@ -103,27 +104,30 @@ export default async function HubPage({
 
           {/* У удалённого хаба публиковать и копировать нечего — сначала
               вернуть. Иначе «Опубликовать» тихо воскресило бы его в обход
-              восстановления. */}
-          <div className="flex flex-wrap items-center gap-2">
-            {archived ? (
-              <RestoreHubButton hubId={hub.id} />
-            ) : (
-              <>
-                <DuplicateHubButton hubId={hub.id} />
-                <DeleteHubButton hubId={hub.id} liveLinks={liveLinks} />
-                <PublishToggle
-                  hubId={hub.id}
-                  published={hub.status === "PUBLISHED"}
-                  itemCount={hub.items.length}
-                />
-              </>
-            )}
-          </div>
+              восстановления. Без права «Изменение» ни одной из этих кнопок
+              нет вовсе — действие всё равно отбилось бы на сервере. */}
+          {canEdit ? (
+            <div className="flex flex-wrap items-center gap-2">
+              {archived ? (
+                <RestoreHubButton hubId={hub.id} />
+              ) : (
+                <>
+                  <DuplicateHubButton hubId={hub.id} />
+                  <DeleteHubButton hubId={hub.id} liveLinks={liveLinks} />
+                  <PublishToggle
+                    hubId={hub.id}
+                    published={hub.status === "PUBLISHED"}
+                    itemCount={hub.items.length}
+                  />
+                </>
+              )}
+            </div>
+          ) : null}
         </div>
 
         {/* У удалённого хаба папку не показываем: он лежит в корзине,
             а не на полке. */}
-        {archived ? null : (
+        {archived || !canEdit ? null : (
           <div className="mt-3">
             <HubFolderPicker
               hubId={hub.id}
@@ -153,6 +157,7 @@ export default async function HubPage({
           logoUrl={hub.logoUrl ?? hub.organization.logoUrl ?? "/logo.png"}
           orgName={hub.organization.name}
           contacts={parseContactMethods(hub.organization.contactMethods)}
+          canEdit={canEdit}
         />
       </section>
 
@@ -183,15 +188,19 @@ export default async function HubPage({
             hasThumbnail: asset.thumbnailKey !== null,
           }))}
           excludeAssetIds={[...usedAssetIds]}
+          canEdit={canEdit}
         />
 
         {/* Отдельно от библиотеки: расчёт — не файл, который где-то лежит,
             а PDF, собираемый по нажатию из текущего состояния КП (снимок
-            на момент добавления, см. addQuotePdfToHub). */}
-        <div>
-          <h3 className="mb-2 text-sm font-medium">Добавить расчёт из Генератора КП</h3>
-          <HubQuotePicker hubId={hub.id} />
-        </div>
+            на момент добавления, см. addQuotePdfToHub). Виджет чисто
+            добавляющий — без прав редактирования показывать нечего. */}
+        {canEdit ? (
+          <div>
+            <h3 className="mb-2 text-sm font-medium">Добавить расчёт из Генератора КП</h3>
+            <HubQuotePicker hubId={hub.id} />
+          </div>
+        ) : null}
       </section>
 
       <section className="grid grid-cols-1 gap-4 border-t border-border pt-8">
@@ -200,6 +209,7 @@ export default async function HubPage({
         </h2>
         <HubShareLinks
           hubId={hub.id}
+          canEdit={canEdit}
           published={hub.status === "PUBLISHED"}
           baseUrl={process.env.APP_URL ?? "http://localhost:3000"}
           links={hub.shareLinks.map((link) => ({

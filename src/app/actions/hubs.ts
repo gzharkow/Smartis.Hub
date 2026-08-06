@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { PDFDocument } from "pdf-lib";
 import { requireUser } from "@/lib/auth";
+import { hasEdit } from "@/lib/permissions";
 import { db } from "@/lib/db";
 import { isEmptyHtml, sanitizeHtml } from "@/lib/sanitize";
 import { storage, storageKeys } from "@/lib/storage";
@@ -21,6 +22,13 @@ import {
 
 async function ownedHub(hubId: string) {
   const user = await requireUser();
+
+  // Единая точка входа для всех мутирующих действий над хабом — проверка
+  // права «Изменение» на раздел «Хабы» достаточно поставить здесь один раз.
+  if (!hasEdit(user, "hubs")) {
+    throw new Error("Недостаточно прав.");
+  }
+
   const hub = await db.hub.findUnique({ where: { id: hubId } });
 
   // Не «нет доступа», а «не найдено»: разные ответы позволили бы перебором
@@ -45,6 +53,9 @@ export async function createHub(
   formData: FormData,
 ): Promise<CreateHubState> {
   const user = await requireUser();
+  if (!hasEdit(user, "hubs")) {
+    return { error: "Недостаточно прав." };
+  }
 
   const parsed = CreateSchema.safeParse({ title: formData.get("title") });
   if (!parsed.success) {

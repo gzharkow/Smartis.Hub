@@ -6,9 +6,18 @@ import { archiveQuote } from "@/app/actions/quotes";
 // Тот же confirm-then-archive приём, что и в quote-actions-bar.tsx на
 // странице самого КП — здесь без router.push, revalidatePath внутри
 // archiveQuote сам уберёт строку из списка.
-export function QuoteListRowActions({ quoteId }: { quoteId: string }) {
+export function QuoteListRowActions({
+  quoteId,
+  canEdit = true,
+}: {
+  quoteId: string;
+  /** Право «Изменение» на «Генератор КП» — см. calculator/page.tsx. */
+  canEdit?: boolean;
+}) {
   const [confirming, setConfirming] = useState(false);
   const [deleting, startDelete] = useTransition();
+
+  if (!canEdit) return null;
 
   if (confirming) {
     return (

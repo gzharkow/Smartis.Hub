@@ -38,6 +38,8 @@ export type AssetRowData = {
   hasThumbnail: boolean;
   /** Можно ли для этого типа сделать превью. Для LINK и прочих файлов — нет. */
   canThumbnail: boolean;
+  /** Право «Изменение» на раздел, в котором лежит именно этот материал. */
+  canEdit: boolean;
 };
 
 export function AssetRow({
@@ -47,6 +49,7 @@ export function AssetRow({
   asset: AssetRowData;
   view?: ViewMode;
 }) {
+  const canEdit = asset.canEdit;
   const router = useRouter();
   const [confirming, setConfirming] = useState(false);
   const [thumbing, setThumbing] = useState(false);
@@ -84,7 +87,7 @@ export function AssetRow({
     />
   );
 
-  const renameBtn = !asset.archived ? (
+  const renameBtn = canEdit && !asset.archived ? (
     <button
       type="button"
       title="Переименовать"
@@ -127,7 +130,7 @@ export function AssetRow({
     </span>
   ) : null;
 
-  const sectionSelect = !asset.archived ? (
+  const sectionSelect = canEdit && !asset.archived ? (
     <select
       value={asset.section}
       disabled={pending}
@@ -155,6 +158,7 @@ export function AssetRow({
   // Кнопка только там, где превью нет, но сделать его можно: у файлов
   // (PDF/видео/картинка) рисует браузер, у ссылок — берём og:image сайта.
   const makePreviewBtn =
+    canEdit &&
     !asset.archived &&
     !asset.hasThumbnail &&
     (asset.canThumbnail || asset.externalUrl) ? (
@@ -184,7 +188,7 @@ export function AssetRow({
       </button>
     ) : null;
 
-  const actionCluster = asset.archived ? (
+  const actionCluster = !canEdit ? null : asset.archived ? (
     <button
       type="button"
       disabled={pending}

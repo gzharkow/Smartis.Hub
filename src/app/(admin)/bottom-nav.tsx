@@ -20,9 +20,14 @@ import { SearchOverlay } from "./search-overlay";
 // Настройки → Поиск → (Статистика) → Генератор КП → Материалы → Хабы.
 // Здесь — только маршруты, кнопки поиска/настроек рисуются в самом баре.
 const ROUTE_TABS = [
-  { href: "/calculator", label: "Генератор КП", icon: <CalculatorIcon size="lg" /> },
-  { href: "/assets", label: "Материалы", icon: <AssetsIcon size="lg" /> },
-  { href: "/hubs", label: "Хабы", icon: <HubsIcon size="lg" /> },
+  {
+    key: "calculator",
+    href: "/calculator",
+    label: "Генератор КП",
+    icon: <CalculatorIcon size="lg" />,
+  },
+  { key: "assets", href: "/assets", label: "Материалы", icon: <AssetsIcon size="lg" /> },
+  { key: "hubs", href: "/hubs", label: "Хабы", icon: <HubsIcon size="lg" /> },
 ] as const;
 
 function BottomTabLink({
@@ -89,14 +94,19 @@ function BottomTabButton({
  */
 export function BottomNav({
   isAdmin,
+  visibleSections,
   email,
   theme,
 }: {
   isAdmin: boolean;
+  /** Ключи разделов/подразделов из permission-sections.ts, доступные этому пользователю. */
+  visibleSections: string[];
   email: string;
   theme: Theme | null;
 }) {
   const [panel, setPanel] = useState<"search" | "settings" | null>(null);
+  const visible = new Set(visibleSections);
+  const routeTabs = ROUTE_TABS.filter((tab) => visible.has(tab.key));
 
   return (
     <>
@@ -112,12 +122,23 @@ export function BottomNav({
           flex-1 на каждом пункте сам делит ширину поровну — на 5 или 6
           пунктов, без явного grid-cols. */}
       <nav className="sticky bottom-0 z-30 hidden w-full standalone:max-md:flex h-20 items-stretch border-t border-border bg-surface pb-[env(safe-area-inset-bottom)]">
-        <BottomTabButton
-          label="Настройки"
-          icon={<SettingsIcon size="lg" />}
-          active={panel === "settings"}
-          onClick={() => setPanel("settings")}
-        />
+        {/* У администратора та же кнопка ведёт в целый раздел «Настройки»
+            (создание аккаунтов и т.д.) вместо шторки — у обычного
+            пользователя шторка с темой/выходом остаётся как была. */}
+        {isAdmin ? (
+          <BottomTabLink
+            href="/settings"
+            label="Настройки"
+            icon={<SettingsIcon size="lg" />}
+          />
+        ) : (
+          <BottomTabButton
+            label="Настройки"
+            icon={<SettingsIcon size="lg" />}
+            active={panel === "settings"}
+            onClick={() => setPanel("settings")}
+          />
+        )}
 
         <BottomTabButton
           label="Поиск"
@@ -126,7 +147,7 @@ export function BottomNav({
           onClick={() => setPanel("search")}
         />
 
-        {isAdmin ? (
+        {visible.has("stats") ? (
           <BottomTabLink
             href="/stats"
             label="Статистика"
@@ -134,8 +155,8 @@ export function BottomNav({
           />
         ) : null}
 
-        {ROUTE_TABS.map((tab) => (
-          <BottomTabLink key={tab.href} {...tab} />
+        {routeTabs.map(({ key, ...tab }) => (
+          <BottomTabLink key={key} {...tab} />
         ))}
       </nav>
 

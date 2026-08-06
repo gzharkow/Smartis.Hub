@@ -102,11 +102,14 @@ export function HubMaterials({
   items,
   frequentlyUsed,
   excludeAssetIds,
+  canEdit = true,
 }: {
   hubId: string;
   items: Item[];
   frequentlyUsed: PickableAsset[];
   excludeAssetIds: string[];
+  /** Право «Изменение» на «Хабы» — см. hubs/[id]/page.tsx. */
+  canEdit?: boolean;
 }) {
   const [pending, startTransition] = useTransition();
   const [filter, setFilter] = useState<AssetSection | null>(null);
@@ -240,22 +243,25 @@ export function HubMaterials({
                 <span className="hidden shrink-0 text-xs text-muted sm:inline">
                   {item.meta}
                 </span>
-                <button
-                  type="button"
-                  disabled={pending}
-                  onClick={() =>
-                    startTransition(() => removeItemFromHub(hubId, item.id))
-                  }
-                  className="rounded px-2 py-1 text-xs text-muted transition hover:bg-red-500/10 hover:text-red-600 disabled:opacity-50 dark:hover:text-red-400"
-                >
-                  Убрать
-                </button>
+                {canEdit ? (
+                  <button
+                    type="button"
+                    disabled={pending}
+                    onClick={() =>
+                      startTransition(() => removeItemFromHub(hubId, item.id))
+                    }
+                    className="rounded px-2 py-1 text-xs text-muted transition hover:bg-red-500/10 hover:text-red-600 disabled:opacity-50 dark:hover:text-red-400"
+                  >
+                    Убрать
+                  </button>
+                ) : null}
               </li>
             ))}
           </ul>
         )}
       </div>
 
+      {canEdit ? (
       <div>
         <div className="mb-2 flex flex-wrap items-center gap-2">
           <h2 className="mr-1 text-sm font-medium">Библиотека</h2>
@@ -344,6 +350,7 @@ export function HubMaterials({
           ) : null}
         </ul>
       </div>
+      ) : null}
 
       {previewAsset ? (
         <AssetPreviewModal

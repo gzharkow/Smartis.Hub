@@ -1,10 +1,11 @@
-import { requireUser } from "@/lib/auth";
+import { requireSectionView, hasEdit } from "@/lib/permissions";
 import { db } from "@/lib/db";
 import { formatFileSize } from "@/lib/assets";
 import { formatHubCreated } from "@/lib/hub-format";
+import { ownerLabel } from "@/lib/owner-color";
 import { withPlural, WORDS } from "@/lib/plural";
 import { QuoteFileRow, type QuoteFileRowData } from "./quote-file-row";
-import { CalculatorTabs } from "../calculator-tabs";
+import { CalculatorTabs, calculatorTabVisibleKeys } from "../calculator-tabs";
 
 export const dynamic = "force-dynamic";
 
@@ -14,7 +15,7 @@ export const dynamic = "force-dynamic";
 // её вперемешку с презентациями), а этот раздел — их единственное место.
 
 export default async function CalculatorFilesPage() {
-  const user = await requireUser();
+  const user = await requireSectionView("calculator.files");
 
   const files = await db.asset.findMany({
     where: {
@@ -25,7 +26,16 @@ export default async function CalculatorFilesPage() {
       ...(user.role === "ADMIN" ? {} : { quote: { ownerId: user.id } }),
     },
     include: {
-      quote: { select: { id: true } },
+      quote: {
+        select: {
+          id: true,
+          // Только чтобы показать бейдж автора администратору — у него
+          // список содержит файлы расчётов разных сотрудников вперемешку.
+          ...(user.role === "ADMIN"
+            ? { owner: { select: { id: true, name: true, email: true } } }
+            : {}),
+        },
+      },
       _count: { select: { hubItems: true } },
     },
     orderBy: { createdAt: "desc" },
@@ -44,10 +54,15 @@ export default async function CalculatorFilesPage() {
     hubCount: a._count.hubItems,
     quoteId: a.quote?.id ?? null,
     archived: a.archivedAt !== null,
+    owner:
+      a.quote && "owner" in a.quote && a.quote.owner
+        ? { id: a.quote.owner.id, label: ownerLabel(a.quote.owner) }
+        : null,
   });
 
   const active = files.filter((a) => a.archivedAt === null).map(toRow);
   const archived = files.filter((a) => a.archivedAt !== null).map(toRow);
+  const canEdit = hasEdit(user, "calculator.files");
 
   return (
     <div>
@@ -59,7 +74,7 @@ export default async function CalculatorFilesPage() {
         </p>
       </div>
 
-      <CalculatorTabs current="files" />
+      <CalculatorTabs current="files" visibleKeys={calculatorTabVisibleKeys(user)} />
 
       {active.length === 0 ? (
         <div className="rounded-xl border border-dashed border-border py-16 text-center">
@@ -72,7 +87,7 @@ export default async function CalculatorFilesPage() {
       ) : (
         <ul className="grid grid-cols-1 gap-2">
           {active.map((file) => (
-            <QuoteFileRow key={file.id} file={file} />
+            <QuoteFileRow key={file.id} file={file} canEdit={canEdit} />
           ))}
         </ul>
       )}
@@ -85,7 +100,7 @@ export default async function CalculatorFilesPage() {
 
           <ul className="mt-3 grid grid-cols-1 gap-2">
             {archived.map((file) => (
-              <QuoteFileRow key={file.id} file={file} />
+              <QuoteFileRow key={file.id} file={file} canEdit={canEdit} />
             ))}
           </ul>
         </details>

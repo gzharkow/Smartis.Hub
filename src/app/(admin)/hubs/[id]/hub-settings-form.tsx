@@ -39,7 +39,8 @@ export function HubSettingsForm({
   logoUrl,
   orgName,
   contacts: initialContacts,
-}: Props) {
+  canEdit = true,
+}: Props & { canEdit?: boolean }) {
   const [state, action, pending] = useActionState<UpdateHubState, FormData>(
     updateHub,
     undefined,
@@ -80,8 +81,10 @@ export function HubSettingsForm({
   return (
     // lg:grid-cols-2 — на широком экране форма и предпросмотр рядом.
     // На узком предпросмотр уходит вниз: втискивать витрину в половину
-    // телефона бессмысленно.
-    <div className="grid grid-cols-1 gap-6 lg:grid-cols-2 lg:items-start">
+    // телефона бессмысленно. Без прав на редактирование колонка формы
+    // не нужна вовсе — остаётся один предпросмотр.
+    <div className={canEdit ? "grid grid-cols-1 gap-6 lg:grid-cols-2 lg:items-start" : "grid grid-cols-1 gap-4"}>
+      {canEdit ? (
       <form action={action} className="grid grid-cols-1 gap-5">
         <input type="hidden" name="hubId" value={hub.id} />
 
@@ -304,6 +307,11 @@ export function HubSettingsForm({
           ) : null}
         </div>
       </form>
+      ) : (
+        <p className="text-sm text-muted">
+          Недостаточно прав для изменения оформления хаба — показан только предпросмотр.
+        </p>
+      )}
 
       {/* Предпросмотр. sticky — при прокрутке длинной формы витрина
           остаётся перед глазами. */}

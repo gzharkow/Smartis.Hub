@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { withPlural, WORDS } from "@/lib/plural";
+import { OwnerBadge } from "@/components/owner-badge";
 import {
   VIEW_GRID_CLASS,
   VIEW_LIST_CLASS,
@@ -16,6 +17,12 @@ export type HubRow = {
   folderName: string | null;
   /** Готовая подпись «когда создан», дата и время. */
   createdLabel: string;
+  /**
+   * Кто создал — только заполнено, когда список показывает чужие записи
+   * (администратор видит хабы всех сотрудников). У обычного пользователя
+   * список и так только его собственный, поле остаётся null.
+   */
+  owner?: { id: string; label: string } | null;
 };
 
 function statusLabel(status: string): string {
@@ -85,7 +92,10 @@ export function HubList({
                 archived ? "opacity-60" : "bg-surface"
               } ${grid ? "h-full" : ""}`}
             >
-              <StatusCaption status={hub.status} />
+              <span className="flex items-center justify-between gap-2">
+                <StatusCaption status={hub.status} />
+                {hub.owner ? <OwnerBadge id={hub.owner.id} label={hub.owner.label} /> : null}
+              </span>
               <span
                 className={grid ? "line-clamp-2 font-medium" : "truncate font-medium"}
               >

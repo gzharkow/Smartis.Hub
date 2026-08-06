@@ -10,15 +10,18 @@ import {
   CalculatorIcon,
   ChevronIcon,
   HubsIcon,
+  SettingsIcon,
   StatsIcon,
 } from "./nav-icons";
+
+type Child = NavChild & { key: string };
 
 type Group = {
   key: string;
   href: string;
   label: string;
   icon: React.ReactNode;
-  children: NavChild[];
+  children: Child[];
 };
 
 const GROUPS: Group[] = [
@@ -28,8 +31,8 @@ const GROUPS: Group[] = [
     label: "Хабы",
     icon: <HubsIcon />,
     children: [
-      { href: "/hubs/folders", label: "Папки" },
-      { href: "/hubs/trash", label: "Недавно удалённые" },
+      { key: "hubs.folders", href: "/hubs/folders", label: "Папки" },
+      { key: "hubs.trash", href: "/hubs/trash", label: "Недавно удалённые" },
     ],
   },
   {
@@ -38,6 +41,7 @@ const GROUPS: Group[] = [
     label: "Материалы",
     icon: <AssetsIcon />,
     children: SECTIONS.map((s) => ({
+      key: `assets.${s.slug}`,
       href: `/assets/${s.slug}`,
       label: s.label,
     })),
@@ -47,7 +51,7 @@ const GROUPS: Group[] = [
     href: "/calculator",
     label: "Генератор КП",
     icon: <CalculatorIcon />,
-    children: [{ href: "/calculator/files", label: "Файлы" }],
+    children: [{ key: "calculator.files", href: "/calculator/files", label: "Файлы" }],
   },
 ];
 
@@ -67,16 +71,29 @@ function remember(name: string, value: string) {
  */
 export function Sidebar({
   isAdmin,
+  visibleSections,
   initialCollapsed,
   initialShut,
 }: {
   isAdmin: boolean;
+  /** Ключи разделов/подразделов из permission-sections.ts, доступные этому пользователю. */
+  visibleSections: string[];
   initialCollapsed: boolean;
   /** Разделы, у которых подразделы свёрнуты. */
   initialShut: string[];
 }) {
   const [collapsed, setCollapsed] = useState(initialCollapsed);
   const [shut, setShut] = useState<string[]>(initialShut);
+
+  const visible = new Set(visibleSections);
+  // Родитель и подразделы проверяются независимо (без наследования): пункт
+  // меню остаётся в списке, если виден он сам ИЛИ хотя бы один подраздел —
+  // иначе доступный, но не входящий в родителя подраздел стал бы
+  // недостижим через меню (хоть страница и открылась бы по прямой ссылке).
+  const groups = GROUPS.map((group) => ({
+    ...group,
+    children: group.children.filter((c) => visible.has(c.key)),
+  })).filter((group) => visible.has(group.key) || group.children.length > 0);
 
   function toggleSidebar() {
     const next = !collapsed;
@@ -132,7 +149,7 @@ export function Sidebar({
       </div>
 
       <nav className="flex flex-1 flex-col gap-0.5 overflow-y-auto p-2">
-        {GROUPS.map((group) => (
+        {groups.map((group) => (
           <NavGroup
             key={group.key}
             href={group.href}
@@ -145,12 +162,27 @@ export function Sidebar({
           />
         ))}
 
-        {/* У статистики подразделов нет — стрелка ей не нужна. */}
-        {isAdmin ? (
+        {/* У статистики подразделов нет — стрелка ей не нужна. Раньше было
+            жёстко isAdmin, теперь — по матрице доступа (у ADMIN она всегда
+            даёт true, так что для него ничего не изменилось). */}
+        {visible.has("stats") ? (
           <NavLink
             href="/stats"
             label="Статистика"
             icon={<StatsIcon />}
+            collapsed={collapsed}
+          />
+        ) : null}
+
+        {/* Настройки — только у администратора: у обычных пользователей
+            тема и выход уже вынесены в «бровь» topbar, второй настроечной
+            точки на десктопе им пока не нужно (раздел /settings всё равно
+            жёстко доступен только role=ADMIN, см. (admin)/settings/layout.tsx). */}
+        {isAdmin ? (
+          <NavLink
+            href="/settings"
+            label="Настройки"
+            icon={<SettingsIcon />}
             collapsed={collapsed}
           />
         ) : null}

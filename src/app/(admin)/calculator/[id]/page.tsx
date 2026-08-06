@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { requireUser } from "@/lib/auth";
+import { requireSectionView, hasEdit } from "@/lib/permissions";
 import { db } from "@/lib/db";
 import { parseCalculatorConfig } from "@/lib/quote-calculator";
 import { QuoteEditor } from "./quote-editor";
@@ -12,7 +12,7 @@ export default async function QuotePage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const user = await requireUser();
+  const user = await requireSectionView("calculator");
 
   const quote = await db.quote.findUnique({
     where: { id },
@@ -28,6 +28,8 @@ export default async function QuotePage({
   if (!quote || quote.organizationId !== user.organizationId) notFound();
   if (user.role !== "ADMIN" && quote.ownerId !== user.id) notFound();
 
+  const canEdit = hasEdit(user, "calculator");
+
   return (
     <div className="mx-auto w-full max-w-7xl grid grid-cols-1 gap-6">
       <div>
@@ -42,11 +44,12 @@ export default async function QuotePage({
           <h1 className="text-xl font-semibold tracking-tight">
             {quote.clientName}
           </h1>
-          <QuoteActionsBar quoteId={quote.id} />
+          <QuoteActionsBar quoteId={quote.id} canEdit={canEdit} />
         </div>
       </div>
 
       <QuoteEditor
+        canEdit={canEdit}
         quote={{
           id: quote.id,
           clientName: quote.clientName,

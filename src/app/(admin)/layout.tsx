@@ -1,6 +1,8 @@
 import type { Metadata, Viewport } from "next";
 import { cookies } from "next/headers";
 import { requireUser } from "@/lib/auth";
+import { hasView } from "@/lib/permissions";
+import { ALL_SECTION_KEYS } from "@/lib/permission-sections";
 import { parseTheme, THEME_COOKIE } from "@/lib/theme";
 import { NAV_COOKIE, NAV_SHUT_COOKIE } from "./nav-cookie";
 import { Sidebar } from "./sidebar";
@@ -51,6 +53,7 @@ export default async function AdminLayout({
 
   const theme = parseTheme(jar.get(THEME_COOKIE)?.value);
   const isAdmin = user.role === "ADMIN";
+  const visibleSections = ALL_SECTION_KEYS.filter((key) => hasView(user, key));
 
   return (
     // Фрагмент, не общая обёртка: BottomNav должен быть ПРЯМЫМ flex-child'ом
@@ -70,6 +73,7 @@ export default async function AdminLayout({
         <div className="contents standalone:max-md:hidden">
           <Sidebar
             isAdmin={isAdmin}
+            visibleSections={visibleSections}
             initialCollapsed={collapsed}
             initialShut={shut}
           />
@@ -91,7 +95,12 @@ export default async function AdminLayout({
       </div>
 
       <PullToRefresh />
-      <BottomNav isAdmin={isAdmin} email={user.email} theme={theme} />
+      <BottomNav
+        isAdmin={isAdmin}
+        visibleSections={visibleSections}
+        email={user.email}
+        theme={theme}
+      />
     </>
   );
 }

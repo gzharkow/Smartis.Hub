@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import Link from "next/link";
 import { archiveAsset, restoreAsset } from "@/app/actions/assets";
 import { withPlural, WORDS } from "@/lib/plural";
+import { OwnerBadge } from "@/components/owner-badge";
 
 export type QuoteFileRowData = {
   id: string;
@@ -14,17 +15,26 @@ export type QuoteFileRowData = {
   /** Расчёт-источник. null — расчёт удалён физически (крайний случай). */
   quoteId: string | null;
   archived: boolean;
+  /** Кто создал исходный расчёт — заполнено только у администратора. */
+  owner?: { id: string; label: string } | null;
 };
 
 // Тот же confirm-then-archive приём, что у AssetRow в /assets и у
 // QuoteListRowActions в /calculator — файл калькулятора удаляется тем же
 // archiveAsset, что и обычный материал: он и есть Asset, просто без
 // собственного места в общей библиотеке.
-export function QuoteFileRow({ file }: { file: QuoteFileRowData }) {
+export function QuoteFileRow({
+  file,
+  canEdit = true,
+}: {
+  file: QuoteFileRowData;
+  /** Право «Изменение» на «Генератор КП → Файлы» — см. calculator/files/page.tsx. */
+  canEdit?: boolean;
+}) {
   const [confirming, setConfirming] = useState(false);
   const [pending, startTransition] = useTransition();
 
-  const actionCluster = file.archived ? (
+  const actionCluster = !canEdit ? null : file.archived ? (
     <button
       type="button"
       disabled={pending}
@@ -79,6 +89,8 @@ export function QuoteFileRow({ file }: { file: QuoteFileRowData }) {
       <span className="min-w-40 flex-1 truncate font-medium">
         {file.title}
       </span>
+
+      {file.owner ? <OwnerBadge id={file.owner.id} label={file.owner.label} /> : null}
 
       <span className="hidden shrink-0 text-xs text-muted sm:inline">
         {file.created}

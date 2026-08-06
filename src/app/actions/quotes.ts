@@ -4,6 +4,7 @@ import { z } from "zod";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { requireUser } from "@/lib/auth";
+import { hasEdit } from "@/lib/permissions";
 import { db } from "@/lib/db";
 
 // Каждое действие проверяет вход и владение само — как в actions/hubs.ts:
@@ -13,6 +14,10 @@ import { db } from "@/lib/db";
 // auth-инвариант (org + owner/admin, "не найден" вместо "нет доступа").
 export async function ownedQuote(quoteId: string) {
   const user = await requireUser();
+  if (!hasEdit(user, "calculator")) {
+    throw new Error("Недостаточно прав.");
+  }
+
   const quote = await db.quote.findUnique({ where: { id: quoteId } });
 
   // «Не найден», а не «нет доступа» — иначе перебором id можно было бы
@@ -151,6 +156,9 @@ export async function createQuote(
   formData: FormData,
 ): Promise<CreateQuoteState> {
   const user = await requireUser();
+  if (!hasEdit(user, "calculator")) {
+    return { error: "Недостаточно прав." };
+  }
 
   const parsed = CreateSchema.safeParse({ clientName: formData.get("clientName") });
   if (!parsed.success) {

@@ -1,7 +1,8 @@
 import { cookies } from "next/headers";
-import { requireUser } from "@/lib/auth";
+import { requireSectionView, hasEdit } from "@/lib/permissions";
 import { db } from "@/lib/db";
 import { daysLeft, purgeExpiredHubs, TRASH_DAYS } from "@/lib/hub-trash";
+import { ownerLabel } from "@/lib/owner-color";
 import {
   parseViewMode,
   VIEW_COOKIE,
@@ -9,13 +10,13 @@ import {
   VIEW_LIST_CLASS,
 } from "@/lib/view-mode";
 import { ViewToggle } from "@/components/view-toggle";
-import { HubTabs } from "../hub-tabs";
+import { HubTabs, hubTabVisibleKeys } from "../hub-tabs";
 import { TrashRow, type TrashRowData } from "./trash-row";
 
 export const dynamic = "force-dynamic";
 
 export default async function TrashPage() {
-  const user = await requireUser();
+  const user = await requireSectionView("hubs.trash");
   const view = parseViewMode((await cookies()).get(VIEW_COOKIE)?.value);
 
   // Уборка просроченного — здесь, при открытии раздела. Настоящее место для
@@ -31,7 +32,12 @@ export default async function TrashPage() {
       ...(user.role === "ADMIN" ? {} : { ownerId: user.id }),
       status: "ARCHIVED",
     },
-    include: { _count: { select: { items: true, shareLinks: true } } },
+    include: {
+      _count: { select: { items: true, shareLinks: true } },
+      ...(user.role === "ADMIN"
+        ? { owner: { select: { id: true, name: true, email: true } } }
+        : {}),
+    },
     orderBy: { archivedAt: "desc" },
   });
 
@@ -41,7 +47,13 @@ export default async function TrashPage() {
     items: h._count.items,
     links: h._count.shareLinks,
     daysLeft: h.archivedAt ? daysLeft(h.archivedAt) : null,
+    owner:
+      "owner" in h && h.owner
+        ? { id: h.owner.id, label: ownerLabel(h.owner) }
+        : null,
   }));
+
+  const canEdit = hasEdit(user, "hubs.trash");
 
   return (
     <div>
@@ -57,6 +69,7 @@ export default async function TrashPage() {
 
       <HubTabs
         current="trash"
+        visibleKeys={hubTabVisibleKeys(user)}
         right={rows.length > 0 ? <ViewToggle value={view} /> : null}
       />
 
@@ -71,7 +84,7 @@ export default async function TrashPage() {
       ) : (
         <ul className={view === "grid" ? VIEW_GRID_CLASS : VIEW_LIST_CLASS}>
           {rows.map((hub) => (
-            <TrashRow key={hub.id} hub={hub} view={view} />
+            <TrashRow key={hub.id} hub={hub} view={view} canEdit={canEdit} />
           ))}
         </ul>
       )}

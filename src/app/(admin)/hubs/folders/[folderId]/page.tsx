@@ -1,11 +1,12 @@
 import Link from "next/link";
 import { cookies } from "next/headers";
 import { notFound } from "next/navigation";
-import { requireUser } from "@/lib/auth";
+import { requireSectionView } from "@/lib/permissions";
 import { db } from "@/lib/db";
 import { parseViewMode, VIEW_COOKIE } from "@/lib/view-mode";
 import { hubOrderBy, HUB_SORT_COOKIE, parseHubSort } from "@/lib/hub-sort";
 import { formatHubCreated } from "@/lib/hub-format";
+import { ownerLabel } from "@/lib/owner-color";
 import { ViewToggle } from "@/components/view-toggle";
 import { HubSortControl } from "@/components/hub-sort-control";
 import { HubList, type HubRow } from "../../hub-list";
@@ -18,7 +19,7 @@ export default async function FolderPage({
   params: Promise<{ folderId: string }>;
 }) {
   const { folderId } = await params;
-  const user = await requireUser();
+  const user = await requireSectionView("hubs.folders");
   const jar = await cookies();
   const view = parseViewMode(jar.get(VIEW_COOKIE)?.value);
   const sort = parseHubSort(jar.get(HUB_SORT_COOKIE)?.value);
@@ -35,7 +36,12 @@ export default async function FolderPage({
       status: { not: "ARCHIVED" },
       folderId: folder.id,
     },
-    include: { _count: { select: { items: true, shareLinks: true } } },
+    include: {
+      _count: { select: { items: true, shareLinks: true } },
+      ...(user.role === "ADMIN"
+        ? { owner: { select: { id: true, name: true, email: true } } }
+        : {}),
+    },
     orderBy: hubOrderBy(sort),
   });
 
@@ -47,6 +53,10 @@ export default async function FolderPage({
     links: h._count.shareLinks,
     folderName: null,
     createdLabel: formatHubCreated(h.createdAt),
+    owner:
+      "owner" in h && h.owner
+        ? { id: h.owner.id, label: ownerLabel(h.owner) }
+        : null,
   }));
 
   return (

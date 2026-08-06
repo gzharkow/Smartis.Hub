@@ -3,6 +3,7 @@
 import { z } from "zod";
 import { revalidatePath } from "next/cache";
 import { requireUser } from "@/lib/auth";
+import { hasEdit } from "@/lib/permissions";
 import { db } from "@/lib/db";
 
 // Папки общие на организацию: сотрудник заводит свою и складывает туда хабы
@@ -18,6 +19,10 @@ export type FolderState = { error: string } | undefined;
 
 async function ownedFolder(folderId: string) {
   const user = await requireUser();
+  if (!hasEdit(user, "hubs.folders")) {
+    throw new Error("Недостаточно прав.");
+  }
+
   const folder = await db.hubFolder.findUnique({ where: { id: folderId } });
 
   if (!folder || folder.organizationId !== user.organizationId) {
@@ -36,6 +41,9 @@ export async function createHubFolder(
   formData: FormData,
 ): Promise<FolderState> {
   const user = await requireUser();
+  if (!hasEdit(user, "hubs.folders")) {
+    return { error: "Недостаточно прав." };
+  }
 
   const parsed = NameSchema.safeParse(formData.get("name"));
   if (!parsed.success) {

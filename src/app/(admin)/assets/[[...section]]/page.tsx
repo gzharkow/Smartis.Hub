@@ -1,10 +1,11 @@
 import { cookies } from "next/headers";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { requireUser } from "@/lib/auth";
+import { hasEdit, hasView } from "@/lib/permissions";
 import { db } from "@/lib/db";
 import { formatFileSize, KIND_LABELS } from "@/lib/assets";
 import { formatHubCreated } from "@/lib/hub-format";
-import { SECTIONS, sectionFromSlug } from "@/lib/asset-sections";
+import { SECTIONS, sectionFromSlug, permissionKeyForSection } from "@/lib/asset-sections";
 import { withPlural, WORDS } from "@/lib/plural";
 import {
   parseViewMode,
@@ -15,7 +16,7 @@ import {
 import { ViewToggle } from "@/components/view-toggle";
 import { AssetUploader } from "../asset-uploader";
 import { AssetRow, type AssetRowData } from "../asset-row";
-import { SectionTabs } from "../section-tabs";
+import { SectionTabs, sectionTabVisibleKeys } from "../section-tabs";
 import { LinkForm } from "../link-form";
 
 export const dynamic = "force-dynamic";
@@ -42,6 +43,12 @@ export default async function AssetsPage({
   const slug = parts?.[0];
   const section = sectionFromSlug(slug);
   if (slug && !section) notFound();
+
+  // Ключ матрицы доступа: у корня «/assets» — родительский "assets",
+  // у конкретного раздела — "assets.<slug>" (тот же slug, что и в адресе).
+  const permissionKey = slug ? `assets.${slug}` : "assets";
+  if (!hasView(user, permissionKey)) redirect("/hubs");
+  const canEdit = hasEdit(user, permissionKey);
 
   const info = SECTIONS.find((s) => s.value === section);
 
@@ -83,6 +90,10 @@ export default async function AssetsPage({
     hasThumbnail: a.thumbnailKey !== null,
     // У ссылок и прочих файлов картинку рисовать не из чего.
     canThumbnail: a.kind === "PDF" || a.kind === "VIDEO" || a.kind === "IMAGE",
+    // Не то же самое, что canEdit страницы: на «/assets» без фильтра
+    // материалы разных разделов лежат вперемешку, и право на изменение
+    // проверяется по разделу КОНКРЕТНОГО материала, а не по разделу страницы.
+    canEdit: hasEdit(user, permissionKeyForSection(a.section)),
   });
 
   const active = assets.filter((a) => a.archivedAt === null).map(toRow);
@@ -103,13 +114,18 @@ export default async function AssetsPage({
 
       <SectionTabs
         current={slug ?? null}
+        visibleKeys={sectionTabVisibleKeys(user)}
         right={active.length > 0 ? <ViewToggle value={view} /> : null}
       />
 
       {/* key: при переходе между разделами загрузчик собирается заново, чтобы
           выбранный в нём раздел совпал с открытой страницей. */}
-      <AssetUploader key={slug ?? "all"} defaultSection={section} />
-      <LinkForm key={`link-${slug ?? "all"}`} defaultSection={section} />
+      {canEdit ? (
+        <>
+          <AssetUploader key={slug ?? "all"} defaultSection={section} />
+          <LinkForm key={`link-${slug ?? "all"}`} defaultSection={section} />
+        </>
+      ) : null}
 
       {active.length === 0 ? (
         <div className="rounded-xl border border-dashed border-border py-16 text-center">

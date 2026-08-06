@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { requireAdmin } from "@/lib/auth";
+import { requireSectionView } from "@/lib/permissions";
 import { db } from "@/lib/db";
 import { KIND_LABELS } from "@/lib/assets";
 import { formatDuration, formatWhen, hubDetail, type ItemStats } from "@/lib/stats";
@@ -45,7 +45,7 @@ export default async function HubStatsPage({
   searchParams: Promise<{ from?: string; to?: string }>;
 }) {
   const { id } = await params;
-  const user = await requireAdmin();
+  const user = await requireSectionView("stats");
   const range = parseStatsRange(await searchParams);
 
   const hub = await db.hub.findUnique({
@@ -54,6 +54,7 @@ export default async function HubStatsPage({
   });
 
   if (!hub || hub.organizationId !== user.organizationId) notFound();
+  if (user.role !== "ADMIN" && hub.ownerId !== user.id) notFound();
 
   const links = await hubDetail(hub.id, range);
   const opened = links.filter((l) => l.visits > 0);

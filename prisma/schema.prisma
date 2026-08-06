@@ -38,11 +38,12 @@ model Organization {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  users   User[]
-  assets  Asset[]
-  hubs    Hub[]
-  folders HubFolder[]
-  quotes  Quote[]
+  users        User[]
+  assets       Asset[]
+  hubs         Hub[]
+  folders      HubFolder[]
+  quotes       Quote[]
+  accessLevels AccessLevel[]
 }
 
 enum UserRole {
@@ -59,15 +60,50 @@ model User {
   passwordHash String
   role         UserRole @default(MEMBER)
 
+  // Только для role = MEMBER. ADMIN всегда видит и может менять всё,
+  // уровень доступа для него не имеет смысла и игнорируется в коде.
+  // null у MEMBER — сознательно закрытое состояние (доступа нет нигде),
+  // а не «как раньше без матрицы»: создать такого пользователя через
+  // панель админа нельзя, это возможно только прямой правкой базы.
+  accessLevelId String?
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  accessLevel  AccessLevel? @relation(fields: [accessLevelId], references: [id], onDelete: SetNull)
   hubs         Hub[]        @relation("HubOwner")
   shareLinks   ShareLink[]  @relation("ShareLinkCreator")
   quotes       Quote[]      @relation("QuoteOwner")
 
   @@unique([organizationId, email])
+  @@index([organizationId])
+  @@index([accessLevelId])
+}
+
+// Именованный, переиспользуемый профиль прав: какие разделы/подразделы
+// сайта видны пользователю с этим уровнем и где ему можно что-то менять.
+// Один уровень назначается сразу нескольким аккаунтам — правка матрицы
+// меняет доступ всем им одновременно, а не только одному.
+model AccessLevel {
+  id             String @id @default(cuid())
+  organizationId String
+  name           String
+
+  // Матрица целиком, как Organization.contactMethods: читается и
+  // переписывается разом, никогда не участвует в join/поиске — отдельная
+  // таблица дала бы только миграции и возню с порядком строк.
+  // Вид: [{ section: "hubs", view: true, edit: true }, { section: "hubs.folders", view: true, edit: false }, ...]
+  // Ключи section — из src/lib/permission-sections.ts.
+  permissions Json @default("[]")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  users        User[]
+
+  @@unique([organizationId, name])
   @@index([organizationId])
 }
 

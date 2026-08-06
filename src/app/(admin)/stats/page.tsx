@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { cookies } from "next/headers";
-import { requireAdmin } from "@/lib/auth";
+import { requireSectionView } from "@/lib/permissions";
 import { db } from "@/lib/db";
 import { formatDuration, formatWhen, hubStats } from "@/lib/stats";
 import { plural, withPlural, WORDS } from "@/lib/plural";
@@ -15,13 +15,18 @@ import { ViewToggle } from "@/components/view-toggle";
 export const dynamic = "force-dynamic";
 
 export default async function StatsPage() {
-  const user = await requireAdmin();
+  const user = await requireSectionView("stats");
   const view = parseViewMode((await cookies()).get(VIEW_COOKIE)?.value);
   const grid = view === "grid";
 
   const [hubs, stats] = await Promise.all([
     db.hub.findMany({
-      where: { organizationId: user.organizationId },
+      where: {
+        organizationId: user.organizationId,
+        // Как и в «Хабах»/«Генераторе КП»: без полного доступа видно только
+        // статистику по своим хабам, не по всей организации.
+        ...(user.role === "ADMIN" ? {} : { ownerId: user.id }),
+      },
       include: {
         owner: { select: { name: true, email: true } },
         _count: { select: { shareLinks: true, items: true } },
