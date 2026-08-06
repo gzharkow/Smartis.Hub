@@ -1,0 +1,198 @@
+"use server";
+
+import { revalidatePath } from "next/cache";
+import { requireUser } from "@/lib/auth";
+import { db } from "@/lib/db";
+import { parseSection } from "@/lib/asset-sections";
+import { checkLink, downloadLinkImage } from "@/lib/link-check";
+import { storage, storageKeys } from "@/lib/storage";
+
+// Расширение файла превью под тип картинки. Ключ хранилища — путь на диске,
+// его имя косметическое; тип для отдачи берётся из БД (Asset.thumbnailMime).
+const THUMB_EXT: Record<string, string> = {
+  "image/jpeg": ".jpg",
+  "image/png": ".png",
+  "image/webp": ".webp",
+  "image/gif": ".gif",
+  "image/avif": ".avif",
+};
+
+/**
+ * Скачать og:image сайта и сохранить как превью ссылки.
+ *
+ * Лучшее усилие: не вышло — ссылка просто останется без картинки, как файл,
+ * для которого превью не сделалось. Ошибку сюда пробрасывать нельзя, иначе
+ * из-за неудачной картинки сорвалось бы добавление самой ссылки.
+ */
+async function storeLinkThumbnail(
+  orgId: string,
+  assetId: string,
+  imageUrl: string,
+): Promise<boolean> {
+  try {
+    const { bytes, mime } = await downloadLinkImage(imageUrl);
+    const key = storageKeys.thumbnail(orgId, assetId, THUMB_EXT[mime] ?? ".img");
+    await storage.put(key, bytes, mime);
+    await db.asset.update({
+      where: { id: assetId },
+      data: { thumbnailKey: key, thumbnailMime: mime },
+    });
+    return true;
+  } catch (e) {
+    // Видно только нам в логах сервера — клиента это не касается.
+    console.warn(`Превью ссылки ${assetId} не сделалось:`, e);
+    return false;
+  }
+}
+
+async function ownedAsset(assetId: string) {
+  const user = await requireUser();
+  const asset = await db.asset.findUnique({ where: { id: assetId } });
+
+  // Не «нет доступа», а «не найдено»: разные ответы позволили бы перебором
+  // выяснять, что есть в чужих организациях.
+  if (!asset || asset.organizationId !== user.organizationId) {
+    throw new Error("Материал не найден.");
+  }
+  return { user, asset };
+}
+
+/**
+ * Удаление материала — мягкое, физически файл остаётся.
+ *
+ * Причин две, и обе важные:
+ *   1. Статистика. По материалу уже могли ходить клиенты. Стереть его —
+ *      значит обнулить историю по всем сделкам, где он участвовал.
+ *   2. Обратимость. Удалить материал, который стоит в десяти хабах, — легко.
+ *      Собрать эти хабы заново — долго. Пусть ошибка стоит одного нажатия.
+ *
+ * Связи с хабами (HubItem) НЕ трогаем: витрина сама скрывает материалы
+ * с archivedAt, а при восстановлении он вернётся во все хабы, где стоял.
+ */
+export async function archiveAsset(assetId: string) {
+  const { asset } = await ownedAsset(assetId);
+
+  await db.asset.update({
+    where: { id: asset.id },
+    data: { archivedAt: new Date() },
+  });
+
+  revalidatePath("/assets");
+  revalidatePath("/hubs");
+}
+
+export async function restoreAsset(assetId: string) {
+  const { asset } = await ownedAsset(assetId);
+
+  await db.asset.update({
+    where: { id: asset.id },
+    data: { archivedAt: null },
+  });
+
+  revalidatePath("/assets");
+  revalidatePath("/hubs");
+}
+
+export type AddLinkState =
+  | { error: string }
+  | { ok: true; title: string; embeddable: boolean }
+  | undefined;
+
+/**
+ * Добавить ссылку как материал: кейс на сайте, статья, видео на внешнем
+ * сервисе. Файла у такого материала нет — только адрес.
+ *
+ * Заодно выясняем, пускает ли сайт себя в рамку. Продавец узнаёт об этом
+ * СРАЗУ, при добавлении, а не от клиента, который увидел белый прямоугольник.
+ */
+export async function addLinkAsset(
+  _prev: AddLinkState,
+  formData: FormData,
+): Promise<AddLinkState> {
+  const user = await requireUser();
+
+  const url = String(formData.get("url") ?? "").trim();
+  if (!url) return { error: "Введите адрес ссылки." };
+
+  const section = parseSection(formData.get("section")) ?? "COMMON";
+  const typed = String(formData.get("title") ?? "").trim();
+
+  let checked;
+  try {
+    checked = await checkLink(url);
+  } catch (e) {
+    return {
+      error: e instanceof Error ? e.message : "Не удалось проверить ссылку.",
+    };
+  }
+
+  // Название берём от продавца, если он его ввёл: он лучше знает, как
+  // материал должен называться у клиента. Иначе — заголовок страницы.
+  const title = typed || checked.title || checked.url;
+
+  const asset = await db.asset.create({
+    data: {
+      organizationId: user.organizationId,
+      kind: "LINK",
+      section,
+      title: title.slice(0, 200),
+      externalUrl: checked.url,
+      embeddable: checked.embeddable,
+    },
+  });
+
+  // Превью — картинка-превью самого сайта (og:image). Не вышло — не беда.
+  if (checked.imageUrl) {
+    await storeLinkThumbnail(user.organizationId, asset.id, checked.imageUrl);
+  }
+
+  revalidatePath("/assets");
+  return { ok: true, title, embeddable: checked.embeddable === true };
+}
+
+/**
+ * Досоздать превью для ссылки, добавленной раньше (или у которой оно
+ * не сделалось). Заново заходим на сайт, берём свежий og:image.
+ */
+export async function backfillLinkThumbnail(assetId: string) {
+  const { user, asset } = await ownedAsset(assetId);
+
+  if (asset.kind !== "LINK" || !asset.externalUrl) {
+    throw new Error("Это не ссылка.");
+  }
+
+  const checked = await checkLink(asset.externalUrl);
+  if (!checked.imageUrl) {
+    throw new Error("У этого сайта нет картинки-превью.");
+  }
+
+  const ok = await storeLinkThumbnail(
+    user.organizationId,
+    asset.id,
+    checked.imageUrl,
+  );
+  if (!ok) throw new Error("Не удалось загрузить картинку сайта.");
+
+  revalidatePath("/assets");
+}
+
+/**
+ * Переложить материал в другой раздел библиотеки.
+ *
+ * На хабы это не влияет: где материал уже стоит — там и останется. Раздел
+ * нужен только чтобы находить материал в библиотеке, а не чтобы решать,
+ * кто его увидит.
+ */
+export async function setAssetSection(assetId: string, section: string) {
+  const value = parseSection(section);
+  if (!value) throw new Error("Неизвестный раздел.");
+
+  const { asset } = await ownedAsset(assetId);
+
+  await db.asset.update({
+    where: { id: asset.id },
+    data: { section: value },
+  });
+
+  revalidatePath("/assets");
+}

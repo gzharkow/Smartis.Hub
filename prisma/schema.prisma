@@ -1,0 +1,508 @@
+// Схема данных Smartis.Flite.
+//
+// Главная идея: ShareLink — это указатель на живой Hub, а не его снимок.
+// Клиент открывает ссылку -> читаем актуальное состояние хаба -> рендерим.
+// Поэтому правки в хабе долетают до уже выданных ссылок сами собой.
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ─────────────────────────────  Организация и люди  ─────────────────────────────
+
+// Пока организация одна. Но organizationId лежит везде с первого дня:
+// добавить его потом в живую базу — боль, а сейчас он бесплатный.
+model Organization {
+  id   String @id @default(cuid())
+  name String
+  slug String @unique
+
+  // Брендинг по умолчанию — хаб может его переопределить.
+  logoUrl    String?
+  brandColor String? @default("#2563eb")
+
+  // Способы связи для всплывающего окна «Задать вопрос» на витрине.
+  // Список вида [{ kind: "TELEGRAM", label: "Телеграм", value: "@sales" }, ...].
+  //
+  // Здесь Json, а не отдельная таблица, намеренно: этот список всегда читается
+  // и переписывается целиком, по нему не ищут и не соединяют. Таблица дала бы
+  // миграции и возню с порядком строк, ничего не добавив. Форму проверяем схемой
+  // zod при сохранении — см. src/lib/contact-methods.ts.
+  contactMethods Json @default("[]")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  users   User[]
+  assets  Asset[]
+  hubs    Hub[]
+  folders HubFolder[]
+  quotes  Quote[]
+}
+
+enum UserRole {
+  ADMIN // видит все хабы и всю статистику
+  MEMBER // продавец: свои хабы
+}
+
+model User {
+  id             String @id @default(cuid())
+  organizationId String
+
+  email        String
+  name         String?
+  passwordHash String
+  role         UserRole @default(MEMBER)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  hubs         Hub[]        @relation("HubOwner")
+  shareLinks   ShareLink[]  @relation("ShareLinkCreator")
+  quotes       Quote[]      @relation("QuoteOwner")
+
+  @@unique([organizationId, email])
+  @@index([organizationId])
+}
+
+// ─────────────────────────────  Материалы  ─────────────────────────────
+
+enum AssetKind {
+  PDF // свой вьюер на PDF.js — иначе не будет постраничной статистики
+  VIDEO
+  IMAGE
+  LINK // внешняя ссылка, файла нет
+  FILE // прочее: только скачивание, внутри не посмотреть
+}
+
+// Направление продаж, к которому относится материал. COMMON — для того,
+// что идёт в обе стороны: презентация о компании, договор, реквизиты.
+// Раздел один на материал: «и там, и там» — это и есть COMMON.
+enum AssetSection {
+  AUTO // Авторынок
+  REALTY // Недвижимость
+  COMMON // Общие
+  CASES // Кейсы
+}
+
+model Asset {
+  id             String       @id @default(cuid())
+  organizationId String
+  kind           AssetKind
+  // COMMON по умолчанию: материал, у которого раздел не выбран, должен быть
+  // виден отовсюду. Спрятать его молча — хуже, чем показать лишний раз.
+  section        AssetSection @default(COMMON)
+
+  title       String
+  description String?
+
+  // Файлы: ключ в хранилище (локальный диск сейчас, S3 потом).
+  // Сам файл в базе не лежит НИКОГДА — только этот путь.
+  storageKey String?
+  mimeType   String?
+  sizeBytes  Int? // Int, а не BigInt: потолок ~2 ГБ на файл, для материалов продаж с запасом
+  checksum   String?
+
+  // Только для kind = LINK
+  externalUrl String?
+  // Пускает ли сайт себя в рамку. Многие запрещают это заголовками
+  // (X-Frame-Options, CSP frame-ancestors) — тогда встроенный просмотр
+  // покажет клиенту пустоту, и ссылку надо открывать новой вкладкой.
+  // null — проверить не удалось: сайт не ответил или ответил ошибкой.
+  embeddable Boolean?
+
+  // Нужны трекингу: без pageCount не посчитать «дочитал ли», без durationSec — «досмотрел ли»
+  pageCount    Int?
+  durationSec  Int?
+  thumbnailKey String?
+  // Тип картинки превью. У файлов оно всегда JPEG (рисует браузер), поэтому
+  // раньше тип был зашит в коде. У ссылок превью — это og:image сайта, а он
+  // бывает png/webp/gif. null трактуем как image/jpeg (старые превью файлов).
+  thumbnailMime String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Мягкое удаление: материал уходит из интерфейса, но история просмотров
+  // остаётся осмысленной. Физическое удаление обнулило бы прошлую статистику.
+  archivedAt DateTime?
+
+  // Заполнено только у PDF, сгенерированных Генератором КП (см.
+  // addQuotePdfToHub) — признак того, что материал не из общей библиотеки,
+  // а снимок конкретного расчёта. По нему такие файлы прячутся из
+  // «Материалы» и живут в подразделе «Файлы» внутри «Генератора КП».
+  // SetNull, а не Cascade: PDF в хабе — снимок на момент нажатия, он должен
+  // пережить удаление исходного расчёта, как переживает и его правку.
+  quoteId String?
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  quote        Quote?       @relation(fields: [quoteId], references: [id], onDelete: SetNull)
+  hubItems     HubItem[]
+
+  @@index([organizationId])
+  @@index([organizationId, archivedAt])
+  @@index([organizationId, section])
+  @@index([organizationId, quoteId])
+}
+
+// ─────────────────────────────  Хабы  ─────────────────────────────
+
+enum HubStatus {
+  DRAFT // ещё собирается, ссылки не работают
+  PUBLISHED
+  ARCHIVED // ссылки перестают открываться
+}
+
+// Папка хабов. Заводится, чтобы под одним аккаунтом работало несколько
+// сотрудников и хабы не сваливались в общую кучу.
+//
+// Папка — это только полка, а не право доступа: она никого ни от кого не
+// закрывает. Разграничение прав живёт в ролях (см. Hub.ownerId).
+model HubFolder {
+  id             String @id @default(cuid())
+  organizationId String
+  name           String
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  hubs         Hub[]
+
+  @@unique([organizationId, name]) // две папки «Иванов» — гарантированная путаница
+  @@index([organizationId])
+}
+
+model Hub {
+  id             String  @id @default(cuid())
+  organizationId String
+  ownerId        String
+  // Папки может не быть: хаб лежит «без папки», и это нормальное состояние.
+  // Удаление папки хабы не трогает — они просто выпадают из неё (SetNull).
+  folderId       String?
+
+  title    String // внутреннее имя, клиент не видит
+  headline String? // крупный заголовок на витрине: «Материалы для "ГК ИНСИТИ"»
+
+  // HTML из редактора. Всегда прогоняется через sanitizeHtml() и при записи,
+  // и при показе — см. src/lib/sanitize.ts. Сырым не рендерить никогда.
+  descriptionHtml String?
+
+  status HubStatus @default(DRAFT)
+
+  // Брендинг хаба перекрывает брендинг организации
+  logoUrl       String?
+  brandColor    String?
+  coverImageKey String?
+
+  // Кнопка призыва к действию в шапке витрины. По нажатию — всплывающее окно
+  // со способами связи из Organization.contactMethods.
+  ctaLabel   String  @default("Задать вопрос")
+  ctaEnabled Boolean @default(true)
+
+  // Вторая кнопка: демо-кабинет. Уводит на внешний сервис в новой вкладке.
+  // Отдельно от материалов намеренно — это не то, что смотрят, а то,
+  // куда идут попробовать.
+  demoUrl   String?
+  demoLabel String  @default("Демо-кабинет")
+  // Подпись под кнопкой: логин и пароль от демо. Обычный текст с переносами,
+  // без форматирования — реквизиты в оформлении не нуждаются.
+  demoNote String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Когда хаб удалили. Признак удаления — это status = ARCHIVED, здесь только
+  // дата: по ней считается срок хранения в «Недавно удалённых». Ставится и
+  // сбрасывается вместе со статусом, отдельным флагом НЕ является.
+  archivedAt DateTime?
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  owner        User         @relation("HubOwner", fields: [ownerId], references: [id])
+  folder       HubFolder?   @relation(fields: [folderId], references: [id], onDelete: SetNull)
+  sections     HubSection[]
+  items        HubItem[]
+  shareLinks   ShareLink[]
+
+  @@index([organizationId])
+  @@index([ownerId])
+  @@index([folderId])
+}
+
+// Необязательная группировка материалов на витрине: «Презентации», «Кейсы», «Цены»
+model HubSection {
+  id       String  @id @default(cuid())
+  hubId    String
+  title    String
+  subtitle String?
+  position Int
+
+  hub   Hub       @relation(fields: [hubId], references: [id], onDelete: Cascade)
+  items HubItem[]
+
+  @@index([hubId])
+}
+
+// Материал внутри хаба. Это ССЫЛКА на Asset, а не копия:
+// удалил item — материал исчез у всех клиентов сразу, это и есть live-коллекции.
+model HubItem {
+  id        String  @id @default(cuid())
+  hubId     String
+  sectionId String?
+  assetId   String
+  position  Int
+
+  // Переименовать материал под конкретный хаб, не трогая оригинал в библиотеке
+  titleOverride       String?
+  descriptionOverride String?
+
+  // Материал-«герой»: крупная карточка наверху витрины
+  featured Boolean @default(false)
+
+  createdAt DateTime @default(now())
+
+  hub     Hub         @relation(fields: [hubId], references: [id], onDelete: Cascade)
+  section HubSection? @relation(fields: [sectionId], references: [id], onDelete: SetNull)
+  asset   Asset       @relation(fields: [assetId], references: [id])
+  events  Event[]
+
+  @@unique([hubId, assetId]) // один и тот же материал дважды в хабе — это опечатка, а не задумка
+  @@index([hubId])
+  @@index([sectionId])
+}
+
+// ─────────────────────────────  Ссылки для клиентов  ─────────────────────────────
+
+// Индивидуальная ссылка. Снаружи у всех клиентов один и тот же хаб,
+// но система знает, кто есть кто — отсюда персональная статистика.
+model ShareLink {
+  id          String @id @default(cuid())
+  hubId       String
+  createdById String
+
+  token String @unique // то, что стоит в URL
+
+  // Ссылка выдаётся НА КОМПАНИЮ — она и есть главное поле.
+  // Имя и почта — это лишь тот, кому продавец отправил ссылку первым;
+  // дальше её могут переслать внутри компании кому угодно.
+  recipientCompany String?
+  recipientName    String?
+  recipientEmail   String?
+
+  // Обращение к компании целиком, а не к человеку: «Коллеги, добрый день!».
+  // Личных имён здесь нет намеренно — ссылка выдаётся на компанию, и открыть
+  // её могут несколько сотрудников.
+  greeting String?
+
+  // Управление доступом. Пароля на ссылку нет — решили, что не нужен.
+  expiresAt DateTime? // по умолчанию бессрочно, срок задаётся при генерации
+  revokedAt DateTime? // отозвать выданную ссылку
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  hub       Hub     @relation(fields: [hubId], references: [id], onDelete: Cascade)
+  createdBy User    @relation("ShareLinkCreator", fields: [createdById], references: [id])
+  visits    Visit[]
+  events    Event[]
+
+  @@index([hubId])
+  @@index([createdById])
+}
+
+// ─────────────────────────────  Трекинг  ─────────────────────────────
+
+// Один заход по ссылке. Несколько заходов одного человека связывает visitorId.
+model Visit {
+  id          String @id @default(cuid())
+  shareLinkId String
+
+  // Стабильный id из cookie: отвечает на вопрос «это тот же человек вернулся?»
+  visitorId String
+
+  // Храним ХЭШ адреса, а не сам адрес: IP — персональные данные,
+  // а для «это тот же посетитель или новый» хэша достаточно.
+  ipHash    String?
+  userAgent String?
+  country   String?
+  city      String?
+  referrer  String?
+
+  startedAt  DateTime @default(now())
+  lastSeenAt DateTime @default(now())
+
+  shareLink ShareLink @relation(fields: [shareLinkId], references: [id], onDelete: Cascade)
+  events    Event[]
+
+  @@index([shareLinkId])
+  @@index([visitorId])
+  @@index([shareLinkId, startedAt])
+}
+
+enum EventType {
+  HUB_VIEW // открыл витрину
+  ITEM_OPEN // открыл материал
+  ITEM_CLOSE
+  PAGE_VIEW // досмотрел до страницы N (PDF)
+  VIDEO_PROGRESS
+  DOWNLOAD
+  LINK_CLICK
+  DEMO_CLICK // нажал кнопку «Демо-кабинет» — ушёл пробовать сервис
+  CONTACT_CLICK // открыл окно «Задать вопрос» — готов связаться
+  HEARTBEAT // пульс: подтверждает, что вкладка видима и человек ещё здесь
+}
+
+model Event {
+  id          String @id @default(cuid())
+  visitId     String
+  // hubId и shareLinkId продублированы сюда намеренно: статистика их спрашивает
+  // постоянно, и дешевле хранить копию, чем каждый раз ходить через связи.
+  shareLinkId String
+  hubId       String
+
+  type EventType
+
+  // Оба необязательны: у HUB_VIEW нет материала.
+  // assetId хранится сам по себе — чтобы удаление материала из хаба
+  // не стёрло историю о том, что его когда-то смотрели.
+  assetId   String?
+  hubItemId String?
+
+  pageNumber  Int? // для PAGE_VIEW
+  positionSec Int? // для VIDEO_PROGRESS
+  durationMs  Int? // сколько длилось событие
+  payload     Json?
+
+  occurredAt DateTime @default(now())
+
+  visit     Visit     @relation(fields: [visitId], references: [id], onDelete: Cascade)
+  shareLink ShareLink @relation(fields: [shareLinkId], references: [id], onDelete: Cascade)
+  hubItem   HubItem?  @relation(fields: [hubItemId], references: [id], onDelete: SetNull)
+
+  @@index([visitId])
+  @@index([shareLinkId, occurredAt])
+  @@index([hubId, occurredAt])
+  @@index([assetId])
+  @@index([type])
+}
+
+// ─────────────────────────────  Калькулятор (КП)  ─────────────────────────────
+
+// Расчёт стоимости для клиента — замена общей Google-таблицы отдела продаж.
+// Свободный конструктор: секции и строки продавец заводит, переименовывает
+// и удаляет сам, здесь нет фиксированного каталога услуг.
+//
+// Исключение — КП с выбранным clientType: там секции/строки не редактируются
+// руками, а пересобираются сервером из calculatorConfig при каждом изменении
+// параметров (см. src/lib/quote-calculator.ts, src/app/actions/quote-calculator.ts).
+// clientType остаётся null у всех КП, заведённых до этой фичи, — они как
+// редактировались вручную, так и продолжают, без миграции.
+enum QuoteClientType {
+  BUILDER // Застройщик
+  AUTO_DEALER // Автодилер
+}
+
+model Quote {
+  id             String @id @default(cuid())
+  organizationId String
+  ownerId        String
+
+  clientName String // «Расчет стоимости для: …» в шапке PDF
+  // Ставка НДС хранится на КП, а не зашита в код, — на случай другой ставки
+  // для будущего расчёта, хотя редактор пока не даёт её менять.
+  vatRatePct Decimal @default(5) @db.Decimal(5, 2)
+
+  // Дата в футере PDF («Данное предложение действительно 30 дней, начиная
+  // с …»). По умолчанию — момент создания КП, но продавец может поправить
+  // вручную (например, если PDF пересобирают позже даты фактической отправки
+  // клиенту) — поэтому отдельное поле, а не всегда today() при рендере.
+  documentDate DateTime @default(now())
+
+  // null — свободный КП (сегодняшнее поведение). Значение — КП управляется
+  // калькулятором; смена типа сбрасывает calculatorConfig на дефолт своего
+  // типа и полностью пересобирает секции/строки.
+  clientType QuoteClientType?
+  // Форма калькулятора целиком — типизирована и валидируется Zod-схемой в
+  // src/lib/quote-calculator.ts, здесь Postgres формы не знает. null, пока
+  // clientType не выбран.
+  calculatorConfig Json?
+  // Денормализованный флаг «Коробка» — источник третьего итога в футере
+  // документа («Интеграционный платёж коробочного решения», см.
+  // src/lib/quote-calc.ts). Держится в синхроне с calculatorConfig.box при
+  // каждой пересборке секций/строк, а не читается из JSON на каждый рендер —
+  // ровно как countsTowardImplementationPayment уже выделен в QuoteSection,
+  // а не инферится на лету.
+  boxIntegrationSelected Boolean @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Мягкое удаление — как у Hub/Asset: КП уходит из списка, но не исчезает
+  // безвозвратно.
+  archivedAt DateTime?
+
+  organization Organization   @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  owner        User           @relation("QuoteOwner", fields: [ownerId], references: [id])
+  sections     QuoteSection[]
+  assets       Asset[]
+
+  @@index([organizationId])
+  @@index([ownerId])
+  @@index([organizationId, archivedAt])
+}
+
+// Секция — таблица с зелёной плашкой в PDF («Сквозная аналитика Smartis»,
+// «Post-view аналитика» и т.д., но название свободное).
+model QuoteSection {
+  id       String @id @default(cuid())
+  quoteId  String
+  title    String
+  position Int
+
+  // Не больше одной секции в рамках КП может быть true — та, чья сумма
+  // «с НДС» на 50% формирует «Итого платёж на период внедрения». Ноль — тоже
+  // допустимое состояние (платёж на внедрение тогда просто 0, и сноска про
+  // него в документе не печатается). Флаг, а не позиция в списке, — чтобы
+  // правило не ломалось при переименовании, добавлении или перестановке
+  // секций. Инвариант держат сами действия (setImplementationSection /
+  // clearImplementationSection в actions/quotes.ts), гасящие флаг у
+  // остальных секций той же транзакцией.
+  countsTowardImplementationPayment Boolean @default(false)
+
+  quote Quote       @relation(fields: [quoteId], references: [id], onDelete: Cascade)
+  lines QuoteLine[]
+
+  @@index([quoteId])
+}
+
+// Строка расчёта: жирный заголовок + серое описание под ним в PDF.
+model QuoteLine {
+  id          String  @id @default(cuid())
+  sectionId   String
+  title       String
+  description String?
+  position    Int
+
+  quantity Decimal @default(1) @db.Decimal(12, 2)
+
+  // null — информационная строка без цены: показывает количество, но не
+  // участвует в сумме секции. null, а не 0, чтобы не путать «цены ещё нет»
+  // с «бесплатно».
+  unitPrice Decimal? @db.Decimal(14, 2)
+
+  // «Post-View другой медийной рекламы»: лимит хранимых событий раньше был
+  // отдельной информационной строкой рядом, теперь выводится из unitPrice по
+  // фиксированному тарифу (см. storageEventsLimitLabel в src/lib/quote-calc.ts)
+  // и в редакторе показывается выбором цены из списка, а не свободным числом.
+  autoStorageLimit Boolean @default(false)
+
+  section QuoteSection @relation(fields: [sectionId], references: [id], onDelete: Cascade)
+
+  @@index([sectionId])
+}

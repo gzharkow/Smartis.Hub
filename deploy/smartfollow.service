@@ -1,0 +1,26 @@
+# Шаблон systemd-юнита. Установка: см. DEPLOY.md, раздел 7.
+# Если каталог проекта или пользователь называются иначе — поправить
+# WorkingDirectory / ExecStart / User / Group ниже.
+
+[Unit]
+Description=Smartfollow (Next.js)
+After=network.target postgresql.service
+
+[Service]
+Type=simple
+User=smartfollow
+Group=smartfollow
+WorkingDirectory=/srv/smartfollow
+EnvironmentFile=/srv/smartfollow/.env
+ExecStart=/usr/bin/npm run start
+Restart=on-failure
+RestartSec=5
+
+# Немного изоляции — процессу не нужен доступ к остальной системе,
+# кроме собственного каталога и постоянного хранилища файлов.
+NoNewPrivileges=true
+ProtectSystem=strict
+ReadWritePaths=/var/lib/smartfollow
+
+[Install]
+WantedBy=multi-user.target

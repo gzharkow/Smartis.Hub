@@ -1,0 +1,144 @@
+@import "tailwindcss";
+
+/* Тема задаётся атрибутом data-theme на <html>, а не системной настройкой:
+   так её можно переключить кнопкой. Настройку системы учитываем один раз,
+   пока человек не выбрал сам, — см. THEME_SCRIPT в src/lib/theme.ts.
+
+   Этой строкой перенастраиваем и tailwind: без неё все классы dark:*
+   продолжали бы смотреть на prefers-color-scheme и жили бы своей жизнью. */
+@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
+
+/* Определяем PWA чисто через CSS: на сервере не узнать, установлено ли
+   приложение — только браузер знает display-mode в моменте, без риска
+   рассинхрона при гидратации, в отличие от JS/matchMedia. */
+@custom-variant standalone (@media (display-mode: standalone));
+
+:root {
+  --background: #ffffff;
+  --foreground: #171717;
+
+  /* Приглушённые тона для админки: серый фон, карточки, границы. */
+  --surface: #f6f7f9;
+  --border: #e4e7ec;
+  --muted: #667085;
+
+  /* Чтобы в тон теме были и системные части: полосы прокрутки,
+     выпадающие списки, курсор в полях ввода. */
+  color-scheme: light;
+}
+
+:root[data-theme="dark"] {
+  --background: #0a0a0a;
+  --foreground: #ededed;
+  --surface: #16181d;
+  --border: #2a2e37;
+  --muted: #98a2b3;
+
+  color-scheme: dark;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-surface: var(--surface);
+  --color-border: var(--border);
+  --color-muted: var(--muted);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-geist-sans), system-ui, sans-serif;
+}
+
+/* iOS Safari сам зумит страницу при фокусе на поле с font-size меньше 16px —
+   у нас почти везде text-sm (14px). На узких экранах это давало микрозум,
+   боковой скролл и промахивающиеся тапы (заметно в PWA, но баг тот же и в
+   обычном мобильном браузере). Только у полей, не у всего текста — 16px
+   в самих ячейках списков и т.п. был бы слишком крупным. */
+@media (max-width: 767px) {
+  input,
+  textarea,
+  select {
+    font-size: 16px;
+  }
+}
+
+
+/* Оформление форматированного текста. Одни и те же правила работают в двух
+   местах: в редакторе у продавца и на витрине у клиента — чтобы «как набрал,
+   так и увидят». Tailwind сбрасывает стили заголовков и списков, поэтому
+   возвращаем их вручную. */
+.rich-text > :first-child {
+  margin-top: 0;
+}
+.rich-text > :last-child {
+  margin-bottom: 0;
+}
+.rich-text p {
+  margin: 0.65em 0;
+}
+.rich-text h2 {
+  font-size: 1.3rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  margin: 1.3em 0 0.5em;
+}
+.rich-text h3 {
+  font-size: 1.1rem;
+  font-weight: 600;
+  margin: 1.2em 0 0.4em;
+}
+.rich-text ul,
+.rich-text ol {
+  margin: 0.65em 0;
+  padding-left: 1.5em;
+}
+.rich-text ul {
+  list-style: disc;
+}
+.rich-text ol {
+  list-style: decimal;
+}
+.rich-text li {
+  margin: 0.2em 0;
+}
+.rich-text a {
+  color: #2563eb;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.rich-text blockquote {
+  border-left: 3px solid var(--border);
+  padding-left: 1em;
+  margin: 0.8em 0;
+  color: var(--muted);
+}
+.rich-text strong {
+  font-weight: 600;
+}
+
+/* Описание хаба на тёмном фоне витрины: синий #2563eb там почти сливается
+   с подложкой, а серая граница цитаты не видна вовсе. */
+.rich-text--on-dark a {
+  color: #93c5fd;
+}
+.rich-text--on-dark blockquote {
+  border-left-color: rgba(255, 255, 255, 0.25);
+  color: #a1a1aa;
+}
+.rich-text--on-dark h2,
+.rich-text--on-dark h3 {
+  color: #ffffff;
+}
+
+/* Подсказка в пустом редакторе. */
+.rich-text p.is-editor-empty:first-child::before {
+  content: attr(data-placeholder);
+  color: var(--muted);
+  float: left;
+  height: 0;
+  pointer-events: none;
+}
