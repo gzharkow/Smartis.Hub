@@ -70,12 +70,10 @@ function remember(name: string, value: string) {
  * Cookie служебные — это лишь настройки вида, ничего личного в них нет.
  */
 export function Sidebar({
-  isAdmin,
   visibleSections,
   initialCollapsed,
   initialShut,
 }: {
-  isAdmin: boolean;
   /** Ключи разделов/подразделов из permission-sections.ts, доступные этому пользователю. */
   visibleSections: string[];
   initialCollapsed: boolean;
@@ -174,18 +172,15 @@ export function Sidebar({
           />
         ) : null}
 
-        {/* Настройки — только у администратора: у обычных пользователей
-            тема и выход уже вынесены в «бровь» topbar, второй настроечной
-            точки на десктопе им пока не нужно (раздел /settings всё равно
-            жёстко доступен только role=ADMIN, см. (admin)/settings/layout.tsx). */}
-        {isAdmin ? (
-          <NavLink
-            href="/settings"
-            label="Настройки"
-            icon={<SettingsIcon />}
-            collapsed={collapsed}
-          />
-        ) : null}
+        {/* Раздел /settings открыт любому вошедшему (подраздел «Общие» —
+            тема/аккаунт/смена пароля); «Администрирование» внутри него
+            видно только админу, см. (admin)/settings/settings-tabs.tsx. */}
+        <NavLink
+          href="/settings"
+          label="Настройки"
+          icon={<SettingsIcon />}
+          collapsed={collapsed}
+        />
 
         {/* Кнопка «развернуть» переезжает сюда: когда меню свёрнуто, в шапке
             для неё нет места рядом с логотипом. */}

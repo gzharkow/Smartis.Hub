@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 
-// Единственный подраздел пока — «Администрирование»; когда появится ещё
-// один, здесь будет смысл показать выбор вместо редиректа.
+// «Общие» доступны всем и открываются по умолчанию; «Администрирование» —
+// второй подраздел, виден только админу (см. SettingsTabs).
 export default function SettingsPage() {
-  redirect("/settings/administration");
+  redirect("/settings/general");
 }

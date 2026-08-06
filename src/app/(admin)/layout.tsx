@@ -52,7 +52,6 @@ export default async function AdminLayout({
     .filter(Boolean);
 
   const theme = parseTheme(jar.get(THEME_COOKIE)?.value);
-  const isAdmin = user.role === "ADMIN";
   const visibleSections = ALL_SECTION_KEYS.filter((key) => hasView(user, key));
 
   return (
@@ -72,7 +71,6 @@ export default async function AdminLayout({
             обычной вкладке браузера ничего не меняется. */}
         <div className="contents standalone:max-md:hidden">
           <Sidebar
-            isAdmin={isAdmin}
             visibleSections={visibleSections}
             initialCollapsed={collapsed}
             initialShut={shut}
@@ -95,12 +93,7 @@ export default async function AdminLayout({
       </div>
 
       <PullToRefresh />
-      <BottomNav
-        isAdmin={isAdmin}
-        visibleSections={visibleSections}
-        email={user.email}
-        theme={theme}
-      />
+      <BottomNav visibleSections={visibleSections} />
     </>
   );
 }

@@ -3,7 +3,6 @@
 import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import type { Theme } from "@/lib/theme";
 import { under } from "./nav-link";
 import {
   AssetsIcon,
@@ -13,7 +12,6 @@ import {
   SettingsIcon,
   StatsIcon,
 } from "./nav-icons";
-import { SettingsSheet } from "./settings-sheet";
 import { SearchOverlay } from "./search-overlay";
 
 // Порядок — зеркальный тому, что был в сайдбаре (решение владельца):
@@ -93,18 +91,12 @@ function BottomTabButton({
  * (CalculatorTabs) заведена отдельно вместе с этой задачей.
  */
 export function BottomNav({
-  isAdmin,
   visibleSections,
-  email,
-  theme,
 }: {
-  isAdmin: boolean;
   /** Ключи разделов/подразделов из permission-sections.ts, доступные этому пользователю. */
   visibleSections: string[];
-  email: string;
-  theme: Theme | null;
 }) {
-  const [panel, setPanel] = useState<"search" | "settings" | null>(null);
+  const [panel, setPanel] = useState<"search" | null>(null);
   const visible = new Set(visibleSections);
   const routeTabs = ROUTE_TABS.filter((tab) => visible.has(tab.key));
 
@@ -122,23 +114,13 @@ export function BottomNav({
           flex-1 на каждом пункте сам делит ширину поровну — на 5 или 6
           пунктов, без явного grid-cols. */}
       <nav className="sticky bottom-0 z-30 hidden w-full standalone:max-md:flex h-20 items-stretch border-t border-border bg-surface pb-[env(safe-area-inset-bottom)]">
-        {/* У администратора та же кнопка ведёт в целый раздел «Настройки»
-            (создание аккаунтов и т.д.) вместо шторки — у обычного
-            пользователя шторка с темой/выходом остаётся как была. */}
-        {isAdmin ? (
-          <BottomTabLink
-            href="/settings"
-            label="Настройки"
-            icon={<SettingsIcon size="lg" />}
-          />
-        ) : (
-          <BottomTabButton
-            label="Настройки"
-            icon={<SettingsIcon size="lg" />}
-            active={panel === "settings"}
-            onClick={() => setPanel("settings")}
-          />
-        )}
+        {/* Ведёт в раздел «Настройки»: подраздел «Общие» (тема/аккаунт/выход/
+            смена пароля) виден всем, «Администрирование» — только админу. */}
+        <BottomTabLink
+          href="/settings"
+          label="Настройки"
+          icon={<SettingsIcon size="lg" />}
+        />
 
         <BottomTabButton
           label="Поиск"
@@ -162,14 +144,6 @@ export function BottomNav({
 
       {panel === "search" ? (
         <SearchOverlay onClose={() => setPanel(null)} />
-      ) : null}
-
-      {panel === "settings" ? (
-        <SettingsSheet
-          onClose={() => setPanel(null)}
-          email={email}
-          theme={theme}
-        />
       ) : null}
     </>
   );

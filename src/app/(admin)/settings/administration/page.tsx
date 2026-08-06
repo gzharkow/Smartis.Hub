@@ -5,6 +5,7 @@ import { parsePermissions } from "@/lib/access-levels";
 import { CreateAccountForm } from "./create-account-form";
 import { AccountsTable, type AccountRow, type AccessLevelOption } from "./accounts-table";
 import { AccessLevelsPanel, type AccessLevelData } from "./access-levels-panel";
+import { SettingsTabs } from "../settings-tabs";
 
 export const dynamic = "force-dynamic";
 
@@ -50,6 +51,7 @@ export default async function AdministrationPage() {
   return (
     <div className="grid gap-8">
       <div>
+        <SettingsTabs current="administration" isAdmin={true} />
         <h1 className="text-xl font-semibold tracking-tight">Администрирование</h1>
         <p className="mt-0.5 text-sm text-muted">
           Создание аккаунтов сотрудников и настройка их доступа к разделам сайта
