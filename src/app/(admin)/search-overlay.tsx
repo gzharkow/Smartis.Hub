@@ -3,6 +3,7 @@
 import { useEffect, useRef } from "react";
 import { useGlobalSearch } from "@/components/use-global-search";
 import { SearchResultsList } from "@/components/search-results-list";
+import { useCloseOnBack } from "@/lib/use-close-on-back";
 import { SearchIcon } from "./nav-icons";
 
 /**
@@ -18,6 +19,9 @@ import { SearchIcon } from "./nav-icons";
 export function SearchOverlay({ onClose }: { onClose: () => void }) {
   const { query, result, loading, total, onChange } = useGlobalSearch();
   const inputRef = useRef<HTMLInputElement>(null);
+
+  // Кнопка «назад» на Android закрывает панель вместо выхода из приложения.
+  useCloseOnBack(onClose);
 
   useEffect(() => {
     inputRef.current?.focus();

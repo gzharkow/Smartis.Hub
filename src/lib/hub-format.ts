@@ -7,6 +7,7 @@ const fmt = new Intl.DateTimeFormat("ru-RU", {
   year: "numeric",
   hour: "2-digit",
   minute: "2-digit",
+  timeZone: "Europe/Moscow",
 });
 
 /** «16.07.2026, 14:30» — дата в формате дд.мм.гггг со временем. */

@@ -3,6 +3,7 @@
 import { logout } from "@/app/actions/auth";
 import { LogoutIcon } from "./nav-icons";
 import { ThemeToggle } from "./theme-toggle";
+import { useCloseOnBack } from "@/lib/use-close-on-back";
 import type { Theme } from "@/lib/theme";
 
 /**
@@ -26,6 +27,9 @@ export function SettingsSheet({
   email: string;
   theme: Theme | null;
 }) {
+  // Кнопка «назад» на Android закрывает шторку вместо выхода из приложения.
+  useCloseOnBack(onClose);
+
   return (
     <div
       role="presentation"

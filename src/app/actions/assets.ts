@@ -196,3 +196,22 @@ export async function setAssetSection(assetId: string, section: string) {
 
   revalidatePath("/assets");
 }
+
+/**
+ * Переименовать материал. Название не уникально — это просто заголовок,
+ * который видят клиенты, а не идентификатор.
+ */
+export async function renameAsset(assetId: string, title: string) {
+  const value = title.trim();
+  if (!value) throw new Error("Введите название материала.");
+
+  const { asset } = await ownedAsset(assetId);
+
+  await db.asset.update({
+    where: { id: asset.id },
+    data: { title: value.slice(0, 200) },
+  });
+
+  revalidatePath("/assets");
+  revalidatePath("/hubs");
+}

@@ -71,7 +71,10 @@ export default async function HubPage({
 
   const usedAssetIds = new Set(hub.items.map((i) => i.assetId));
 
-  const available = await db.asset.findMany({
+  // Только 4 самых используемых по хабам материала — библиотека организации
+  // может быть большой, а показывать её целиком в форме хаба незачем: то,
+  // что ищут реже, найдётся через поиск ниже (см. HubMaterials/assets/search).
+  const frequentlyUsed = await db.asset.findMany({
     where: {
       organizationId: user.organizationId,
       archivedAt: null,
@@ -80,7 +83,9 @@ export default async function HubPage({
       // ниже), не через общую библиотеку — иначе она забивается расчётами.
       quoteId: null,
     },
-    orderBy: { createdAt: "desc" },
+    include: { _count: { select: { hubItems: true } } },
+    orderBy: [{ hubItems: { _count: "desc" } }, { createdAt: "desc" }],
+    take: 4,
   });
 
   return (
@@ -165,13 +170,19 @@ export default async function HubPage({
             meta: metaOf(item.asset),
             archived: item.asset.archivedAt !== null,
           }))}
-          available={available.map((asset) => ({
+          frequentlyUsed={frequentlyUsed.map((asset) => ({
             id: asset.id,
             title: asset.title,
             kindLabel: KIND_LABELS[asset.kind],
+            kind: asset.kind,
             meta: metaOf(asset),
             section: asset.section,
+            pageCount: asset.pageCount,
+            externalUrl: asset.externalUrl,
+            embeddable: asset.embeddable,
+            hasThumbnail: asset.thumbnailKey !== null,
           }))}
+          excludeAssetIds={[...usedAssetIds]}
         />
 
         {/* Отдельно от библиотеки: расчёт — не файл, который где-то лежит,

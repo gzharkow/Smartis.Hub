@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import {
   archiveAsset,
   backfillLinkThumbnail,
+  renameAsset,
   restoreAsset,
   setAssetSection,
 } from "@/app/actions/assets";
@@ -12,18 +13,25 @@ import { backfillThumbnail } from "@/lib/backfill-thumbnail";
 import { SECTIONS } from "@/lib/asset-sections";
 import { withPlural, WORDS } from "@/lib/plural";
 import type { ViewMode } from "@/lib/view-mode";
-import type { AssetSection } from "@/generated/prisma/enums";
+import type { AssetKind, AssetSection } from "@/generated/prisma/enums";
+import { AssetPreviewModal } from "@/components/asset-preview-modal";
 
 export type AssetRowData = {
   id: string;
   title: string;
+  kind: AssetKind;
   kindLabel: string;
   section: AssetSection;
   meta: string;
+  pageCount: number | null;
   /** Только у ссылок: адрес, на который они ведут. */
   externalUrl: string | null;
+  /** Только у ссылок: разрешает ли сайт показывать себя внутри рамки. */
+  embeddable: boolean | null;
   /** Ссылка, которую сайт запрещает встраивать: откроется новой вкладкой. */
   opensInNewTab: boolean;
+  /** Готовая строка «ДД.ММ.ГГГГ, ЧЧ:ММ» по московскому времени. */
+  updatedAt: string;
   /** В скольких хабах стоит. Нужно предупредить: удаление уберёт его с витрин. */
   hubCount: number;
   archived: boolean;
@@ -44,6 +52,60 @@ export function AssetRow({
   const [thumbing, setThumbing] = useState(false);
   const [thumbError, setThumbError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
+  const [previewing, setPreviewing] = useState(false);
+
+  // Отдельный transition от архивации/раздела: переименование не должно
+  // блокировать кнопку «Удалить», и наоборот.
+  const [renaming, setRenaming] = useState(false);
+  const [, startRename] = useTransition();
+
+  function submitRename(value: string) {
+    const next = value.trim();
+    setRenaming(false);
+    if (next && next !== asset.title) {
+      startRename(() => renameAsset(asset.id, next));
+    }
+  }
+
+  const titleInput = (
+    <input
+      autoFocus
+      defaultValue={asset.title}
+      maxLength={200}
+      onBlur={(e) => submitRename(e.target.value)}
+      onKeyDown={(e) => {
+        if (e.key === "Enter") e.currentTarget.blur();
+        if (e.key === "Escape") {
+          e.currentTarget.value = asset.title;
+          setRenaming(false);
+        }
+      }}
+      className="min-w-0 flex-1 rounded-md border border-blue-500 bg-background px-1.5 py-0.5 text-sm outline-none"
+    />
+  );
+
+  const renameBtn = !asset.archived ? (
+    <button
+      type="button"
+      title="Переименовать"
+      onClick={() => setRenaming(true)}
+      className="shrink-0 rounded p-1 text-muted transition hover:bg-border/60 hover:text-foreground"
+    >
+      <svg
+        viewBox="0 0 20 20"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        className="size-3.5"
+      >
+        <path
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          d="M14.5 3.5a1.5 1.5 0 0 1 2 2L7 15l-3 1 1-3 9.5-9.5Z"
+        />
+      </svg>
+    </button>
+  ) : null;
 
   const grid = view === "grid";
 
@@ -166,6 +228,20 @@ export function AssetRow({
     </button>
   );
 
+  const previewModal = previewing ? (
+    <AssetPreviewModal
+      asset={{
+        id: asset.id,
+        title: asset.title,
+        kind: asset.kind,
+        externalUrl: asset.externalUrl,
+        embeddable: asset.embeddable,
+        pageCount: asset.pageCount,
+      }}
+      onClose={() => setPreviewing(false)}
+    />
+  ) : null;
+
   // ─── Плитка ───
   if (grid) {
     return (
@@ -174,18 +250,25 @@ export function AssetRow({
           asset.archived ? "opacity-60" : "bg-surface"
         }`}
       >
-        {asset.hasThumbnail ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={`/api/assets/${asset.id}/thumbnail`}
-            alt=""
-            className="aspect-[16/10] w-full border-b border-border object-cover object-top"
-          />
-        ) : (
-          <span className="grid aspect-[16/10] w-full place-items-center border-b border-dashed border-border text-xs text-muted">
-            без превью
-          </span>
-        )}
+        <button
+          type="button"
+          onClick={() => setPreviewing(true)}
+          title="Открыть предпросмотр"
+          className="block w-full cursor-zoom-in"
+        >
+          {asset.hasThumbnail ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={`/api/assets/${asset.id}/thumbnail`}
+              alt=""
+              className="aspect-[16/10] w-full border-b border-border object-cover object-top"
+            />
+          ) : (
+            <span className="grid aspect-[16/10] w-full place-items-center border-b border-dashed border-border text-xs text-muted">
+              без превью
+            </span>
+          )}
+        </button>
 
         <div className="flex flex-1 flex-col gap-2 p-3">
           <div className="flex flex-wrap items-center gap-2">
@@ -193,7 +276,16 @@ export function AssetRow({
             {newTabBadge}
           </div>
 
-          <span className="line-clamp-2 font-medium">{asset.title}</span>
+          {renaming ? (
+            <div className="flex items-center gap-1">{titleInput}</div>
+          ) : (
+            <div className="flex items-start gap-1">
+              <span className="line-clamp-2 min-w-0 flex-1 font-medium">
+                {asset.title}
+              </span>
+              {renameBtn}
+            </div>
+          )}
 
           {asset.externalUrl ? (
             <span className="truncate text-xs text-muted">
@@ -205,6 +297,8 @@ export function AssetRow({
             <span className="text-xs text-muted">{asset.meta}</span>
           ) : null}
 
+          <span className="text-xs text-muted">Изменён {asset.updatedAt}</span>
+
           {thumbErrorEl}
 
           <div className="mt-auto flex flex-wrap items-center gap-2 pt-1">
@@ -213,6 +307,8 @@ export function AssetRow({
             {actionCluster}
           </div>
         </div>
+
+        {previewModal}
       </li>
     );
   }
@@ -224,42 +320,65 @@ export function AssetRow({
         asset.archived ? "opacity-60" : "bg-surface"
       }`}
     >
-      {/* Превью прямо в списке: продавец видит, что увидит клиент. */}
-      {asset.hasThumbnail ? (
-        // Обычный img: файл приватный, оптимизатор Next до него не достанет.
-        // eslint-disable-next-line @next/next/no-img-element
-        <img
-          src={`/api/assets/${asset.id}/thumbnail`}
-          alt=""
-          className="h-11 w-16 shrink-0 rounded border border-border object-cover object-top"
-        />
-      ) : (
-        <span className="grid h-11 w-16 shrink-0 place-items-center rounded border border-dashed border-border text-[10px] text-muted">
-          нет
-        </span>
-      )}
+      {/* Превью прямо в списке: продавец видит, что увидит клиент. Клик
+          открывает полноэкранный предпросмотр — можно свериться перед тем,
+          как класть материал в хаб. */}
+      <button
+        type="button"
+        onClick={() => setPreviewing(true)}
+        title="Открыть предпросмотр"
+        className="block shrink-0 cursor-zoom-in"
+      >
+        {asset.hasThumbnail ? (
+          // Обычный img: файл приватный, оптимизатор Next до него не достанет.
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={`/api/assets/${asset.id}/thumbnail`}
+            alt=""
+            className="h-11 w-16 rounded border border-border object-cover object-top"
+          />
+        ) : (
+          <span className="grid h-11 w-16 place-items-center rounded border border-dashed border-border text-[10px] text-muted">
+            нет
+          </span>
+        )}
+      </button>
 
       {kindBadge}
 
       {/* min-w: иначе на узком окне название сжимается до «Сквоз…» и строка
           становится бесполезной. Лучше пусть остальное перенесётся вниз. */}
-      <span className="min-w-40 flex-1 truncate font-medium">
-        {asset.title}
-        {asset.externalUrl ? (
-          <span className="block truncate text-xs font-normal text-muted">
-            {asset.externalUrl}
+      {renaming ? (
+        <div className="flex min-w-40 flex-1 items-center gap-1">
+          {titleInput}
+        </div>
+      ) : (
+        <div className="flex min-w-40 flex-1 items-center gap-1">
+          <span className="min-w-0 flex-1 truncate font-medium">
+            {asset.title}
+            {asset.externalUrl ? (
+              <span className="block truncate text-xs font-normal text-muted">
+                {asset.externalUrl}
+              </span>
+            ) : null}
           </span>
-        ) : null}
-      </span>
+          {renameBtn}
+        </div>
+      )}
 
       {newTabBadge}
 
       <span className="shrink-0 text-sm text-muted">{asset.meta}</span>
+      <span className="hidden shrink-0 text-xs text-muted sm:inline">
+        Изменён {asset.updatedAt}
+      </span>
 
       {sectionSelect}
       {thumbErrorEl}
       {makePreviewBtn}
       {actionCluster}
+
+      {previewModal}
     </li>
   );
 }

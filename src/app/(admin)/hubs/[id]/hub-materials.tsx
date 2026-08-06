@@ -1,9 +1,10 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import { addItemToHub, removeItemFromHub } from "@/app/actions/hubs";
 import { SECTION_LABELS, SECTIONS } from "@/lib/asset-sections";
-import type { AssetSection } from "@/generated/prisma/enums";
+import { AssetPreviewModal, type PreviewAsset } from "@/components/asset-preview-modal";
+import type { AssetKind, AssetSection } from "@/generated/prisma/enums";
 
 type Item = {
   id: string;
@@ -15,34 +16,184 @@ type Item = {
   archived: boolean;
 };
 
-type Available = {
+type PickableAsset = {
   id: string;
   title: string;
   kindLabel: string;
+  kind: AssetKind;
   meta: string;
   section: AssetSection;
+  pageCount: number | null;
+  externalUrl: string | null;
+  embeddable: boolean | null;
+  hasThumbnail: boolean;
 };
+
+const DEBOUNCE_MS = 250;
+
+function toPreviewAsset(a: PickableAsset): PreviewAsset {
+  return {
+    id: a.id,
+    title: a.title,
+    kind: a.kind,
+    externalUrl: a.externalUrl,
+    embeddable: a.embeddable,
+    pageCount: a.pageCount,
+  };
+}
+
+function PickRow({
+  asset,
+  disabled,
+  onAdd,
+  onPreview,
+}: {
+  asset: PickableAsset;
+  disabled: boolean;
+  onAdd: () => void;
+  onPreview: () => void;
+}) {
+  return (
+    <li className="flex items-center gap-3 rounded-lg border border-border px-3 py-2">
+      <button
+        type="button"
+        onClick={onPreview}
+        title="Открыть предпросмотр"
+        className="grid h-9 w-13 shrink-0 place-items-center overflow-hidden rounded border border-border bg-border/30 text-[9px] text-muted"
+      >
+        {asset.hasThumbnail ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={`/api/assets/${asset.id}/thumbnail`}
+            alt=""
+            className="h-full w-full object-cover object-top"
+          />
+        ) : (
+          "нет"
+        )}
+      </button>
+
+      <span className="hidden shrink-0 rounded bg-border/70 px-1.5 py-0.5 text-xs sm:inline-block">
+        {asset.kindLabel}
+      </span>
+      <span className="min-w-0 flex-1 truncate text-sm">{asset.title}</span>
+      {/* Раздел видно всегда: иначе непонятно, почему при фильтре
+          «Авторынок» в списке лежит договор. */}
+      <span className="shrink-0 text-xs text-muted">
+        {SECTION_LABELS[asset.section]}
+      </span>
+      <span className="hidden shrink-0 text-xs text-muted sm:inline">
+        {asset.meta}
+      </span>
+      <button
+        type="button"
+        disabled={disabled}
+        onClick={onAdd}
+        className="shrink-0 rounded px-2 py-1 text-xs font-medium text-blue-600 transition hover:bg-blue-500/10 disabled:opacity-50 dark:text-blue-400"
+      >
+        Добавить
+      </button>
+    </li>
+  );
+}
 
 export function HubMaterials({
   hubId,
   items,
-  available,
+  frequentlyUsed,
+  excludeAssetIds,
 }: {
   hubId: string;
   items: Item[];
-  available: Available[];
+  frequentlyUsed: PickableAsset[];
+  excludeAssetIds: string[];
 }) {
   const [pending, startTransition] = useTransition();
   const [filter, setFilter] = useState<AssetSection | null>(null);
+  const [previewAsset, setPreviewAsset] = useState<PreviewAsset | null>(null);
+  // Добавленное в хаб убираем из виду сразу, не дожидаясь revalidatePath —
+  // иначе до перерисовки с сервера тот же материал можно нажать «Добавить»
+  // ещё раз и получить дубль в хабе.
+  const [addedIds, setAddedIds] = useState<Set<string>>(new Set());
 
-  // «Авторынок» показывает и общие материалы: договор с презентацией о
-  // компании нужны в любом хабе, и заставлять переключаться между разделами
-  // ради них — лишняя возня. «Общие» — наоборот, только общие.
-  const shown = available.filter((a) => {
-    if (!filter) return true;
-    if (filter === "COMMON") return a.section === "COMMON";
-    return a.section === filter || a.section === "COMMON";
-  });
+  const [query, setQuery] = useState("");
+  const [results, setResults] = useState<PickableAsset[]>([]);
+  const [searching, setSearching] = useState(false);
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const abortRef = useRef<AbortController | null>(null);
+
+  function fetchResults(q: string, section: AssetSection | null) {
+    abortRef.current?.abort();
+    const controller = new AbortController();
+    abortRef.current = controller;
+
+    const params = new URLSearchParams();
+    if (q) params.set("q", q);
+    if (section) params.set("section", section);
+    const exclude = new Set([
+      ...excludeAssetIds,
+      ...frequentlyUsed.map((a) => a.id),
+      ...addedIds,
+    ]);
+    for (const id of exclude) params.append("exclude", id);
+
+    // "searching" не выставляем здесь синхронно (правило
+    // react-hooks/set-state-in-effect запрещает setState напрямую в теле
+    // эффекта) — только из колбэков промиса, как и в HubQuotePicker; вызывающая
+    // сторона решает, когда включать индикатор синхронно (событие) и когда нет.
+    return fetch(`/api/assets/search?${params.toString()}`, {
+      signal: controller.signal,
+    })
+      .then((res) => res.json())
+      .then((data: { assets: PickableAsset[] }) => setResults(data.assets))
+      .catch((err: unknown) => {
+        if (err instanceof DOMException && err.name === "AbortError") return;
+      })
+      .finally(() => setSearching(false));
+  }
+
+  // Пустая строка поиска при активном чипе раздела: без своего запроса
+  // «часто используемые» (снятые с фильтра) не покажут материалы этого
+  // раздела вовсе, а искать их всё равно можно только через поле.
+  useEffect(() => {
+    if (filter) {
+      fetchResults(query.trim(), filter);
+    } else {
+      // setState не напрямую в теле эффекта (react-hooks/set-state-in-effect) —
+      // откладываем на микротаск, как и любой другой setState в этом файле,
+      // который приходит из колбэка, а не синхронно из тела эффекта.
+      Promise.resolve().then(() => setResults([]));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filter]);
+
+  function onQueryChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const next = e.target.value;
+    setQuery(next);
+    if (timer.current) clearTimeout(timer.current);
+
+    const trimmed = next.trim();
+    if (!trimmed && !filter) {
+      setResults([]);
+      setSearching(false);
+      return;
+    }
+
+    setSearching(true);
+    timer.current = setTimeout(() => fetchResults(trimmed, filter), DEBOUNCE_MS);
+  }
+
+  function add(assetId: string) {
+    setAddedIds((prev) => new Set(prev).add(assetId));
+    startTransition(() => addItemToHub(hubId, assetId));
+  }
+
+  // «Часто используемые» — фиксированный снимок по всем разделам; при
+  // включённом чипе фильтра он не размечен по разделу, так что прячем его
+  // и показываем только результаты поиска/фильтра.
+  const showFrequent = !filter && query.trim().length === 0;
+  const visibleFrequent = frequentlyUsed.filter((a) => !addedIds.has(a.id));
+  const visibleResults = results.filter((a) => !addedIds.has(a.id));
 
   return (
     <div className="grid grid-cols-1 gap-6">
@@ -130,52 +281,76 @@ export function HubMaterials({
           })}
         </div>
 
-        {shown.length === 0 ? (
-          <p className="rounded-lg border border-dashed border-border px-4 py-8 text-center text-sm text-muted">
-            {available.length > 0
-              ? "В этом разделе не осталось материалов для добавления."
-              : items.length > 0
-                ? "Все материалы библиотеки уже в хабе."
-                : "Библиотека пуста — сначала загрузите материалы."}
-          </p>
-        ) : (
-          <ul className="grid grid-cols-1 gap-2">
-            {shown.map((asset) => (
-              <li
-                key={asset.id}
-                className="flex items-center gap-3 rounded-lg border border-border px-3 py-2"
-              >
-                <span className="hidden shrink-0 rounded bg-border/70 px-1.5 py-0.5 text-xs sm:inline-block">
-                  {asset.kindLabel}
-                </span>
-                <span className="min-w-0 flex-1 truncate text-sm">
-                  {asset.title}
-                </span>
-                {/* Раздел видно всегда: иначе непонятно, почему при фильтре
-                    «Авторынок» в списке лежит договор. */}
-                <span className="shrink-0 text-xs text-muted">
-                  {SECTION_LABELS[asset.section]}
-                </span>
-                {/* Формат и размер — как в списке «В хабе»: на телефоне
-                    убираем, оставляем только с sm и шире. */}
-                <span className="hidden shrink-0 text-xs text-muted sm:inline">
-                  {asset.meta}
-                </span>
-                <button
-                  type="button"
-                  disabled={pending}
-                  onClick={() =>
-                    startTransition(() => addItemToHub(hubId, asset.id))
-                  }
-                  className="rounded px-2 py-1 text-xs font-medium text-blue-600 transition hover:bg-blue-500/10 disabled:opacity-50 dark:text-blue-400"
-                >
-                  Добавить
-                </button>
+        {showFrequent ? (
+          <div className="mb-3">
+            <h3 className="mb-1.5 text-xs font-medium text-muted">
+              Часто используемые
+            </h3>
+            {visibleFrequent.length === 0 ? (
+              <p className="rounded-lg border border-dashed border-border px-4 py-6 text-center text-sm text-muted">
+                {items.length > 0
+                  ? "Все материалы библиотеки уже в хабе."
+                  : "Библиотека пуста — сначала загрузите материалы."}
+              </p>
+            ) : (
+              <ul className="grid grid-cols-1 gap-2">
+                {visibleFrequent.map((asset) => (
+                  <PickRow
+                    key={asset.id}
+                    asset={asset}
+                    disabled={pending}
+                    onAdd={() => add(asset.id)}
+                    onPreview={() => setPreviewAsset(toPreviewAsset(asset))}
+                  />
+                ))}
+              </ul>
+            )}
+          </div>
+        ) : null}
+
+        <label className="grid gap-1.5">
+          <span className="text-xs font-medium text-muted">
+            Поиск по названию
+          </span>
+          <input
+            value={query}
+            onChange={onQueryChange}
+            placeholder="Название материала…"
+            className="rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:border-blue-500"
+          />
+        </label>
+
+        <ul className="mt-3 grid grid-cols-1 gap-2">
+          {searching ? (
+            <li className="px-1 py-2 text-sm text-muted">Ищем…</li>
+          ) : query.trim() || filter ? (
+            visibleResults.length === 0 ? (
+              <li className="px-1 py-2 text-sm text-muted">
+                {query.trim()
+                  ? `Ничего не найдено по «${query.trim()}»`
+                  : "В этом разделе не осталось материалов для добавления."}
               </li>
-            ))}
-          </ul>
-        )}
+            ) : (
+              visibleResults.map((asset) => (
+                <PickRow
+                  key={asset.id}
+                  asset={asset}
+                  disabled={pending}
+                  onAdd={() => add(asset.id)}
+                  onPreview={() => setPreviewAsset(toPreviewAsset(asset))}
+                />
+              ))
+            )
+          ) : null}
+        </ul>
       </div>
+
+      {previewAsset ? (
+        <AssetPreviewModal
+          asset={previewAsset}
+          onClose={() => setPreviewAsset(null)}
+        />
+      ) : null}
     </div>
   );
 }

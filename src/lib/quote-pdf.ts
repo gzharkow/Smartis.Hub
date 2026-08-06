@@ -353,7 +353,7 @@ export async function renderQuotePdf(data: QuotePdfData): Promise<Uint8Array> {
     cursorY -= 11;
   }
 
-  const footnote2 = `** Полная сумма по остальным секциям выставляется, начиная со следующего месяца.`;
+  const footnote2 = `** Полная сумма выставляется после полного внедрения продукта и подключения всех сопутствующих интеграций`;
   text(footnote2, MARGIN, cursorY, { size: 7.5, color: GRAY });
   cursorY -= 20;
 

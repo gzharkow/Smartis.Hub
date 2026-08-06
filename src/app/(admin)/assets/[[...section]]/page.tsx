@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { requireUser } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { formatFileSize, KIND_LABELS } from "@/lib/assets";
+import { formatHubCreated } from "@/lib/hub-format";
 import { SECTIONS, sectionFromSlug } from "@/lib/asset-sections";
 import { withPlural, WORDS } from "@/lib/plural";
 import {
@@ -61,8 +62,10 @@ export default async function AssetsPage({
   const toRow = (a: (typeof assets)[number]): AssetRowData => ({
     id: a.id,
     title: a.title,
+    kind: a.kind,
     kindLabel: KIND_LABELS[a.kind],
     section: a.section,
+    pageCount: a.pageCount,
     meta: [
       a.pageCount ? `${a.pageCount} стр.` : null,
       a.sizeBytes ? formatFileSize(a.sizeBytes) : null,
@@ -70,9 +73,11 @@ export default async function AssetsPage({
       .filter(Boolean)
       .join(" · "),
     externalUrl: a.externalUrl,
+    embeddable: a.embeddable,
     // Предупреждаем только про ссылки, которые точно не встраиваются:
     // у файлов это поле не значит ничего.
     opensInNewTab: a.kind === "LINK" && a.embeddable !== true,
+    updatedAt: formatHubCreated(a.updatedAt),
     hubCount: a._count.hubItems,
     archived: a.archivedAt !== null,
     hasThumbnail: a.thumbnailKey !== null,
