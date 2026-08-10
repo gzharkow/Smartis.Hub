@@ -44,12 +44,12 @@ export type QuoteTotals = {
   implementationPayment: Decimal;
   /** Сумма «с НДС» всех секций без исключений. */
   monthlyTotal: Decimal;
-  /** «Интеграционный платёж коробочного решения» — фиксированные 2 500 000 ₽,
-   * если в калькуляторе выбрана «Коробка», иначе null (строка в футере не
-   * печатается). В отличие от двух итогов выше — не функция секций/строк:
-   * сумма фиксирована и приходит флагом уровня документа (opts, ниже), а не
-   * из содержимого какой-либо секции. */
-  boxIntegrationPayment: Decimal | null;
+  /** «Интеграционный платёж коробочного решения» — фиксированные 2 500 000 ₽
+   * (плюс НДС), если в калькуляторе выбрана «Коробка», иначе null (строка
+   * в футере не печатается). В отличие от двух итогов выше — не функция
+   * секций/строк: сумма фиксирована и приходит флагом уровня документа
+   * (opts, ниже), а не из содержимого какой-либо секции. */
+  boxIntegrationPayment: { withoutVat: Decimal; withVat: Decimal } | null;
 };
 
 /** Фиксированная сумма третьего итога — см. QuoteTotals.boxIntegrationPayment. */
@@ -102,7 +102,10 @@ export function calculateQuote(
     implementationPayment: implementationBase.times(0.5),
     monthlyTotal,
     boxIntegrationPayment: opts?.boxIntegrationSelected
-      ? new Decimal(BOX_INTEGRATION_PAYMENT_AMOUNT)
+      ? {
+          withoutVat: new Decimal(BOX_INTEGRATION_PAYMENT_AMOUNT),
+          withVat: new Decimal(BOX_INTEGRATION_PAYMENT_AMOUNT).times(vatMultiplier),
+        }
       : null,
   };
 }

@@ -167,8 +167,13 @@ export function QuotePreview({
       >
         {totals.boxIntegrationPayment ? (
           <div className="flex items-center justify-between gap-3 text-[11.5px] font-bold">
-            <span>Интеграционный платеж коробочного решения</span>
-            <span>{formatMoney(totals.boxIntegrationPayment)}</span>
+            <span>
+              Интеграционный платеж коробочного решения
+              <span className="ml-1 font-normal text-black/45">
+                ({formatMoney(totals.boxIntegrationPayment.withoutVat)} без НДС)
+              </span>
+            </span>
+            <span>{formatMoney(totals.boxIntegrationPayment.withVat)}</span>
           </div>
         ) : null}
         <div className="flex items-center justify-between gap-3 text-[11.5px] font-bold">

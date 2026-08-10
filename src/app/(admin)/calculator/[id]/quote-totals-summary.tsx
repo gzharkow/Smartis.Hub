@@ -22,7 +22,10 @@ export function QuoteTotalsSummary({
               Интеграционный платеж коробочного решения
             </dt>
             <dd className="text-lg font-semibold">
-              {formatMoney(totals.boxIntegrationPayment)}
+              {formatMoney(totals.boxIntegrationPayment.withVat)}
+            </dd>
+            <dd className="text-xs text-muted">
+              {formatMoney(totals.boxIntegrationPayment.withoutVat)} без НДС
             </dd>
           </div>
         ) : null}

@@ -1,12 +1,13 @@
 "use client";
 
 import { formatMoney, storageEventsLimitLabel } from "@/lib/quote-calc";
-import { postViewTierPrice, type AutoDealerCalculatorConfig } from "@/lib/quote-calculator";
+import { postViewVolumeTierPrice, type AutoDealerCalculatorConfig } from "@/lib/quote-calculator";
 import {
   CalcRow,
   NumberField,
   ToggleField,
   TierChoiceField,
+  VolumeTierField,
   checkboxCls,
 } from "./calculator-panel-controls";
 
@@ -30,7 +31,7 @@ export function AutoDealerConfigPanel({
       : config.postViewAutoRuTier === "OVER_1M"
         ? 50_000
         : 25_000;
-  const postViewOtherPrice = postViewTierPrice(config.postViewOtherEventsCount);
+  const postViewOtherPrice = postViewVolumeTierPrice(config.postViewOtherEventsTier);
   const postViewOtherLimitLabel =
     postViewOtherPrice !== null ? storageEventsLimitLabel(postViewOtherPrice) : null;
 
@@ -131,18 +132,16 @@ export function AutoDealerConfigPanel({
         <CalcRow
           label="Post-View аналитика другой медийной рекламы"
           control={
-            <NumberField
-              value={config.postViewOtherEventsCount}
-              onChange={(v) => patch({ postViewOtherEventsCount: v })}
-              placeholder="Кол-во событий"
-              className="w-32 rounded-lg border border-border bg-background px-2 py-1.5 text-sm text-right outline-none focus:border-blue-500"
+            <VolumeTierField
+              value={config.postViewOtherEventsTier}
+              onChange={(v) => patch({ postViewOtherEventsTier: v })}
             />
           }
           price={postViewOtherPrice !== null ? formatMoney(postViewOtherPrice) : undefined}
           hint={
             postViewOtherLimitLabel
               ? `Лимит хранимых событий: ${postViewOtherLimitLabel}${postViewOtherLimitLabel === "Безлимит" ? "" : " шт."}`
-              : "0 — строка не попадёт в документ"
+              : "Не выбрано — строка не попадёт в документ"
           }
         />
         <CalcRow

@@ -6,7 +6,6 @@ import bcrypt from "bcryptjs";
 import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
 import { requireAdmin } from "@/lib/auth";
-import { PermissionsSchema, type Permissions } from "@/lib/access-levels";
 
 // Пароль генерируется на сервере тем же способом, что и в prisma/seed.ts,
 // и показывается вызывающей стороне РОВНО ОДИН РАЗ — нигде не хранится,
@@ -23,39 +22,12 @@ const EmailSchema = z
 
 const RoleSchema = z.enum(["ADMIN", "MEMBER"], { error: "Выберите роль." });
 
-type AccessLevelChoice =
-  | { mode: "existing"; accessLevelId: string }
-  | { mode: "new"; name: string; permissions: Permissions };
+/** Только суперадминистратор — единственный, кому доверено удалять аккаунты
+ * и (в перспективе) другие необратимые операции над самой организацией. */
+const SUPERADMIN_EMAIL = "admin@smartfollow.local";
 
-/** Разбирает и проверяет поля выбора уровня доступа из FormData — общие для создания и правки. */
-function parseAccessLevelChoice(formData: FormData): AccessLevelChoice | { error: string } {
-  const mode = formData.get("accessLevelMode");
-
-  if (mode === "existing") {
-    const accessLevelId = formData.get("accessLevelId");
-    if (typeof accessLevelId !== "string" || !accessLevelId) {
-      return { error: "Выберите уровень доступа." };
-    }
-    return { mode: "existing", accessLevelId };
-  }
-
-  if (mode === "new") {
-    const name = String(formData.get("accessLevelName") ?? "").trim();
-    if (!name) return { error: "Введите название уровня доступа." };
-
-    let raw: unknown;
-    try {
-      raw = JSON.parse(String(formData.get("permissions") ?? "[]"));
-    } catch {
-      return { error: "Некорректная матрица доступа." };
-    }
-    const parsed = PermissionsSchema.safeParse(raw);
-    if (!parsed.success) return { error: "Некорректная матрица доступа." };
-
-    return { mode: "new", name, permissions: parsed.data };
-  }
-
-  return { error: "Выберите уровень доступа." };
+function parseVisibleOwnerIds(formData: FormData): string[] {
+  return formData.getAll("visibleOwnerIds").map(String).filter(Boolean);
 }
 
 export type CreateAccountState =
@@ -82,9 +54,8 @@ export async function createAccount(
   const role = roleParsed.data;
 
   const name = String(formData.get("name") ?? "").trim() || null;
-
-  const choice = role === "MEMBER" ? parseAccessLevelChoice(formData) : null;
-  if (choice && "error" in choice) return choice;
+  const canAddAssets = role === "MEMBER" && formData.get("canAddAssets") === "1";
+  const visibleOwnerIds = role === "MEMBER" ? parseVisibleOwnerIds(formData) : [];
 
   const password = generatePassword();
   const passwordHash = await bcrypt.hash(password, 12);
@@ -98,29 +69,14 @@ export async function createAccount(
         throw new Error("DUPLICATE_EMAIL");
       }
 
-      let accessLevelId: string | null = null;
-
-      if (choice) {
-        if (choice.mode === "existing") {
-          const level = await tx.accessLevel.findFirst({
-            where: { id: choice.accessLevelId, organizationId: admin.organizationId },
-          });
-          if (!level) throw new Error("ACCESS_LEVEL_NOT_FOUND");
-          accessLevelId = level.id;
-        } else {
-          const duplicate = await tx.accessLevel.findFirst({
-            where: { organizationId: admin.organizationId, name: choice.name },
-          });
-          if (duplicate) throw new Error("DUPLICATE_ACCESS_LEVEL");
-          const created = await tx.accessLevel.create({
-            data: {
-              organizationId: admin.organizationId,
-              name: choice.name,
-              permissions: choice.permissions,
-            },
-          });
-          accessLevelId = created.id;
-        }
+      // Чужие аккаунты, которых открываем видимость, — только из той же
+      // организации, иначе через подделанный id можно было бы подглядеть
+      // за другой компанией.
+      if (visibleOwnerIds.length > 0) {
+        const count = await tx.user.count({
+          where: { id: { in: visibleOwnerIds }, organizationId: admin.organizationId },
+        });
+        if (count !== visibleOwnerIds.length) throw new Error("OWNER_NOT_FOUND");
       }
 
       await tx.user.create({
@@ -130,7 +86,8 @@ export async function createAccount(
           name,
           passwordHash,
           role,
-          accessLevelId,
+          canAddAssets,
+          visibleOwners: { connect: visibleOwnerIds.map((id) => ({ id })) },
         },
       });
     });
@@ -138,13 +95,8 @@ export async function createAccount(
     if (e instanceof Error && e.message === "DUPLICATE_EMAIL") {
       return { error: "Аккаунт с такой почтой уже есть." };
     }
-    if (e instanceof Error && e.message === "DUPLICATE_ACCESS_LEVEL") {
-      return {
-        error: `Уровень доступа «${choice && choice.mode === "new" ? choice.name : ""}» уже существует — выберите его из списка.`,
-      };
-    }
-    if (e instanceof Error && e.message === "ACCESS_LEVEL_NOT_FOUND") {
-      return { error: "Уровень доступа не найден." };
+    if (e instanceof Error && e.message === "OWNER_NOT_FOUND") {
+      return { error: "Один из выбранных аккаунтов не найден." };
     }
     throw e;
   }
@@ -168,8 +120,8 @@ export async function updateAccountAccess(
   if (!roleParsed.success) return { error: "Выберите роль." };
   const role = roleParsed.data;
 
-  const choice = role === "MEMBER" ? parseAccessLevelChoice(formData) : null;
-  if (choice && "error" in choice) return choice;
+  const canAddAssets = role === "MEMBER" && formData.get("canAddAssets") === "1";
+  const visibleOwnerIds = role === "MEMBER" ? parseVisibleOwnerIds(formData) : [];
 
   const newPasswordRaw = String(formData.get("newPassword") ?? "");
   const resetPassword = newPasswordRaw === "1";
@@ -183,40 +135,21 @@ export async function updateAccountAccess(
       });
       if (!target) throw new Error("NOT_FOUND");
 
-      let accessLevelId: string | null = null;
-
-      if (choice) {
-        if (choice.mode === "existing") {
-          const level = await tx.accessLevel.findFirst({
-            where: { id: choice.accessLevelId, organizationId: admin.organizationId },
-          });
-          if (!level) throw new Error("ACCESS_LEVEL_NOT_FOUND");
-          accessLevelId = level.id;
-        } else {
-          const duplicate = await tx.accessLevel.findFirst({
-            where: {
-              organizationId: admin.organizationId,
-              name: choice.name,
-              ...(target.accessLevelId ? { NOT: { id: target.accessLevelId } } : {}),
-            },
-          });
-          if (duplicate) throw new Error("DUPLICATE_ACCESS_LEVEL");
-          const created = await tx.accessLevel.create({
-            data: {
-              organizationId: admin.organizationId,
-              name: choice.name,
-              permissions: choice.permissions,
-            },
-          });
-          accessLevelId = created.id;
-        }
+      if (visibleOwnerIds.length > 0) {
+        const count = await tx.user.count({
+          where: { id: { in: visibleOwnerIds }, organizationId: admin.organizationId },
+        });
+        if (count !== visibleOwnerIds.length) throw new Error("OWNER_NOT_FOUND");
       }
 
       await tx.user.update({
         where: { id: userId },
         data: {
           role,
-          accessLevelId,
+          canAddAssets,
+          // set вместо connect: список видимости — не добавка, а полная замена
+          // тем, что отмечено в форме сейчас.
+          visibleOwners: { set: visibleOwnerIds.map((id) => ({ id })) },
           ...(passwordHash ? { passwordHash } : {}),
         },
       });
@@ -225,11 +158,8 @@ export async function updateAccountAccess(
     if (e instanceof Error && e.message === "NOT_FOUND") {
       return { error: "Аккаунт не найден." };
     }
-    if (e instanceof Error && e.message === "DUPLICATE_ACCESS_LEVEL") {
-      return { error: "Уровень доступа с таким названием уже есть — выберите его из списка." };
-    }
-    if (e instanceof Error && e.message === "ACCESS_LEVEL_NOT_FOUND") {
-      return { error: "Уровень доступа не найден." };
+    if (e instanceof Error && e.message === "OWNER_NOT_FOUND") {
+      return { error: "Один из выбранных аккаунтов не найден." };
     }
     throw e;
   }
@@ -238,44 +168,36 @@ export async function updateAccountAccess(
   return password ? { success: true, password } : { success: true };
 }
 
-export type EditAccessLevelState = { error: string } | { success: true } | undefined;
+export type DeleteAccountState = { error: string } | { success: true } | undefined;
 
-/** Правка именованного уровня доступа напрямую (не через привязку к конкретному аккаунту). */
-export async function editAccessLevel(
-  _prevState: EditAccessLevelState,
+/** Удаление аккаунта — необратимо, поэтому доступно только суперадминистратору
+ * (единственная в коде проверка по конкретной почте, а не по роли). */
+export async function deleteAccount(
+  _prevState: DeleteAccountState,
   formData: FormData,
-): Promise<EditAccessLevelState> {
+): Promise<DeleteAccountState> {
   const admin = await requireAdmin();
-
-  const accessLevelId = String(formData.get("accessLevelId") ?? "");
-  if (!accessLevelId) return { error: "Не указан уровень доступа." };
-
-  const name = String(formData.get("name") ?? "").trim();
-  if (!name) return { error: "Введите название уровня доступа." };
-
-  let raw: unknown;
-  try {
-    raw = JSON.parse(String(formData.get("permissions") ?? "[]"));
-  } catch {
-    return { error: "Некорректная матрица доступа." };
+  if (admin.email !== SUPERADMIN_EMAIL) {
+    return { error: "Удалять аккаунты может только суперадминистратор." };
   }
-  const parsed = PermissionsSchema.safeParse(raw);
-  if (!parsed.success) return { error: "Некорректная матрица доступа." };
 
-  const level = await db.accessLevel.findFirst({
-    where: { id: accessLevelId, organizationId: admin.organizationId },
-  });
-  if (!level) return { error: "Уровень доступа не найден." };
+  const userId = String(formData.get("userId") ?? "");
+  if (!userId) return { error: "Не указан аккаунт." };
+  if (userId === admin.id) return { error: "Нельзя удалить свой аккаунт." };
 
-  const duplicate = await db.accessLevel.findFirst({
-    where: { organizationId: admin.organizationId, name, NOT: { id: accessLevelId } },
+  const target = await db.user.findFirst({
+    where: { id: userId, organizationId: admin.organizationId },
+    include: { _count: { select: { hubs: true, quotes: true } } },
   });
-  if (duplicate) return { error: "Уровень доступа с таким названием уже есть." };
+  if (!target) return { error: "Аккаунт не найден." };
 
-  await db.accessLevel.update({
-    where: { id: accessLevelId },
-    data: { name, permissions: parsed.data },
-  });
+  if (target._count.hubs > 0 || target._count.quotes > 0) {
+    return {
+      error: `У аккаунта есть хабы (${target._count.hubs}) и/или расчёты (${target._count.quotes}) — сначала передайте или удалите их.`,
+    };
+  }
+
+  await db.user.delete({ where: { id: userId } });
 
   revalidatePath("/settings/administration");
   return { success: true };

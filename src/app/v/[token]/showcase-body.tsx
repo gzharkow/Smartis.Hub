@@ -169,6 +169,20 @@ function Viewer({
           {item.title}
         </span>
         <span className="shrink-0 text-xs text-zinc-400">{item.meta}</span>
+        {/* Скачивание — для любого файла (PDF/VIDEO/IMAGE/FILE), не для
+            ссылок: у LINK нет собственного файла, скачивать нечего. FILE
+            уже показывает свою кнопку по центру экрана — здесь для него
+            не дублируем. */}
+        {item.kind !== "LINK" && item.kind !== "FILE" ? (
+          <a
+            href={src}
+            download
+            onClick={() => onDownload(item.id)}
+            className="shrink-0 rounded-lg px-2.5 py-1.5 text-sm text-zinc-300 transition hover:bg-white/10 hover:text-white"
+          >
+            Скачать
+          </a>
+        ) : null}
       </div>
 
       <div className="min-h-0 flex-1 bg-zinc-800">

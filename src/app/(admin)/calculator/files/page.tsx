@@ -1,4 +1,4 @@
-import { requireSectionView, hasEdit } from "@/lib/permissions";
+import { requireSectionView, hasEdit, showsOtherOwners, visibleOwnerFilter } from "@/lib/permissions";
 import { db } from "@/lib/db";
 import { formatFileSize } from "@/lib/assets";
 import { formatHubCreated } from "@/lib/hub-format";
@@ -21,17 +21,17 @@ export default async function CalculatorFilesPage() {
     where: {
       organizationId: user.organizationId,
       quoteId: { not: null },
-      // Продавец видит файлы своих расчётов, администратор — все, как и
-      // в самом списке «Генератор КП».
-      ...(user.role === "ADMIN" ? {} : { quote: { ownerId: user.id } }),
+      // Продавец видит файлы своих расчётов плюс те, что явно открыл
+      // суперадмин, как и в самом списке «Генератор КП».
+      quote: visibleOwnerFilter(user),
     },
     include: {
       quote: {
         select: {
           id: true,
-          // Только чтобы показать бейдж автора администратору — у него
-          // список содержит файлы расчётов разных сотрудников вперемешку.
-          ...(user.role === "ADMIN"
+          // Только чтобы показать бейдж автора — список может содержать
+          // файлы расчётов разных сотрудников вперемешку.
+          ...(showsOtherOwners(user)
             ? { owner: { select: { id: true, name: true, email: true } } }
             : {}),
         },

@@ -13,7 +13,7 @@ export const getCurrentUser = cache(async () => {
 
   const user = await db.user.findUnique({
     where: { id: session.userId },
-    include: { organization: true, accessLevel: true },
+    include: { organization: true, visibleOwners: { select: { id: true } } },
   });
 
   // Кука валидна, а пользователя нет — значит, его удалили после входа.

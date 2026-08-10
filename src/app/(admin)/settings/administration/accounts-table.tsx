@@ -1,30 +1,36 @@
 "use client";
 
-import { useState } from "react";
-import type { Permissions } from "@/lib/access-levels";
+import { useActionState, useState } from "react";
+import { deleteAccount, type DeleteAccountState } from "@/app/actions/users";
 import { EditAccountPanel } from "./edit-account-panel";
+import type { AccountOption } from "./account-visibility-picker";
 
 export type AccountRow = {
   id: string;
   email: string;
   name: string | null;
   role: "ADMIN" | "MEMBER";
-  accessLevelId: string | null;
-  accessLevelName: string | null;
+  canAddAssets: boolean;
+  visibleOwnerIds: string[];
   createdLabel: string;
 };
 
-export type AccessLevelOption = { id: string; name: string; permissions: Permissions };
+const SUPERADMIN_EMAIL = "admin@smartfollow.local";
 
 /** Список аккаунтов организации с возможностью открыть правку доступа в строке. */
 export function AccountsTable({
   accounts,
-  accessLevels,
+  accountOptions,
+  currentUserEmail,
+  currentUserId,
 }: {
   accounts: AccountRow[];
-  accessLevels: AccessLevelOption[];
+  accountOptions: AccountOption[];
+  currentUserEmail: string;
+  currentUserId: string;
 }) {
   const [openId, setOpenId] = useState<string | null>(null);
+  const canDelete = currentUserEmail === SUPERADMIN_EMAIL;
 
   if (accounts.length === 0) {
     return (
@@ -47,23 +53,77 @@ export function AccountsTable({
                   {account.email} ·{" "}
                   {account.role === "ADMIN"
                     ? "Администратор"
-                    : (account.accessLevelName ?? "Без доступа")}{" "}
+                    : account.canAddAssets
+                      ? "Обычный пользователь (может добавлять материалы)"
+                      : "Обычный пользователь"}{" "}
                   · {account.createdLabel}
                 </p>
               </div>
-              <button
-                type="button"
-                onClick={() => setOpenId(open ? null : account.id)}
-                className="shrink-0 rounded-lg px-3 py-1.5 text-sm text-muted transition hover:bg-border/60 hover:text-foreground"
-              >
-                {open ? "Свернуть" : "Изменить доступ"}
-              </button>
+              <div className="flex shrink-0 items-center gap-1">
+                <button
+                  type="button"
+                  onClick={() => setOpenId(open ? null : account.id)}
+                  className="rounded-lg px-3 py-1.5 text-sm text-muted transition hover:bg-border/60 hover:text-foreground"
+                >
+                  {open ? "Свернуть" : "Изменить доступ"}
+                </button>
+                {canDelete && account.id !== currentUserId ? (
+                  <DeleteAccountButton accountId={account.id} />
+                ) : null}
+              </div>
             </div>
 
-            {open ? <EditAccountPanel account={account} accessLevels={accessLevels} /> : null}
+            {open ? (
+              <EditAccountPanel account={account} accountOptions={accountOptions} />
+            ) : null}
           </li>
         );
       })}
     </ul>
+  );
+}
+
+function DeleteAccountButton({ accountId }: { accountId: string }) {
+  const [confirming, setConfirming] = useState(false);
+  const [state, action, pending] = useActionState<DeleteAccountState, FormData>(
+    deleteAccount,
+    undefined,
+  );
+
+  if (state && "error" in state) {
+    return <p className="text-xs text-red-600 dark:text-red-400">{state.error}</p>;
+  }
+
+  if (!confirming) {
+    return (
+      <button
+        type="button"
+        onClick={() => setConfirming(true)}
+        className="rounded-lg px-3 py-1.5 text-sm text-muted transition hover:bg-red-500/10 hover:text-red-600 dark:hover:text-red-400"
+      >
+        Удалить
+      </button>
+    );
+  }
+
+  return (
+    <form action={action} className="flex items-center gap-1.5">
+      <input type="hidden" name="userId" value={accountId} />
+      <span className="text-xs text-muted">Удалить аккаунт?</span>
+      <button
+        type="submit"
+        disabled={pending}
+        className="rounded-lg px-2 py-1 text-xs font-medium text-red-600 transition hover:bg-red-500/10 disabled:opacity-50 dark:text-red-400"
+      >
+        {pending ? "…" : "Да, удалить"}
+      </button>
+      <button
+        type="button"
+        onClick={() => setConfirming(false)}
+        className="rounded-lg px-2 py-1 text-xs text-muted transition hover:bg-border/60"
+      >
+        Отмена
+      </button>
+    </form>
   );
 }

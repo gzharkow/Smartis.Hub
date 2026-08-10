@@ -1,8 +1,14 @@
 "use client";
 
 import { formatMoney, storageEventsLimitLabel } from "@/lib/quote-calc";
-import { postViewTierPrice, type BuilderCalculatorConfig } from "@/lib/quote-calculator";
-import { CalcRow, NumberField, ToggleField, checkboxCls } from "./calculator-panel-controls";
+import { postViewVolumeTierPrice, type BuilderCalculatorConfig } from "@/lib/quote-calculator";
+import {
+  CalcRow,
+  NumberField,
+  ToggleField,
+  VolumeTierField,
+  checkboxCls,
+} from "./calculator-panel-controls";
 
 export function BuilderConfigPanel({
   config,
@@ -15,7 +21,7 @@ export function BuilderConfigPanel({
   const objectsPrice = config.enterpriseLicense ? 15_000 : 12_000;
   const supportUsersPrice = config.enterpriseLicense ? 4_000 : 3_500;
   const mediaPlanPrice = config.enterpriseLicense ? 5_000 : 4_500;
-  const postViewPrice = postViewTierPrice(config.postViewEventsCount);
+  const postViewPrice = postViewVolumeTierPrice(config.postViewEventsTier);
   const postViewLimitLabel = postViewPrice !== null ? storageEventsLimitLabel(postViewPrice) : null;
 
   function patch(next: Partial<BuilderCalculatorConfig>) {
@@ -104,18 +110,16 @@ export function BuilderConfigPanel({
         <CalcRow
           label="Post-View аналитика медийной рекламы"
           control={
-            <NumberField
-              value={config.postViewEventsCount}
-              onChange={(v) => patch({ postViewEventsCount: v })}
-              placeholder="Кол-во событий"
-              className="w-32 rounded-lg border border-border bg-background px-2 py-1.5 text-sm text-right outline-none focus:border-blue-500"
+            <VolumeTierField
+              value={config.postViewEventsTier}
+              onChange={(v) => patch({ postViewEventsTier: v })}
             />
           }
           price={postViewPrice !== null ? formatMoney(postViewPrice) : undefined}
           hint={
             postViewLimitLabel
               ? `Лимит хранимых событий: ${postViewLimitLabel}${postViewLimitLabel === "Безлимит" ? "" : " шт."}`
-              : "0 — строка не попадёт в документ"
+              : "Не выбрано — строка не попадёт в документ"
           }
         />
         <CalcRow

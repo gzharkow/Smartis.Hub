@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
-import { hasView } from "@/lib/permissions";
+import { hasView, visibleOwnerFilter } from "@/lib/permissions";
 import { db } from "@/lib/db";
 
 // Сквозной поиск для строки в шапке: один запрос — хабы, папки, материалы
@@ -25,8 +25,8 @@ export async function GET(request: Request) {
       ? db.hub.findMany({
           where: {
             organizationId: user.organizationId,
-            // Продавец видит свои хабы, администратор — все, как и в разделе «Хабы».
-            ...(user.role === "ADMIN" ? {} : { ownerId: user.id }),
+            // Та же видимость, что и в разделе «Хабы».
+            ...visibleOwnerFilter(user),
             status: { not: "ARCHIVED" },
             title: { contains: q, mode: "insensitive" },
           },
@@ -65,8 +65,8 @@ export async function GET(request: Request) {
       ? db.quote.findMany({
           where: {
             organizationId: user.organizationId,
-            // Та же логика видимости, что у хабов: продавец — только свои.
-            ...(user.role === "ADMIN" ? {} : { ownerId: user.id }),
+            // Та же логика видимости, что у хабов.
+            ...visibleOwnerFilter(user),
             archivedAt: null,
             clientName: { contains: q, mode: "insensitive" },
           },

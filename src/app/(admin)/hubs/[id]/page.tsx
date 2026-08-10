@@ -161,69 +161,77 @@ export default async function HubPage({
         />
       </section>
 
-      <section className="grid grid-cols-1 gap-4 border-t border-border pt-8">
-        <h2 className="text-sm font-semibold tracking-tight text-muted uppercase">
+      <details open className="border-t border-border pt-8">
+        <summary className="cursor-pointer text-sm font-semibold tracking-tight text-muted uppercase">
           Материалы
-        </h2>
-        <HubMaterials
-          hubId={hub.id}
-          items={hub.items.map((item) => ({
-            id: item.id,
-            assetId: item.assetId,
-            title: item.titleOverride ?? item.asset.title,
-            kindLabel: KIND_LABELS[item.asset.kind],
-            meta: metaOf(item.asset),
-            archived: item.asset.archivedAt !== null,
-          }))}
-          frequentlyUsed={frequentlyUsed.map((asset) => ({
-            id: asset.id,
-            title: asset.title,
-            kindLabel: KIND_LABELS[asset.kind],
-            kind: asset.kind,
-            meta: metaOf(asset),
-            section: asset.section,
-            pageCount: asset.pageCount,
-            externalUrl: asset.externalUrl,
-            embeddable: asset.embeddable,
-            hasThumbnail: asset.thumbnailKey !== null,
-          }))}
-          excludeAssetIds={[...usedAssetIds]}
-          canEdit={canEdit}
-        />
+        </summary>
+        <div className="mt-4">
+          <HubMaterials
+            hubId={hub.id}
+            items={hub.items.map((item) => ({
+              id: item.id,
+              assetId: item.assetId,
+              title: item.titleOverride ?? item.asset.title,
+              kindLabel: KIND_LABELS[item.asset.kind],
+              meta: metaOf(item.asset),
+              archived: item.asset.archivedAt !== null,
+            }))}
+            frequentlyUsed={frequentlyUsed.map((asset) => ({
+              id: asset.id,
+              title: asset.title,
+              kindLabel: KIND_LABELS[asset.kind],
+              kind: asset.kind,
+              meta: metaOf(asset),
+              section: asset.section,
+              pageCount: asset.pageCount,
+              externalUrl: asset.externalUrl,
+              embeddable: asset.embeddable,
+              hasThumbnail: asset.thumbnailKey !== null,
+            }))}
+            excludeAssetIds={[...usedAssetIds]}
+            canEdit={canEdit}
+          />
+        </div>
+      </details>
 
-        {/* Отдельно от библиотеки: расчёт — не файл, который где-то лежит,
-            а PDF, собираемый по нажатию из текущего состояния КП (снимок
-            на момент добавления, см. addQuotePdfToHub). Виджет чисто
-            добавляющий — без прав редактирования показывать нечего. */}
-        {canEdit ? (
-          <div>
-            <h3 className="mb-2 text-sm font-medium">Добавить расчёт из Генератора КП</h3>
+      {/* Отдельно от библиотеки: расчёт — не файл, который где-то лежит,
+          а PDF, собираемый по нажатию из текущего состояния КП (снимок
+          на момент добавления, см. addQuotePdfToHub). Виджет чисто
+          добавляющий — без прав редактирования показывать нечего. */}
+      {canEdit ? (
+        <details open className="border-t border-border pt-8">
+          <summary className="cursor-pointer text-sm font-medium">
+            Добавить расчёт из Генератора КП
+          </summary>
+          <div className="mt-4">
             <HubQuotePicker hubId={hub.id} />
           </div>
-        ) : null}
-      </section>
+        </details>
+      ) : null}
 
-      <section className="grid grid-cols-1 gap-4 border-t border-border pt-8">
-        <h2 className="text-sm font-semibold tracking-tight text-muted uppercase">
+      <details open className="border-t border-border pt-8">
+        <summary className="cursor-pointer text-sm font-semibold tracking-tight text-muted uppercase">
           Ссылки для клиентов
-        </h2>
-        <HubShareLinks
-          hubId={hub.id}
-          canEdit={canEdit}
-          published={hub.status === "PUBLISHED"}
-          baseUrl={process.env.APP_URL ?? "http://localhost:3000"}
-          links={hub.shareLinks.map((link) => ({
-            id: link.id,
-            token: link.token,
-            recipientCompany: link.recipientCompany,
-            greeting: link.greeting,
-            expiresAt: link.expiresAt ? dateFmt.format(link.expiresAt) : null,
-            revoked: link.revokedAt !== null,
-            expired: link.expiresAt !== null && link.expiresAt < new Date(),
-            visits: link._count.visits,
-          }))}
-        />
-      </section>
+        </summary>
+        <div className="mt-4">
+          <HubShareLinks
+            hubId={hub.id}
+            canEdit={canEdit}
+            published={hub.status === "PUBLISHED"}
+            baseUrl={process.env.APP_URL ?? "http://localhost:3000"}
+            links={hub.shareLinks.map((link) => ({
+              id: link.id,
+              token: link.token,
+              recipientCompany: link.recipientCompany,
+              greeting: link.greeting,
+              expiresAt: link.expiresAt ? dateFmt.format(link.expiresAt) : null,
+              revoked: link.revokedAt !== null,
+              expired: link.expiresAt !== null && link.expiresAt < new Date(),
+              visits: link._count.visits,
+            }))}
+          />
+        </div>
+      </details>
     </div>
   );
 }

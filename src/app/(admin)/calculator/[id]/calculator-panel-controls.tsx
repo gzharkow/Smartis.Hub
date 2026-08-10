@@ -1,5 +1,7 @@
 import type { ReactNode } from "react";
-import type { PostViewTierChoice } from "@/lib/quote-calculator";
+import { useState } from "react";
+import type { PostViewTierChoice, PostViewVolumeTier } from "@/lib/quote-calculator";
+import { POST_VIEW_VOLUME_TIERS } from "@/lib/quote-calculator";
 
 // Общие мелкие элементы формы для BuilderConfigPanel/AutoDealerConfigPanel —
 // строка «название — контрол — посчитанная цена», числовое поле, пара
@@ -46,13 +48,35 @@ export function NumberField({
   placeholder?: string;
   className?: string;
 }) {
+  // Текстовое отображение поверх числового onChange: только так можно и
+  // очистить «0» по фокусу, и вернуть его обратно, если поле ушло пустым —
+  // сам value всегда остаётся числом для остального калькулятора. Внешний
+  // value синхронизируется прямо при рендере (не в эффекте — см.
+  // https://react.dev/learn/you-might-not-need-an-effect), иначе конфликтует
+  // с тем, что мы вручную очищаем text по фокусу.
+  const [text, setText] = useState(String(value));
+  const [prevValue, setPrevValue] = useState(value);
+  if (value !== prevValue) {
+    setPrevValue(value);
+    setText(String(value));
+  }
+
   return (
     <input
       type="number"
       min={0}
       step={1}
-      value={value}
-      onChange={(e) => onChange(Math.max(0, Math.round(Number(e.target.value) || 0)))}
+      value={text}
+      onFocus={() => {
+        if (text === "0") setText("");
+      }}
+      onChange={(e) => {
+        setText(e.target.value);
+        onChange(Math.max(0, Math.round(Number(e.target.value) || 0)));
+      }}
+      onBlur={() => {
+        if (text.trim() === "") setText("0");
+      }}
       placeholder={placeholder}
       className={className ?? numberFieldCls}
     />
@@ -76,6 +100,33 @@ export function ToggleField({
       />
       включить
     </label>
+  );
+}
+
+/** Выбор диапазона объёма событий Post-View — фиксированная тарифная сетка
+ * вместо ввода числа руками (см. POST_VIEW_VOLUME_TIERS). */
+export function VolumeTierField({
+  value,
+  onChange,
+}: {
+  value: PostViewVolumeTier;
+  onChange: (value: PostViewVolumeTier) => void;
+}) {
+  return (
+    <select
+      value={value}
+      onChange={(e) => onChange(e.target.value as PostViewVolumeTier)}
+      className="w-full max-w-56 rounded-lg border border-border bg-background px-2 py-1.5 text-sm outline-none focus:border-blue-500"
+    >
+      <option value="NONE">Не выбрано</option>
+      {(Object.keys(POST_VIEW_VOLUME_TIERS) as (keyof typeof POST_VIEW_VOLUME_TIERS)[]).map(
+        (tier) => (
+          <option key={tier} value={tier}>
+            {POST_VIEW_VOLUME_TIERS[tier].label}
+          </option>
+        ),
+      )}
+    </select>
   );
 }
 

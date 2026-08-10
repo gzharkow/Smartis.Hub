@@ -9,6 +9,16 @@ import { z } from "zod";
 
 export type PostViewTierChoice = "NONE" | "UNDER_1M" | "OVER_1M";
 
+/** Объём событий Post-View медийной рекламы — фиксированная тарифная сетка,
+ * продавец выбирает диапазон, а не вводит число сам (см. POST_VIEW_VOLUME_TIERS). */
+export type PostViewVolumeTier =
+  | "NONE"
+  | "UNDER_1M"
+  | "1M_10M"
+  | "10M_50M"
+  | "50M_100M"
+  | "OVER_100M";
+
 export type BuilderCalculatorConfig = {
   clientType: "BUILDER";
   enterpriseLicense: boolean;
@@ -16,8 +26,8 @@ export type BuilderCalculatorConfig = {
   objectsCount: number;
   supportUsersCount: number;
   mediaPlanUpload: boolean;
-  /** 0 — строка Post-View не добавляется. */
-  postViewEventsCount: number;
+  /** NONE — строка Post-View не добавляется. */
+  postViewEventsTier: PostViewVolumeTier;
   cdpSegments: boolean;
   antifraud: boolean;
   box: boolean;
@@ -31,8 +41,8 @@ export type AutoDealerCalculatorConfig = {
   mediaPlanUpload: boolean;
   postViewAvitoTier: PostViewTierChoice;
   postViewAutoRuTier: PostViewTierChoice;
-  /** 0 — строка Post-View не добавляется. */
-  postViewOtherEventsCount: number;
+  /** NONE — строка Post-View не добавляется. */
+  postViewOtherEventsTier: PostViewVolumeTier;
   mindbox: boolean;
   cdpSegments: boolean;
   box: boolean;
@@ -44,6 +54,7 @@ export type QuoteCalculatorConfig = BuilderCalculatorConfig | AutoDealerCalculat
 
 const countSchema = z.number().int().min(0).max(999_999_999);
 const tierChoiceSchema = z.enum(["NONE", "UNDER_1M", "OVER_1M"]);
+const volumeTierSchema = z.enum(["NONE", "UNDER_1M", "1M_10M", "10M_50M", "50M_100M", "OVER_100M"]);
 
 export const BuilderConfigSchema = z.object({
   clientType: z.literal("BUILDER"),
@@ -52,7 +63,7 @@ export const BuilderConfigSchema = z.object({
   objectsCount: countSchema,
   supportUsersCount: countSchema,
   mediaPlanUpload: z.boolean(),
-  postViewEventsCount: countSchema,
+  postViewEventsTier: volumeTierSchema,
   cdpSegments: z.boolean(),
   antifraud: z.boolean(),
   box: z.boolean(),
@@ -66,7 +77,7 @@ export const AutoDealerConfigSchema = z.object({
   mediaPlanUpload: z.boolean(),
   postViewAvitoTier: tierChoiceSchema,
   postViewAutoRuTier: tierChoiceSchema,
-  postViewOtherEventsCount: countSchema,
+  postViewOtherEventsTier: volumeTierSchema,
   mindbox: z.boolean(),
   cdpSegments: z.boolean(),
   box: z.boolean(),
@@ -92,7 +103,7 @@ export const DEFAULT_BUILDER_CONFIG: BuilderCalculatorConfig = {
   objectsCount: 0,
   supportUsersCount: 0,
   mediaPlanUpload: false,
-  postViewEventsCount: 0,
+  postViewEventsTier: "NONE",
   cdpSegments: false,
   antifraud: false,
   box: false,
@@ -106,29 +117,34 @@ export const DEFAULT_AUTO_DEALER_CONFIG: AutoDealerCalculatorConfig = {
   mediaPlanUpload: false,
   postViewAvitoTier: "NONE",
   postViewAutoRuTier: "NONE",
-  postViewOtherEventsCount: 0,
+  postViewOtherEventsTier: "NONE",
   mindbox: false,
   cdpSegments: false,
   box: false,
 };
 
-// ─────────────────────────────  Post-View: цена по кол-ву событий  ─────────────────────────────
+// ─────────────────────────────  Post-View: тариф по объёму событий  ─────────────────────────────
 //
-// Таблица диапазонов для полей, где продавец вводит именно количество
-// событий (а не выбирает готовую цену, как у freeform-строк с
-// autoStorageLimit — см. STORAGE_LIMIT_TIERS в quote-calc.ts, её не трогаем).
-// Ценовые точки — подмножество той же тарифной сетки, поэтому
-// storageEventsLimitLabel продолжает находить подпись лимита по цене как
-// раньше; тариф в 150 000 этим полем просто никогда не выбирается.
+// Продавец выбирает готовый диапазон объёма событий, а не вводит число сам.
+// Ценовые точки — подмножество той же тарифной сетки, что STORAGE_LIMIT_TIERS
+// в quote-calc.ts, поэтому storageEventsLimitLabel продолжает находить
+// подпись лимита по цене строки как раньше; тариф в 150 000 этой сеткой
+// просто никогда не выбирается.
 
-/** 0 или меньше → строки нет. Иначе — плоская цена по диапазону. */
-export function postViewTierPrice(events: number): number | null {
-  if (events <= 0) return null;
-  if (events <= 1_000_000) return 25_000;
-  if (events <= 10_000_000) return 50_000;
-  if (events <= 50_000_000) return 100_000;
-  if (events <= 100_000_000) return 200_000;
-  return 300_000;
+export const POST_VIEW_VOLUME_TIERS: Record<
+  Exclude<PostViewVolumeTier, "NONE">,
+  { price: number; label: string }
+> = {
+  UNDER_1M: { price: 25_000, label: "от 1 до 1 млн" },
+  "1M_10M": { price: 50_000, label: "от 1 млн до 10 млн" },
+  "10M_50M": { price: 100_000, label: "от 10 млн до 50 млн" },
+  "50M_100M": { price: 200_000, label: "от 50 млн до 100 млн" },
+  OVER_100M: { price: 300_000, label: "от 100 млн и более" },
+};
+
+/** NONE → строки нет. Иначе — цена выбранного диапазона. */
+export function postViewVolumeTierPrice(tier: PostViewVolumeTier): number | null {
+  return tier === "NONE" ? null : POST_VIEW_VOLUME_TIERS[tier].price;
 }
 
 // ─────────────────────────────  Вывод секций/строк документа  ─────────────────────────────
@@ -224,7 +240,7 @@ function deriveBuilderDocument(config: BuilderCalculatorConfig): DerivedQuoteDoc
 
   const addonLines: DerivedLine[] = [];
 
-  const postViewPrice = postViewTierPrice(config.postViewEventsCount);
+  const postViewPrice = postViewVolumeTierPrice(config.postViewEventsTier);
   if (postViewPrice !== null) {
     addonLines.push(
       line("Post-View аналитика медийной рекламы", postViewPrice, {
@@ -313,7 +329,7 @@ function deriveAutoDealerDocument(config: AutoDealerCalculatorConfig): DerivedQu
     );
   }
 
-  const postViewOtherPrice = postViewTierPrice(config.postViewOtherEventsCount);
+  const postViewOtherPrice = postViewVolumeTierPrice(config.postViewOtherEventsTier);
   if (postViewOtherPrice !== null) {
     addonLines.push(
       line("Post-View аналитика другой медийной рекламы", postViewOtherPrice, {

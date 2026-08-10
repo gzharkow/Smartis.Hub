@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { cookies } from "next/headers";
 import { notFound } from "next/navigation";
-import { requireSectionView } from "@/lib/permissions";
+import { requireSectionView, showsOtherOwners, visibleOwnerFilter } from "@/lib/permissions";
 import { db } from "@/lib/db";
 import { parseViewMode, VIEW_COOKIE } from "@/lib/view-mode";
 import { hubOrderBy, HUB_SORT_COOKIE, parseHubSort } from "@/lib/hub-sort";
@@ -32,7 +32,7 @@ export default async function FolderPage({
   const hubs = await db.hub.findMany({
     where: {
       organizationId: user.organizationId,
-      ...(user.role === "ADMIN" ? {} : { ownerId: user.id }),
+      ...visibleOwnerFilter(user),
       status: { not: "ARCHIVED" },
       folderId: folder.id,
     },
@@ -40,7 +40,7 @@ export default async function FolderPage({
       _count: { select: { items: true, shareLinks: true } },
       // Бренд организации — фоллбэк для плитки, если у хаба свой не задан.
       organization: { select: { brandColor: true, logoUrl: true } },
-      ...(user.role === "ADMIN"
+      ...(showsOtherOwners(user)
         ? { owner: { select: { id: true, name: true, email: true } } }
         : {}),
     },

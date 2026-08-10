@@ -8,7 +8,7 @@ import {
   parseHubSort,
 } from "@/lib/hub-sort";
 import { formatHubCreated } from "@/lib/hub-format";
-import { hasEdit } from "@/lib/permissions";
+import { hasEdit, showsOtherOwners, visibleOwnerFilter } from "@/lib/permissions";
 import { ownerLabel } from "@/lib/owner-color";
 import { ViewToggle } from "@/components/view-toggle";
 import { HubSortControl } from "@/components/hub-sort-control";
@@ -25,8 +25,8 @@ export default async function HubsPage() {
   const hubs = await db.hub.findMany({
     where: {
       organizationId: user.organizationId,
-      // Продавец видит свои хабы, администратор — все.
-      ...(user.role === "ADMIN" ? {} : { ownerId: user.id }),
+      // Продавец видит свои хабы плюс те, что явно открыл суперадмин.
+      ...visibleOwnerFilter(user),
       // Удалённые живут в своём разделе — здесь они только мешали бы.
       status: { not: "ARCHIVED" },
     },
@@ -35,9 +35,10 @@ export default async function HubsPage() {
       folder: { select: { name: true } },
       // Бренд организации — фоллбэк для плитки, если у хаба свой не задан.
       organization: { select: { brandColor: true, logoUrl: true } },
-      // Только чтобы показать бейдж автора администратору — у него список
-      // содержит хабы разных сотрудников вперемешку.
-      ...(user.role === "ADMIN"
+      // Только чтобы показать бейдж автора — список может содержать хабы
+      // разных сотрудников вперемешку (у ADMIN всегда, у MEMBER — если
+      // ему открыли видимость чужих).
+      ...(showsOtherOwners(user)
         ? { owner: { select: { id: true, name: true, email: true } } }
         : {}),
     },

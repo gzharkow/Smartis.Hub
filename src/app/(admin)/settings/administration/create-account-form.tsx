@@ -2,32 +2,29 @@
 
 import { useActionState, useState } from "react";
 import { createAccount, type CreateAccountState } from "@/app/actions/users";
-import { emptyPermissions, type Permissions } from "@/lib/access-levels";
-import { PermissionMatrix } from "./permission-matrix";
+import { AccountVisibilityPicker, type AccountOption } from "./account-visibility-picker";
 import { copyText } from "./copy-text";
-
-type AccessLevelOption = { id: string; name: string };
 
 /**
  * Обёртка нужна только чтобы «Создать ещё аккаунт» полностью пересоздавала
  * форму (свежий useActionState) — смена key размонтирует и создаёт заново.
  */
-export function CreateAccountForm({ accessLevels }: { accessLevels: AccessLevelOption[] }) {
+export function CreateAccountForm({ accountOptions }: { accountOptions: AccountOption[] }) {
   const [formKey, setFormKey] = useState(0);
   return (
     <CreateAccountFormInner
       key={formKey}
-      accessLevels={accessLevels}
+      accountOptions={accountOptions}
       onCreateAnother={() => setFormKey((k) => k + 1)}
     />
   );
 }
 
 function CreateAccountFormInner({
-  accessLevels,
+  accountOptions,
   onCreateAnother,
 }: {
-  accessLevels: AccessLevelOption[];
+  accountOptions: AccountOption[];
   onCreateAnother: () => void;
 }) {
   const [state, action, pending] = useActionState<CreateAccountState, FormData>(
@@ -36,12 +33,8 @@ function CreateAccountFormInner({
   );
 
   const [role, setRole] = useState<"MEMBER" | "ADMIN">("MEMBER");
-  const [accessLevelMode, setAccessLevelMode] = useState<"existing" | "new">(
-    accessLevels.length > 0 ? "existing" : "new",
-  );
-  const [accessLevelId, setAccessLevelId] = useState(accessLevels[0]?.id ?? "");
-  const [accessLevelName, setAccessLevelName] = useState("");
-  const [permissions, setPermissions] = useState<Permissions>(emptyPermissions());
+  const [canAddAssets, setCanAddAssets] = useState(false);
+  const [visibleOwnerIds, setVisibleOwnerIds] = useState<string[]>([]);
   const [copied, setCopied] = useState(false);
 
   if (state && "success" in state) {
@@ -118,7 +111,7 @@ function CreateAccountFormInner({
               onChange={() => setRole("MEMBER")}
               className="size-4 accent-blue-600"
             />
-            Обычный пользователь — доступ по уровню
+            Обычный пользователь — доступ как у администратора, кроме материалов
           </label>
           <label className="flex items-center gap-2 text-sm">
             <input
@@ -135,62 +128,27 @@ function CreateAccountFormInner({
       </div>
 
       {role === "MEMBER" ? (
-        <div className="grid gap-3 rounded-lg border border-border p-4">
-          <div className="flex flex-wrap items-center gap-4">
-            <span className="text-sm font-medium">Уровень доступа</span>
-            {accessLevels.length > 0 ? (
-              <label className="flex items-center gap-2 text-sm">
-                <input
-                  type="radio"
-                  name="accessLevelMode"
-                  value="existing"
-                  checked={accessLevelMode === "existing"}
-                  onChange={() => setAccessLevelMode("existing")}
-                  className="size-4 accent-blue-600"
-                />
-                Существующий
-              </label>
-            ) : null}
-            <label className="flex items-center gap-2 text-sm">
-              <input
-                type="radio"
-                name="accessLevelMode"
-                value="new"
-                checked={accessLevelMode === "new"}
-                onChange={() => setAccessLevelMode("new")}
-                className="size-4 accent-blue-600"
-              />
-              Новый уровень
-            </label>
-          </div>
+        <div className="grid gap-4 rounded-lg border border-border p-4">
+          <label className="flex items-center gap-2 text-sm">
+            <input
+              type="checkbox"
+              className="size-4 accent-blue-600"
+              checked={canAddAssets}
+              onChange={(e) => setCanAddAssets(e.target.checked)}
+            />
+            Разрешить добавление материалов в библиотеку
+          </label>
+          <input type="hidden" name="canAddAssets" value={canAddAssets ? "1" : "0"} />
+          <p className="text-xs text-muted">
+            Переименование и удаление материалов всё равно останутся недоступны — это может
+            только администратор.
+          </p>
 
-          {accessLevelMode === "existing" ? (
-            <select
-              name="accessLevelId"
-              value={accessLevelId}
-              onChange={(e) => setAccessLevelId(e.target.value)}
-              className="w-full max-w-xs rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:border-blue-500"
-            >
-              {accessLevels.map((lvl) => (
-                <option key={lvl.id} value={lvl.id}>
-                  {lvl.name}
-                </option>
-              ))}
-            </select>
-          ) : (
-            <>
-              <input
-                name="accessLevelName"
-                required
-                value={accessLevelName}
-                onChange={(e) => setAccessLevelName(e.target.value)}
-                placeholder="Название уровня доступа, например «Авторынок»"
-                className="w-full max-w-sm rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:border-blue-500"
-              />
-              <PermissionMatrix value={permissions} onChange={setPermissions} />
-              <input type="hidden" name="permissions" value={JSON.stringify(permissions)} />
-            </>
-          )}
+          <AccountVisibilityPicker
+            options={accountOptions}
+            selected={visibleOwnerIds}
+            onChange={setVisibleOwnerIds}
+          />
         </div>
       ) : null}
 

@@ -1,5 +1,5 @@
 import { cookies } from "next/headers";
-import { requireSectionView, hasEdit } from "@/lib/permissions";
+import { requireSectionView, hasEdit, showsOtherOwners, visibleOwnerFilter } from "@/lib/permissions";
 import { db } from "@/lib/db";
 import { daysLeft, purgeExpiredHubs, TRASH_DAYS } from "@/lib/hub-trash";
 import { ownerLabel } from "@/lib/owner-color";
@@ -29,12 +29,12 @@ export default async function TrashPage() {
   const hubs = await db.hub.findMany({
     where: {
       organizationId: user.organizationId,
-      ...(user.role === "ADMIN" ? {} : { ownerId: user.id }),
+      ...visibleOwnerFilter(user),
       status: "ARCHIVED",
     },
     include: {
       _count: { select: { items: true, shareLinks: true } },
-      ...(user.role === "ADMIN"
+      ...(showsOtherOwners(user)
         ? { owner: { select: { id: true, name: true, email: true } } }
         : {}),
     },

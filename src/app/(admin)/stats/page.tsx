@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { cookies } from "next/headers";
-import { requireSectionView } from "@/lib/permissions";
+import { requireSectionView, visibleOwnerFilter } from "@/lib/permissions";
 import { db } from "@/lib/db";
 import { formatDuration, formatWhen, hubStats } from "@/lib/stats";
 import { plural, withPlural, WORDS } from "@/lib/plural";
@@ -24,8 +24,8 @@ export default async function StatsPage() {
       where: {
         organizationId: user.organizationId,
         // Как и в «Хабах»/«Генераторе КП»: без полного доступа видно только
-        // статистику по своим хабам, не по всей организации.
-        ...(user.role === "ADMIN" ? {} : { ownerId: user.id }),
+        // статистику по своим хабам плюс те, что явно открыл суперадмин.
+        ...visibleOwnerFilter(user),
       },
       include: {
         owner: { select: { name: true, email: true } },

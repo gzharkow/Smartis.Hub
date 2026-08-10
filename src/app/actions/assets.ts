@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { requireUser } from "@/lib/auth";
-import { hasEdit } from "@/lib/permissions";
+import { canAddMaterials, hasEdit } from "@/lib/permissions";
 import { db } from "@/lib/db";
 import { parseSection, permissionKeyForSection } from "@/lib/asset-sections";
 import { checkLink, downloadLinkImage } from "@/lib/link-check";
@@ -107,6 +107,41 @@ export async function restoreAsset(assetId: string) {
   revalidatePath("/hubs");
 }
 
+/** Хабы, где сейчас стоит материал — показать перед безвозвратным удалением. */
+export async function getAssetHubUsage(assetId: string) {
+  const { asset } = await ownedAsset(assetId);
+
+  const items = await db.hubItem.findMany({
+    where: { assetId: asset.id },
+    include: { hub: { select: { id: true, title: true } } },
+  });
+
+  return items.map((item) => ({ hubId: item.hub.id, hubTitle: item.hub.title }));
+}
+
+/**
+ * Безвозвратное удаление — только из «Удалённых» (см. archiveAsset). Материал
+ * мог остаться прикреплённым к хабам (архивирование их не отвязывает) —
+ * отвязываем заодно, интерфейс уже предупредил об этом списком хабов.
+ */
+export async function deleteAssetPermanently(assetId: string) {
+  const { asset } = await ownedAsset(assetId);
+  if (asset.archivedAt === null) {
+    throw new Error("Сначала удалите материал — он должен быть в «Удалённых».");
+  }
+
+  await db.$transaction([
+    db.hubItem.deleteMany({ where: { assetId: asset.id } }),
+    db.asset.delete({ where: { id: asset.id } }),
+  ]);
+
+  if (asset.storageKey) await storage.delete(asset.storageKey).catch(() => {});
+  if (asset.thumbnailKey) await storage.delete(asset.thumbnailKey).catch(() => {});
+
+  revalidatePath("/assets");
+  revalidatePath("/hubs");
+}
+
 export type AddLinkState =
   | { error: string }
   | { ok: true; title: string; embeddable: boolean }
@@ -129,7 +164,7 @@ export async function addLinkAsset(
   if (!url) return { error: "Введите адрес ссылки." };
 
   const section = parseSection(formData.get("section")) ?? "COMMON";
-  if (!hasEdit(user, permissionKeyForSection(section))) {
+  if (!canAddMaterials(user)) {
     return { error: "Недостаточно прав." };
   }
   const typed = String(formData.get("title") ?? "").trim();

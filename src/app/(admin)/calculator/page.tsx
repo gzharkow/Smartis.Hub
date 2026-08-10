@@ -1,7 +1,7 @@
 import Link from "next/link";
 import Decimal from "decimal.js";
 import { cookies } from "next/headers";
-import { requireSectionView, hasEdit } from "@/lib/permissions";
+import { requireSectionView, hasEdit, showsOtherOwners, visibleOwnerFilter } from "@/lib/permissions";
 import { db } from "@/lib/db";
 import { formatHubCreated } from "@/lib/hub-format";
 import { ownerLabel } from "@/lib/owner-color";
@@ -25,8 +25,8 @@ export default async function CalculatorPage() {
   const quotes = await db.quote.findMany({
     where: {
       organizationId: user.organizationId,
-      // Продавец видит свои расчёты, администратор — все.
-      ...(user.role === "ADMIN" ? {} : { ownerId: user.id }),
+      // Продавец видит свои расчёты плюс те, что явно открыл суперадмин.
+      ...visibleOwnerFilter(user),
       archivedAt: null,
     },
     include: {
@@ -34,9 +34,9 @@ export default async function CalculatorPage() {
       // (СА) от остальных (Решения) — без явной сортировки Prisma не гарантирует
       // порядок вложенной выборки.
       sections: { orderBy: { position: "asc" }, include: { lines: true } },
-      // Только чтобы показать бейдж автора администратору — у него список
-      // содержит расчёты разных сотрудников вперемешку.
-      ...(user.role === "ADMIN"
+      // Только чтобы показать бейдж автора — список может содержать расчёты
+      // разных сотрудников вперемешку.
+      ...(showsOtherOwners(user)
         ? { owner: { select: { id: true, name: true, email: true } } }
         : {}),
     },

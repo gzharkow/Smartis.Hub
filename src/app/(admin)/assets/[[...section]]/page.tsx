@@ -1,7 +1,7 @@
 import { cookies } from "next/headers";
 import { notFound, redirect } from "next/navigation";
 import { requireUser } from "@/lib/auth";
-import { hasEdit, hasView } from "@/lib/permissions";
+import { canAddMaterials, hasEdit, hasView } from "@/lib/permissions";
 import { db } from "@/lib/db";
 import { formatFileSize, KIND_LABELS } from "@/lib/assets";
 import { formatHubCreated } from "@/lib/hub-format";
@@ -48,7 +48,7 @@ export default async function AssetsPage({
   // у конкретного раздела — "assets.<slug>" (тот же slug, что и в адресе).
   const permissionKey = slug ? `assets.${slug}` : "assets";
   if (!hasView(user, permissionKey)) redirect("/hubs");
-  const canEdit = hasEdit(user, permissionKey);
+  const canAdd = canAddMaterials(user);
 
   const info = SECTIONS.find((s) => s.value === section);
 
@@ -120,7 +120,7 @@ export default async function AssetsPage({
 
       {/* key: при переходе между разделами загрузчик собирается заново, чтобы
           выбранный в нём раздел совпал с открытой страницей. */}
-      {canEdit ? (
+      {canAdd ? (
         <>
           <AssetUploader key={slug ?? "all"} defaultSection={section} />
           <LinkForm key={`link-${slug ?? "all"}`} defaultSection={section} />

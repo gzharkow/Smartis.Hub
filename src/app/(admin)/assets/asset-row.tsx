@@ -5,6 +5,8 @@ import { useRouter } from "next/navigation";
 import {
   archiveAsset,
   backfillLinkThumbnail,
+  deleteAssetPermanently,
+  getAssetHubUsage,
   renameAsset,
   restoreAsset,
   setAssetSection,
@@ -56,6 +58,22 @@ export function AssetRow({
   const [thumbError, setThumbError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
   const [previewing, setPreviewing] = useState(false);
+
+  // Безвозвратное удаление (только из «Удалённых»): сначала показываем, из
+  // каких хабов материал пропадёт, и только потом — кнопку подтверждения.
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
+  const [hubUsage, setHubUsage] = useState<{ hubId: string; hubTitle: string }[] | null>(null);
+  const [loadingUsage, setLoadingUsage] = useState(false);
+
+  async function startConfirmingDelete() {
+    setConfirmingDelete(true);
+    setLoadingUsage(true);
+    try {
+      setHubUsage(await getAssetHubUsage(asset.id));
+    } finally {
+      setLoadingUsage(false);
+    }
+  }
 
   // Отдельный transition от архивации/раздела: переименование не должно
   // блокировать кнопку «Удалить», и наоборот.
@@ -189,14 +207,50 @@ export function AssetRow({
     ) : null;
 
   const actionCluster = !canEdit ? null : asset.archived ? (
-    <button
-      type="button"
-      disabled={pending}
-      onClick={() => startTransition(() => restoreAsset(asset.id))}
-      className="shrink-0 rounded px-2 py-1 text-xs font-medium text-blue-600 transition hover:bg-blue-500/10 disabled:opacity-50 dark:text-blue-400"
-    >
-      {pending ? "…" : "Восстановить"}
-    </button>
+    confirmingDelete ? (
+      <span className="flex shrink-0 flex-wrap items-center gap-2">
+        <span className="text-xs text-muted">
+          {loadingUsage
+            ? "Проверяем хабы…"
+            : hubUsage && hubUsage.length > 0
+              ? `Будет удалён из хабов: ${hubUsage.map((h) => h.hubTitle).join(", ")}`
+              : "Удалить навсегда?"}
+        </span>
+        <button
+          type="button"
+          disabled={pending || loadingUsage}
+          onClick={() => startTransition(() => deleteAssetPermanently(asset.id))}
+          className="rounded px-2 py-1 text-xs font-medium text-red-600 transition hover:bg-red-500/10 disabled:opacity-50 dark:text-red-400"
+        >
+          {pending ? "…" : "Удалить навсегда"}
+        </button>
+        <button
+          type="button"
+          onClick={() => setConfirmingDelete(false)}
+          className="rounded px-2 py-1 text-xs text-muted transition hover:bg-border/60"
+        >
+          Отмена
+        </button>
+      </span>
+    ) : (
+      <span className="flex shrink-0 items-center gap-2">
+        <button
+          type="button"
+          disabled={pending}
+          onClick={() => startTransition(() => restoreAsset(asset.id))}
+          className="shrink-0 rounded px-2 py-1 text-xs font-medium text-blue-600 transition hover:bg-blue-500/10 disabled:opacity-50 dark:text-blue-400"
+        >
+          {pending ? "…" : "Восстановить"}
+        </button>
+        <button
+          type="button"
+          onClick={startConfirmingDelete}
+          className="shrink-0 rounded px-2 py-1 text-xs text-muted transition hover:bg-red-500/10 hover:text-red-600 dark:hover:text-red-400"
+        >
+          Удалить навсегда
+        </button>
+      </span>
+    )
   ) : confirming ? (
     // Подтверждение прямо в строке, а не окном браузера: окна легко
     // закрываются вслепую, а здесь видно, что именно удаляешь.

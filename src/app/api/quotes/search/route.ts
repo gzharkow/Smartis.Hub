@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
+import { visibleOwnerFilter } from "@/lib/permissions";
 import { db } from "@/lib/db";
 
 // Поиск расчётов калькулятора для «добавить в хаб» — не путать с общим
@@ -15,8 +16,8 @@ export async function GET(request: Request) {
   const quotes = await db.quote.findMany({
     where: {
       organizationId: user.organizationId,
-      // Продавец видит свои расчёты, администратор — все, как в /calculator.
-      ...(user.role === "ADMIN" ? {} : { ownerId: user.id }),
+      // Та же логика видимости, что в /calculator.
+      ...visibleOwnerFilter(user),
       archivedAt: null,
       ...(q ? { clientName: { contains: q, mode: "insensitive" } } : {}),
     },

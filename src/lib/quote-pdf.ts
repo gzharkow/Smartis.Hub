@@ -315,7 +315,13 @@ export async function renderQuotePdf(data: QuotePdfData): Promise<Uint8Array> {
 
   if (totals.boxIntegrationPayment) {
     text("Интеграционный платеж коробочного решения", MARGIN, cursorY, { font: bold, size: 11 });
-    text(formatMoney(totals.boxIntegrationPayment), COLS.incVat.x, cursorY, {
+    text(formatMoney(totals.boxIntegrationPayment.withoutVat), COLS.exVat.x, cursorY, {
+      font: bold,
+      size: 9.5,
+      align: "right",
+      maxWidth: COLS.exVat.w,
+    });
+    text(formatMoney(totals.boxIntegrationPayment.withVat), COLS.incVat.x, cursorY, {
       font: bold,
       size: 11,
       align: "right",

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
-import { hasEdit } from "@/lib/permissions";
+import { canAddMaterials } from "@/lib/permissions";
 import { db } from "@/lib/db";
 import { storage, storageKeys } from "@/lib/storage";
 import {
@@ -9,7 +9,7 @@ import {
   MAX_UPLOAD_BYTES,
   readPdfPageCount,
 } from "@/lib/assets";
-import { parseSection, permissionKeyForSection } from "@/lib/asset-sections";
+import { parseSection } from "@/lib/asset-sections";
 
 export async function POST(request: Request) {
   // Маршрут дёргают напрямую, а не только из нашей формы — проверяем вход здесь,
@@ -47,7 +47,7 @@ export async function POST(request: Request) {
   // Раздел не пришёл или пришёл незнакомый — кладём в «Общие». Терять файл
   // из-за этого незачем: раздел потом меняется одним нажатием.
   const section = parseSection(form.get("section")) ?? "COMMON";
-  if (!hasEdit(user, permissionKeyForSection(section))) {
+  if (!canAddMaterials(user)) {
     return NextResponse.json({ error: "Недостаточно прав." }, { status: 403 });
   }
 
