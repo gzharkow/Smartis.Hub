@@ -3,38 +3,46 @@ import { notFound } from "next/navigation";
 import { requireSectionView } from "@/lib/permissions";
 import { db } from "@/lib/db";
 import { KIND_LABELS } from "@/lib/assets";
-import { formatDuration, formatWhen, hubDetail, type ItemStats } from "@/lib/stats";
+import {
+  formatDuration,
+  formatWhen,
+  hubDetail,
+  visitTimeline,
+  timeDonutSegments,
+  readDepthSegment,
+  type ItemStats,
+} from "@/lib/stats";
 import { parseStatsRange } from "@/lib/stats-range";
 import { StatsRangePicker } from "@/components/stats-range-picker";
 import { withPlural, WORDS } from "@/lib/plural";
 import type { AssetKind } from "@/generated/prisma/enums";
+import { StatusPill } from "./components/status-pill";
+import { KpiTile } from "./components/kpi-tile";
+import { DonutChart } from "./components/donut-chart";
+import { RankedBarChart } from "./components/ranked-bar-chart";
+import { PageHeatmap } from "./components/page-heatmap";
+import { VisitTimeline } from "./components/visit-timeline";
 
 export const dynamic = "force-dynamic";
 
-function PageBar({ item }: { item: ItemStats }) {
-  if (item.topPages.length === 0) return null;
+/** Строка-подпись под материалом. Однострочные PDF и ссылки — по особым
+ * правилам из ТЗ (не путать «дочитанность» однострочника с настоящей
+ * глубиной; для ссылок глубина в принципе недоступна). */
+function itemMeta(item: ItemStats): string {
+  const parts: string[] = [`открывали ${withPlural(item.opens, WORDS.time)}`];
+  if (item.downloads > 0) {
+    parts.push(`скачивали ${withPlural(item.downloads, WORDS.time)}`);
+  }
 
-  const max = Math.max(...item.topPages.map((p) => p.ms));
+  if (item.kind === "LINK") {
+    parts.push(`переходов: ${item.linkClicks}`, "глубина недоступна");
+  } else if (item.kind === "PDF" && item.isSinglePage) {
+    parts.push("1 стр. — прочитан полностью");
+  } else if (item.kind === "PDF" && item.maxPage && item.pageCount) {
+    parts.push(`долистали до ${item.maxPage}-й из ${item.pageCount}`);
+  }
 
-  return (
-    <div className="mt-3 grid gap-1.5">
-      <p className="text-xs text-muted">Где задержались дольше всего</p>
-      {item.topPages.map((p) => (
-        <div key={p.page} className="flex items-center gap-2 text-xs">
-          <span className="w-16 shrink-0 text-muted">стр. {p.page}</span>
-          <span className="h-2 min-w-0 flex-1 overflow-hidden rounded-full bg-border">
-            <span
-              className="block h-full rounded-full bg-blue-600"
-              style={{ width: `${Math.round((p.ms / max) * 100)}%` }}
-            />
-          </span>
-          <span className="w-20 shrink-0 text-right tabular-nums">
-            {formatDuration(p.ms)}
-          </span>
-        </div>
-      ))}
-    </div>
-  );
+  return parts.join(" · ");
 }
 
 export default async function HubStatsPage({
@@ -59,6 +67,9 @@ export default async function HubStatsPage({
   const links = await hubDetail(hub.id, range);
   const opened = links.filter((l) => l.visits > 0);
   const untouched = links.filter((l) => l.visits === 0);
+  const timelines = await Promise.all(
+    opened.map((link) => visitTimeline(link.linkId, range)),
+  );
 
   return (
     <div className="grid grid-cols-1 gap-8">
@@ -100,146 +111,203 @@ export default async function HubStatsPage({
         </div>
       ) : null}
 
-      {opened.map((link) => (
-        <section key={link.linkId} className="grid grid-cols-1 gap-4">
-          <div className="flex flex-wrap items-baseline gap-x-4 gap-y-1 border-b border-border pb-3">
-            <h2 className="text-lg font-semibold tracking-tight">
-              {link.company ?? "Без названия"}
-            </h2>
-            {link.revoked ? (
-              <span className="rounded bg-border/70 px-1.5 py-0.5 text-xs">
-                ссылка отозвана
-              </span>
-            ) : null}
-            {link.expired ? (
-              <span className="rounded bg-border/70 px-1.5 py-0.5 text-xs">
-                ссылка истекла
-              </span>
-            ) : null}
-          </div>
+      {opened.map((link, idx) => {
+        const timeline = timelines[idx];
+        const timeSegments = timeDonutSegments(link.items);
+        const depthSeg = readDepthSegment(link.readDepth);
+        const materialsWithTime = link.items.filter((i) => i.totalMs > 0).length;
+        const depthPct = link.readDepth.pct != null ? Math.round(link.readDepth.pct * 100) : null;
 
-          <dl className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-            {[
-              { label: "Заходов", value: String(link.visits) },
-              {
-                label: "Человек",
-                value: String(link.visitors),
-                hint: "Разные устройства или люди по одной ссылке",
-              },
-              { label: "Всего времени", value: formatDuration(link.totalMs) },
-              { label: "Последний заход", value: formatWhen(link.lastSeenAt) },
-            ].map((cell) => (
-              <div
-                key={cell.label}
-                className="rounded-lg border border-border px-3 py-2"
-                title={cell.hint}
-              >
-                <dt className="text-xs text-muted">{cell.label}</dt>
-                <dd className="mt-0.5 font-semibold">{cell.value}</dd>
-              </div>
-            ))}
-          </dl>
-
-          {/* Клики по кнопкам шапки — самые «горячие» сигналы: клиент
-              не просто смотрел, а сделал шаг навстречу. Показываем, только
-              если что-то из этого было. */}
-          {link.demoClicks > 0 || link.contactClicks > 0 ? (
-            <p className="flex flex-wrap gap-x-4 gap-y-1 text-sm">
-              {link.demoClicks > 0 ? (
-                <span className="text-emerald-700 dark:text-emerald-400">
-                  Демо-кабинет открывали{" "}
-                  {withPlural(link.demoClicks, WORDS.time)}
+        return (
+          <section key={link.linkId} className="grid grid-cols-1 gap-4">
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-1 border-b border-border pb-3">
+              <h2 className="text-lg font-semibold tracking-tight">
+                {link.company ?? "Без названия"}
+              </h2>
+              <StatusPill tag={link.statusTag} />
+              <span className="text-xs text-muted">
+                Последний заход: {formatWhen(link.lastSeenAt)}
+              </span>
+              {link.revoked ? (
+                <span className="rounded bg-border/70 px-1.5 py-0.5 text-xs">
+                  ссылка отозвана
                 </span>
               ) : null}
-              {link.contactClicks > 0 ? (
-                <span className="text-emerald-700 dark:text-emerald-400">
-                  «Задать вопрос» нажимали{" "}
-                  {withPlural(link.contactClicks, WORDS.time)}
+              {link.expired ? (
+                <span className="rounded bg-border/70 px-1.5 py-0.5 text-xs">
+                  ссылка истекла
                 </span>
               ) : null}
-            </p>
-          ) : null}
+            </div>
 
-          {link.items.length === 0 ? (
-            <p className="text-sm text-muted">
-              Витрину открывали, но ни один материал не смотрели.
-            </p>
-          ) : (
-            <ul className="grid grid-cols-1 gap-2">
-              {link.items.map((item) => (
-                <li
-                  key={item.assetId}
-                  className="rounded-xl border border-border bg-surface px-4 py-3"
-                >
-                  <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-                    <span className="rounded bg-border/70 px-1.5 py-0.5 text-xs">
-                      {KIND_LABELS[item.kind as AssetKind]}
-                    </span>
-                    <span className="min-w-0 flex-1 truncate font-medium">
-                      {item.title}
-                    </span>
-                    <span className="shrink-0 text-sm font-semibold tabular-nums">
-                      {/* Пульс идёт раз в 10 секунд, поэтому «0 сек» означает
-                          не «данных нет», а «закрыли быстрее, чем через 10».
-                          Так и пишем, иначе цифра выглядит как ошибка. */}
-                      {item.totalMs === 0 && item.opens > 0
-                        ? "меньше 10 сек"
-                        : formatDuration(item.totalMs)}
-                    </span>
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+              <KpiTile
+                label="Заходов"
+                value={String(link.visits)}
+                sub={withPlural(link.visitors, WORDS.person)}
+                hint="Разные устройства или люди по одной ссылке"
+              />
+              <KpiTile label="Общее время в хабе" value={formatDuration(link.totalMs)} />
+              <KpiTile
+                label="Прочитано страниц"
+                value={link.readDepth.of > 0 ? `${link.readDepth.read}/${link.readDepth.of}` : "—"}
+                sub={depthPct != null ? `${depthPct}%` : "нет многостраничных PDF"}
+              />
+              <KpiTile
+                label="Время на материалах"
+                value={formatDuration(link.itemsTimeMs)}
+                flag={link.timeGapFlag}
+                hint={
+                  link.timeGapFlag
+                    ? "Заметно меньше общего времени в хабе — похоже на открытую фоновую вкладку, а не чтение"
+                    : undefined
+                }
+              />
+            </div>
+
+            {/* Клики по кнопкам шапки — самые «горячие» сигналы: клиент
+                не просто смотрел, а сделал шаг навстречу. Показываем, только
+                если что-то из этого было. */}
+            {link.demoClicks > 0 || link.contactClicks > 0 ? (
+              <p className="flex flex-wrap gap-x-4 gap-y-1 text-sm">
+                {link.demoClicks > 0 ? (
+                  <span className="text-emerald-700 dark:text-emerald-400">
+                    Демо-кабинет открывали{" "}
+                    {withPlural(link.demoClicks, WORDS.time)}
+                  </span>
+                ) : null}
+                {link.contactClicks > 0 ? (
+                  <span className="text-emerald-700 dark:text-emerald-400">
+                    «Задать вопрос» нажимали{" "}
+                    {withPlural(link.contactClicks, WORDS.time)}
+                  </span>
+                ) : null}
+              </p>
+            ) : null}
+
+            {link.items.length === 0 ? (
+              <p className="text-sm text-muted">
+                Витрину открывали, но ни один материал не смотрели.
+              </p>
+            ) : (
+              <>
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div className="rounded-xl border border-border bg-surface p-4">
+                    <p className="mb-3 font-mono text-[11px] tracking-wide text-muted uppercase">
+                      Куда ушло время
+                    </p>
+                    <DonutChart
+                      segments={timeSegments}
+                      centerLabel={formatDuration(link.itemsTimeMs)}
+                      centerSub={withPlural(materialsWithTime, WORDS.material)}
+                    />
                   </div>
 
-                  <p className="mt-1 text-sm text-muted">
-                    открывали {withPlural(item.opens, WORDS.time)}
-                    {item.downloads > 0
-                      ? ` · скачивали ${withPlural(item.downloads, WORDS.time)}`
-                      : ""}
-                    {/* Для ссылки это главное: дальше клиент на чужом сайте,
-                        и время там мы не видим. */}
-                    {item.linkClicks > 0
-                      ? ` · переходили на сайт ${withPlural(item.linkClicks, WORDS.time)}`
-                      : ""}
-                    {item.maxPage && item.pageCount
-                      ? ` · долистали до ${item.maxPage}-й из ${item.pageCount}`
-                      : ""}
+                  <div className="rounded-xl border border-border bg-surface p-4">
+                    <p className="mb-3 font-mono text-[11px] tracking-wide text-muted uppercase">
+                      Глубина прочтения
+                    </p>
+                    {depthSeg ? (
+                      <div className="flex flex-wrap items-center gap-5">
+                        <DonutChart
+                          segments={[depthSeg]}
+                          total={link.readDepth.of}
+                          centerLabel={depthPct != null ? `${depthPct}%` : "—"}
+                          centerSub={`${link.readDepth.read} из ${link.readDepth.of} стр.`}
+                          legend={false}
+                        />
+                        <ul className="grid gap-1.5 text-xs">
+                          <li>
+                            Переходы по ссылкам:{" "}
+                            <span className="font-mono tabular-nums">{link.linkClicksTotal}</span>
+                          </li>
+                          <li>
+                            Демо-кабинет:{" "}
+                            <span className="font-mono tabular-nums">{link.demoClicks}</span>
+                          </li>
+                          <li>
+                            «Задать вопрос»:{" "}
+                            <span className="font-mono tabular-nums">{link.contactClicks}</span>
+                          </li>
+                        </ul>
+                      </div>
+                    ) : (
+                      <p className="text-sm text-muted">Многостраничных PDF в этом хабе нет.</p>
+                    )}
+                    {link.singlePageOpened.length > 0 ? (
+                      <p className="mt-3 text-xs text-muted">
+                        Не в этом графике (1 стр., прочитаны полностью):{" "}
+                        {link.singlePageOpened.join(", ")}
+                      </p>
+                    ) : null}
+                  </div>
+                </div>
+
+                <div className="rounded-xl border border-border bg-surface p-4">
+                  <p className="mb-3 font-mono text-[11px] tracking-wide text-muted uppercase">
+                    Рейтинг материалов по времени
                   </p>
+                  <RankedBarChart items={link.items} />
+                </div>
 
-                  {item.maxPage && item.pageCount ? (
-                    <span
-                      className="mt-2 block h-1.5 overflow-hidden rounded-full bg-border"
-                      title={`Дочитано ${Math.round((item.maxPage / item.pageCount) * 100)}%`}
+                <ul className="grid grid-cols-1 gap-2">
+                  {link.items.map((item) => (
+                    <li
+                      key={item.assetId}
+                      className="rounded-xl border border-border bg-surface px-4 py-3"
                     >
-                      <span
-                        className="block h-full rounded-full bg-green-600"
-                        style={{
-                          width: `${Math.round((item.maxPage / item.pageCount) * 100)}%`,
-                        }}
-                      />
-                    </span>
-                  ) : null}
+                      <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                        <span className="rounded bg-border/70 px-1.5 py-0.5 text-xs">
+                          {KIND_LABELS[item.kind as AssetKind]}
+                        </span>
+                        <span className="min-w-0 flex-1 truncate font-medium">
+                          {item.title}
+                        </span>
+                        {item.versionNote ? (
+                          <span className="shrink-0 text-xs text-muted">
+                            ({item.versionNote})
+                          </span>
+                        ) : null}
+                        <span className="shrink-0 font-mono text-sm font-semibold tabular-nums">
+                          {/* Пульс идёт раз в 10 секунд, поэтому «0 сек» означает
+                              не «данных нет», а «закрыли быстрее, чем через 10». */}
+                          {item.totalMs === 0 && item.opens > 0
+                            ? "меньше 10 сек"
+                            : formatDuration(item.totalMs)}
+                        </span>
+                      </div>
 
-                  <PageBar item={item} />
-                </li>
-              ))}
-            </ul>
-          )}
+                      <p className="mt-1 text-sm text-muted">{itemMeta(item)}</p>
 
-          {/* Что отправили, но клиент не открыл — часто важнее того, что открыл. */}
-          {(() => {
-            const seen = new Set(link.items.map((i) => i.assetId));
-            const missed = hub.items.filter((i) => !seen.has(i.assetId));
-            if (missed.length === 0) return null;
+                      {item.kind === "PDF" && !item.isSinglePage && item.pageHeat.length > 0 ? (
+                        <PageHeatmap pages={item.pageHeat} />
+                      ) : null}
+                    </li>
+                  ))}
+                </ul>
+              </>
+            )}
 
-            return (
-              <p className="text-sm text-muted">
-                <span className="font-medium">Не открывали:</span>{" "}
-                {missed
-                  .map((i) => i.titleOverride ?? i.asset.title)
-                  .join(", ")}
-              </p>
-            );
-          })()}
-        </section>
-      ))}
+            {/* Что отправили, но клиент не открыл — часто важнее того, что открыл. */}
+            {(() => {
+              const seen = new Set(link.items.map((i) => i.assetId));
+              const missed = hub.items.filter((i) => !seen.has(i.assetId));
+              if (missed.length === 0) return null;
+
+              return (
+                <p className="text-sm text-muted">
+                  <span className="font-medium">Не открывали:</span>{" "}
+                  {missed
+                    .map((i) => i.titleOverride ?? i.asset.title)
+                    .join(", ")}
+                </p>
+              );
+            })()}
+
+            <VisitTimeline visits={timeline} />
+          </section>
+        );
+      })}
 
       {untouched.length > 0 ? (
         <section>

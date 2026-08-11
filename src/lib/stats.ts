@@ -10,6 +10,17 @@ import type { StatsRange } from "./stats-range";
 // обрезан потолком при приёме. Складывать «открыл минус закрыл» нельзя —
 // события закрытия может не быть вовсе.
 
+/** С какой давности захода пилюля «активный интерес» ещё горит. */
+const HOT_DAYS = 7;
+/** С какой давности захода пилюля переключается на «остыл». Между HOT_DAYS
+ * и этим порогом — нейтрально, пилюля не показывается, только дата. */
+const COLD_DAYS = 30;
+/** Если время на материалах меньше этой доли общего времени в хабе —
+ * подозрительно (открытая фоновая вкладка, а не чтение), подсвечиваем плитку. */
+const TIME_GAP_RATIO = 0.5;
+
+const DAY_MS = 24 * 60 * 60 * 1000;
+
 export type HubStats = {
   hubId: string;
   visits: number;
@@ -79,22 +90,10 @@ export async function hubStats(organizationId: string): Promise<Map<string, HubS
   return result;
 }
 
-export type LinkStats = {
-  linkId: string;
-  company: string | null;
-  token: string;
-  revoked: boolean;
-  expired: boolean;
-  visits: number;
-  visitors: number;
-  totalMs: number;
-  /** Сколько раз открывали демо-кабинет и жали «Задать вопрос» — по всей ссылке. */
-  demoClicks: number;
-  contactClicks: number;
-  firstSeenAt: Date | null;
-  lastSeenAt: Date | null;
-  items: ItemStats[];
-};
+/** Час пик на тепловой карте страниц: 0 — не открывали (серый), 1–4 — тёплая
+ * шкала от бледного до тёмно-красного, пропорционально самой залипчивой
+ * странице документа. */
+export type PageHeat = { page: number; ms: number; level: 0 | 1 | 2 | 3 | 4 };
 
 export type ItemStats = {
   assetId: string;
@@ -108,9 +107,133 @@ export type ItemStats = {
   linkClicks: number;
   /** Докуда долистали в PDF. */
   maxPage: number | null;
-  /** Страницы, где задержались дольше всего. */
+  /** Страницы, где задержались дольше всего (топ-5, для легенды/подписи). */
   topPages: { page: number; ms: number }[];
+  /** Полная тепловая карта страниц — по одной ячейке на каждую страницу
+   * документа. Пусто для не-PDF. */
+  pageHeat: PageHeat[];
+  /** Однострочный документ всегда даёт 100% дочитывания — это не заслуга,
+   * а свойство длины. Помечаем отдельно и не мешаем с остальными в сортировке
+   * по глубине. */
+  isSinglePage: boolean;
+  /** Заполнено, если строка — результат схлопывания нескольких версий одного
+   * расчёта КП (общий quoteId): «версия от 12 августа». */
+  versionNote: string | null;
 };
+
+export type TimelineChip = {
+  type: string;
+  label: string;
+  at: Date;
+};
+
+export type VisitTimelineEntry = {
+  visitId: string;
+  /** Порядковый номер человека по этой ссылке (1-й, 2-й...), не захода —
+   * один человек может заходить несколько раз. */
+  personOrdinal: number;
+  startedAt: Date;
+  lastSeenAt: Date;
+  chips: TimelineChip[];
+};
+
+export type LinkStats = {
+  linkId: string;
+  company: string | null;
+  token: string;
+  revoked: boolean;
+  expired: boolean;
+  visits: number;
+  visitors: number;
+  totalMs: number;
+  /** Сумма времени по материалам — сравнивается с totalMs, чтобы поймать
+   * разрыв «общее время в хабе» vs «время на материалах». */
+  itemsTimeMs: number;
+  /** Сумма переходов по внешним ссылкам среди всех материалов — сигнал
+   * действия рядом с кольцом «глубина прочтения». */
+  linkClicksTotal: number;
+  /** «Заходил недавно» / «давно не заходил» — по давности lastSeenAt. */
+  statusTag: "hot" | "cold" | null;
+  /** itemsTimeMs заметно меньше totalMs — похоже на фоновую вкладку. */
+  timeGapFlag: boolean;
+  /** Сколько раз открывали демо-кабинет и жали «Задать вопрос» — по всей ссылке. */
+  demoClicks: number;
+  contactClicks: number;
+  firstSeenAt: Date | null;
+  lastSeenAt: Date | null;
+  items: ItemStats[];
+  /** Агрегированная глубина чтения по всем многостраничным PDF сразу —
+   * однострочные документы в сумму не входят (см. ItemStats.isSinglePage). */
+  readDepth: { read: number; of: number; pct: number | null };
+  /** Названия однострочных документов, которые открывали — отдельная сноска,
+   * а не часть графика глубины. */
+  singlePageOpened: string[];
+};
+
+type RawTimelineEvent = {
+  type: string;
+  occurredAt: Date;
+  assetId: string | null;
+  pageNumber: number | null;
+  durationMs: number | null;
+};
+
+const TIMELINE_EVENT_TYPES = [
+  "HUB_VIEW",
+  "ITEM_OPEN",
+  "LINK_CLICK",
+  "DEMO_CLICK",
+  "CONTACT_CLICK",
+  "DOWNLOAD",
+  "HEARTBEAT",
+  "PAGE_VIEW",
+] as const;
+
+const NOTABLE_TIMELINE_TYPES = new Set([
+  "HUB_VIEW",
+  "ITEM_OPEN",
+  "LINK_CLICK",
+  "DEMO_CLICK",
+  "CONTACT_CLICK",
+  "DOWNLOAD",
+]);
+
+/** Уровень тепла страницы: 0, если её не открывали, иначе 1–4 пропорционально
+ * самой залипчивой странице документа (не квантили — важен именно пик). */
+function heatLevel(ms: number, maxMs: number): 0 | 1 | 2 | 3 | 4 {
+  if (ms <= 0 || maxMs <= 0) return 0;
+  return Math.min(4, Math.max(1, Math.ceil((ms / maxMs) * 4))) as 1 | 2 | 3 | 4;
+}
+
+function buildPageHeat(pageCount: number | null, msByPage: Map<number, number>): PageHeat[] {
+  if (!pageCount || pageCount < 1) return [];
+  const maxMs = Math.max(0, ...msByPage.values());
+  const pages: PageHeat[] = [];
+  for (let page = 1; page <= pageCount; page += 1) {
+    const ms = msByPage.get(page) ?? 0;
+    pages.push({ page, ms, level: heatLevel(ms, maxMs) });
+  }
+  return pages;
+}
+
+const shortDateFmt = new Intl.DateTimeFormat("ru-RU", { day: "numeric", month: "long" });
+
+/** «12 августа» — для подписи версии и хронологии заходов. */
+export function formatShortDate(date: Date): string {
+  return shortDateFmt.format(date);
+}
+
+const timeFmt = new Intl.DateTimeFormat("ru-RU", { hour: "2-digit", minute: "2-digit" });
+
+/** «12 августа, 14:32» — точное время захода, в отличие от formatWhen. */
+export function formatVisitWhen(date: Date): string {
+  return `${formatShortDate(date)}, ${timeFmt.format(date)}`;
+}
+
+/** «14:32» — метка времени для чипа в хронологии заходов. */
+export function formatEventTime(date: Date): string {
+  return timeFmt.format(date);
+}
 
 /**
  * Полный разбор по одному хабу: каждая выданная ссылка и что по ней смотрели.
@@ -251,8 +374,29 @@ export async function hubDetail(
       const msByAsset = new Map(itemTime.map((r) => [r.assetId!, r._sum.durationMs ?? 0]));
       const maxPageByAsset = new Map(pageRows.map((r) => [r.assetId!, r._max.pageNumber]));
 
-      const items: ItemStats[] = assets
-        .map((asset) => ({
+      // Каждой странице каждого материала — своя карта время-по-странице,
+      // нужна и для topPages (было), и для полной тепловой карты (новое).
+      const pageTimeByAsset = new Map<string, Map<number, number>>();
+      for (const row of pageTime) {
+        const assetId = row.assetId!;
+        let map = pageTimeByAsset.get(assetId);
+        if (!map) pageTimeByAsset.set(assetId, (map = new Map()));
+        map.set(row.pageNumber!, row._sum.durationMs ?? 0);
+      }
+
+      // Черновые карточки материалов — по одной на каждый Asset, ещё без
+      // схлопывания версий КП. quoteId/createdAt нужны только для
+      // следующего шага и не попадают в финальный ItemStats.
+      type Draft = ItemStats & { quoteId: string | null; createdAt: Date };
+
+      const drafts: Draft[] = assets.map((asset) => {
+        const msByPage = pageTimeByAsset.get(asset.id) ?? new Map();
+        const topPages = [...msByPage.entries()]
+          .map(([page, ms]) => ({ page, ms }))
+          .sort((a, b) => b.ms - a.ms)
+          .slice(0, 5);
+
+        return {
           assetId: asset.id,
           title: asset.title,
           kind: asset.kind,
@@ -262,16 +406,102 @@ export async function hubDetail(
           downloads: dlCount.get(asset.id) ?? 0,
           linkClicks: clickCount.get(asset.id) ?? 0,
           maxPage: maxPageByAsset.get(asset.id) ?? null,
-          topPages: pageTime
-            .filter((r) => r.assetId === asset.id)
-            .map((r) => ({ page: r.pageNumber!, ms: r._sum.durationMs ?? 0 }))
+          topPages,
+          pageHeat: buildPageHeat(asset.pageCount, msByPage),
+          isSinglePage: asset.pageCount === 1,
+          versionNote: null,
+          quoteId: asset.quoteId,
+          createdAt: asset.createdAt,
+        };
+      });
+
+      // Схлопываем версии одного и того же расчёта КП: несколько Asset с
+      // одинаковым непустым quoteId — это переснятые версии одного
+      // документа, а не разные материалы (см. addQuotePdfToHub — каждая
+      // генерация создаёт новый Asset). Суммируем метрики, тепловую карту
+      // берём объединённую по номерам страниц, подписываем версией по
+      // самой свежей из группы.
+      const byQuote = new Map<string, Draft[]>();
+      const standalone: Draft[] = [];
+      for (const d of drafts) {
+        if (!d.quoteId) {
+          standalone.push(d);
+          continue;
+        }
+        let group = byQuote.get(d.quoteId);
+        if (!group) byQuote.set(d.quoteId, (group = []));
+        group.push(d);
+      }
+
+      const merged: ItemStats[] = [...standalone];
+      for (const group of byQuote.values()) {
+        if (group.length === 1) {
+          merged.push(group[0]);
+          continue;
+        }
+
+        const newest = group.reduce((a, b) => (b.createdAt > a.createdAt ? b : a));
+        const pageCount = Math.max(...group.map((g) => g.pageCount ?? 0)) || null;
+        const msByPage = new Map<number, number>();
+        for (const g of group) {
+          for (const p of g.pageHeat) {
+            msByPage.set(p.page, (msByPage.get(p.page) ?? 0) + p.ms);
+          }
+        }
+
+        merged.push({
+          assetId: newest.assetId,
+          title: newest.title,
+          kind: newest.kind,
+          pageCount,
+          opens: group.reduce((s, g) => s + g.opens, 0),
+          totalMs: group.reduce((s, g) => s + g.totalMs, 0),
+          downloads: group.reduce((s, g) => s + g.downloads, 0),
+          linkClicks: group.reduce((s, g) => s + g.linkClicks, 0),
+          maxPage: Math.max(0, ...group.map((g) => g.maxPage ?? 0)) || null,
+          topPages: [...msByPage.entries()]
+            .map(([page, ms]) => ({ page, ms }))
             .sort((a, b) => b.ms - a.ms)
             .slice(0, 5),
-        }))
-        .sort((a, b) => b.totalMs - a.totalMs);
+          pageHeat: buildPageHeat(pageCount, msByPage),
+          isSinglePage: pageCount === 1,
+          versionNote: `версия от ${formatShortDate(newest.createdAt)}`,
+        });
+      }
+
+      const items = merged.sort((a, b) => b.totalMs - a.totalMs);
+
+      const itemsTimeMs = items.reduce((s, i) => s + i.totalMs, 0);
+      const linkClicksTotal = items.reduce((s, i) => s + i.linkClicks, 0);
+      const totalMs = timeRow._sum.durationMs ?? 0;
+
+      const depthItems = items.filter(
+        (i) => i.kind === "PDF" && i.pageCount && i.pageCount > 1,
+      );
+      const readDepth = {
+        read: depthItems.reduce((s, i) => s + Math.min(i.maxPage ?? 0, i.pageCount ?? 0), 0),
+        of: depthItems.reduce((s, i) => s + (i.pageCount ?? 0), 0),
+        pct: null as number | null,
+      };
+      readDepth.pct = readDepth.of > 0 ? readDepth.read / readDepth.of : null;
+
+      const singlePageOpened = items
+        .filter((i) => i.isSinglePage && i.opens > 0)
+        .map((i) => i.title);
 
       const starts = link.visits.map((v) => v.startedAt.getTime());
       const ends = link.visits.map((v) => v.lastSeenAt.getTime());
+      const lastSeenAt = ends.length ? new Date(Math.max(...ends)) : null;
+
+      const daysSinceSeen = lastSeenAt ? (now.getTime() - lastSeenAt.getTime()) / DAY_MS : null;
+      const statusTag: LinkStats["statusTag"] =
+        daysSinceSeen === null
+          ? null
+          : daysSinceSeen <= HOT_DAYS
+            ? "hot"
+            : daysSinceSeen >= COLD_DAYS
+              ? "cold"
+              : null;
 
       return {
         linkId: link.id,
@@ -281,15 +511,207 @@ export async function hubDetail(
         expired: link.expiresAt !== null && link.expiresAt < now,
         visits: link.visits.length,
         visitors: new Set(link.visits.map((v) => v.visitorId)).size,
-        totalMs: timeRow._sum.durationMs ?? 0,
+        totalMs,
+        itemsTimeMs,
+        linkClicksTotal,
+        statusTag,
+        timeGapFlag: totalMs > 0 && itemsTimeMs < totalMs * TIME_GAP_RATIO,
         demoClicks,
         contactClicks,
         firstSeenAt: starts.length ? new Date(Math.min(...starts)) : null,
-        lastSeenAt: ends.length ? new Date(Math.max(...ends)) : null,
+        lastSeenAt,
         items,
+        readDepth,
+        singlePageOpened,
       };
     }),
   );
+}
+
+export type DonutSegment = {
+  label: string;
+  value: number;
+  valueLabel: string;
+  colorClass: string;
+};
+
+/** Тёплая шкала по рангу (самый долгий материал — самый тёмный), см.
+ * globals.css. Цикличная: пятый+ сегмент схлопывается в «Прочее» раньше,
+ * чем закончатся оттенки. */
+const HEAT_RAMP = ["text-heat-4", "text-heat-3", "text-heat-2", "text-heat-1"];
+
+/**
+ * Сегменты для кольца «Куда ушло время»: материал на сегмент, отсортированы
+ * по убыванию времени, максимум `max` именованных штук (остальное —
+ * в «Прочее»). Цвет — по рангу на тёплой шкале, кроме материалов-ссылок:
+ * время на них не «чтение», а «навигация» — холодный акцент вместо тёплого,
+ * это и есть то самое «цвет несёт смысл» из ТЗ.
+ */
+export function timeDonutSegments(items: ItemStats[], max = 5): DonutSegment[] {
+  const withTime = items.filter((i) => i.totalMs > 0).sort((a, b) => b.totalMs - a.totalMs);
+  const headCount = withTime.length <= max ? withTime.length : max - 1;
+  const head = withTime.slice(0, headCount);
+  const rest = withTime.slice(headCount);
+
+  const segments: DonutSegment[] = head.map((item, rank) => ({
+    label: item.title,
+    value: item.totalMs,
+    valueLabel: formatDuration(item.totalMs),
+    colorClass: item.kind === "LINK" ? "text-stat-cool" : HEAT_RAMP[rank % HEAT_RAMP.length],
+  }));
+
+  if (rest.length > 0) {
+    const restMs = rest.reduce((s, i) => s + i.totalMs, 0);
+    segments.push({
+      label: "Прочее",
+      value: restMs,
+      valueLabel: formatDuration(restMs),
+      colorClass: "text-muted",
+    });
+  }
+
+  return segments;
+}
+
+/** Сегмент кольца «Глубина прочтения» — сам процент прочитанного (остаток
+ * круга — неявно `--heat-0`, рисуется компонентом сам по общему `total`). */
+export function readDepthSegment(readDepth: LinkStats["readDepth"]): DonutSegment | null {
+  if (readDepth.of <= 0) return null;
+  return {
+    label: "Прочитано",
+    value: readDepth.read,
+    valueLabel: `${readDepth.read} из ${readDepth.of} стр.`,
+    colorClass: "text-brand",
+  };
+}
+
+/**
+ * Хронология заходов по одной ссылке: по визиту — когда, какой по счёту
+ * человек, сколько длился, и чипсы событий по порядку (открыл хаб → открыл
+ * материал N сек до стр. M → перешёл по ссылке → нажал «Задать вопрос»).
+ *
+ * Время и глубину для чипа «открыл материал» считаем по HEARTBEAT/PAGE_VIEW
+ * того же assetId, попавшим в окно между этим открытием и следующим
+ * заметным событием по ДРУГОМУ материалу (или концом визита).
+ */
+export async function visitTimeline(
+  linkId: string,
+  range: StatsRange = null,
+): Promise<VisitTimelineEntry[]> {
+  const visitWhere = range ? { startedAt: { gte: range.from, lte: range.to } } : {};
+  const eventWhere = range ? { occurredAt: { gte: range.from, lte: range.to } } : {};
+
+  const visits = await db.visit.findMany({
+    where: { shareLinkId: linkId, ...visitWhere },
+    orderBy: { startedAt: "asc" },
+    select: { id: true, visitorId: true, startedAt: true, lastSeenAt: true },
+  });
+
+  if (visits.length === 0) return [];
+
+  const personOrdinal = new Map<string, number>();
+  for (const v of visits) {
+    if (!personOrdinal.has(v.visitorId)) personOrdinal.set(v.visitorId, personOrdinal.size + 1);
+  }
+
+  const events = await db.event.findMany({
+    where: {
+      visitId: { in: visits.map((v) => v.id) },
+      type: { in: [...TIMELINE_EVENT_TYPES] },
+      ...eventWhere,
+    },
+    orderBy: { occurredAt: "asc" },
+    select: {
+      visitId: true,
+      type: true,
+      occurredAt: true,
+      assetId: true,
+      pageNumber: true,
+      durationMs: true,
+    },
+  });
+
+  const eventsByVisit = new Map<string, RawTimelineEvent[]>();
+  for (const e of events) {
+    let list = eventsByVisit.get(e.visitId);
+    if (!list) eventsByVisit.set(e.visitId, (list = []));
+    list.push(e);
+  }
+
+  const touchedAssetIds = new Set(
+    events.filter((e) => e.assetId).map((e) => e.assetId as string),
+  );
+  const assets =
+    touchedAssetIds.size > 0
+      ? await db.asset.findMany({
+          where: { id: { in: [...touchedAssetIds] } },
+          select: { id: true, title: true },
+        })
+      : [];
+  const titleByAsset = new Map(assets.map((a) => [a.id, a.title]));
+
+  return visits.map((v) => {
+    const all = eventsByVisit.get(v.id) ?? [];
+    const notable = all.filter((e) => NOTABLE_TIMELINE_TYPES.has(e.type));
+
+    const chips: TimelineChip[] = notable.map((e, idx) => {
+      const title = e.assetId ? (titleByAsset.get(e.assetId) ?? "материал") : null;
+
+      if (e.type === "ITEM_OPEN" && e.assetId) {
+        // Окно этого «сеанса» материала — до следующего заметного события
+        // по ДРУГОМУ материалу (или конца визита).
+        const next = notable
+          .slice(idx + 1)
+          .find((n) => n.type === "ITEM_OPEN" && n.assetId !== e.assetId);
+        const windowEnd = next ? next.occurredAt : v.lastSeenAt;
+
+        let ms = 0;
+        let maxPage: number | null = null;
+        for (const raw of all) {
+          if (raw.assetId !== e.assetId) continue;
+          if (raw.occurredAt < e.occurredAt || raw.occurredAt > windowEnd) continue;
+          if (raw.type === "HEARTBEAT") {
+            ms += raw.durationMs ?? 0;
+            if (raw.pageNumber) maxPage = Math.max(maxPage ?? 0, raw.pageNumber);
+          } else if (raw.type === "PAGE_VIEW" && raw.pageNumber) {
+            maxPage = Math.max(maxPage ?? 0, raw.pageNumber);
+          }
+        }
+
+        const detail =
+          ms > 0 && maxPage
+            ? ` — ${Math.round(ms / 1000)} сек, до стр. ${maxPage}`
+            : ms > 0
+              ? ` — ${Math.round(ms / 1000)} сек`
+              : "";
+
+        return { type: e.type, label: `Открыл «${title}»${detail}`, at: e.occurredAt };
+      }
+
+      switch (e.type) {
+        case "HUB_VIEW":
+          return { type: e.type, label: "Открыл хаб", at: e.occurredAt };
+        case "LINK_CLICK":
+          return { type: e.type, label: `Перешёл по ссылке «${title}»`, at: e.occurredAt };
+        case "DEMO_CLICK":
+          return { type: e.type, label: "Открыл демо-кабинет", at: e.occurredAt };
+        case "CONTACT_CLICK":
+          return { type: e.type, label: "Нажал «Задать вопрос»", at: e.occurredAt };
+        case "DOWNLOAD":
+          return { type: e.type, label: `Скачал «${title}»`, at: e.occurredAt };
+        default:
+          return { type: e.type, label: title ?? e.type, at: e.occurredAt };
+      }
+    });
+
+    return {
+      visitId: v.id,
+      personOrdinal: personOrdinal.get(v.visitorId)!,
+      startedAt: v.startedAt,
+      lastSeenAt: v.lastSeenAt,
+      chips,
+    };
+  });
 }
 
 /** «2 мин 30 сек», «45 сек», «1 ч 5 мин». */

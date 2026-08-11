@@ -26,6 +26,19 @@
      quote-pdf.ts/quote-preview.tsx и theme_color манифеста). */
   --brand: #7ca82d;
 
+  /* Шкала для дашборда статистики: тёплая = «сколько времени провели»
+     (тепловая карта страниц, кольцо «куда ушло время»), холодный акцент =
+     «навигация/переходы» (переходы по ссылкам, хронология заходов). Цвет
+     не смешивается с --brand — тот остаётся акцентом бренда в остальном
+     интерфейсе. --heat-0 намеренно равен --border: «не открывали» не
+     должно выделяться отдельным цветом. */
+  --heat-0: #e4e7ec;
+  --heat-1: #fbe2b6;
+  --heat-2: #f3a82a;
+  --heat-3: #e06a2b;
+  --heat-4: #bf3d20;
+  --stat-cool: #3355d1;
+
   /* Чтобы в тон теме были и системные части: полосы прокрутки,
      выпадающие списки, курсор в полях ввода. */
   color-scheme: light;
@@ -38,6 +51,13 @@
   --border: #2a2e37;
   --muted: #98a2b3;
 
+  --heat-0: #2a2e37;
+  --heat-1: #6b4a1f;
+  --heat-2: #b3791f;
+  --heat-3: #d9702e;
+  --heat-4: #e2452a;
+  --stat-cool: #7b93ff;
+
   color-scheme: dark;
 }
 
@@ -48,6 +68,12 @@
   --color-border: var(--border);
   --color-muted: var(--muted);
   --color-brand: var(--brand);
+  --color-heat-0: var(--heat-0);
+  --color-heat-1: var(--heat-1);
+  --color-heat-2: var(--heat-2);
+  --color-heat-3: var(--heat-3);
+  --color-heat-4: var(--heat-4);
+  --color-stat-cool: var(--stat-cool);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
