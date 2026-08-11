@@ -176,9 +176,10 @@ enum HubStatus {
 // Папка — это только полка, а не право доступа: она никого ни от кого не
 // закрывает. Разграничение прав живёт в ролях (см. Hub.ownerId).
 model HubFolder {
-  id             String @id @default(cuid())
+  id             String  @id @default(cuid())
   organizationId String
   name           String
+  color          String? // HEX из фиксированной палитры, см. src/lib/folder-colors.ts
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

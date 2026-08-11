@@ -91,7 +91,7 @@ export default async function FolderPage({
         </div>
       ) : (
         // Название папки в строках не повторяем — оно в заголовке.
-        <HubList hubs={rows} view={view} />
+        <HubList hubs={rows} view={view} backHref={`/hubs/folders/${folder.id}`} />
       )}
     </div>
   );

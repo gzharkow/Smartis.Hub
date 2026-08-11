@@ -5,12 +5,21 @@ import Link from "next/link";
 import { deleteHubFolder, renameHubFolder } from "@/app/actions/hub-folders";
 import { withPlural, WORDS } from "@/lib/plural";
 import type { ViewMode } from "@/lib/view-mode";
+import { FolderColorPicker } from "./folder-color-picker";
 
 export type FolderRowData = {
   id: string;
   name: string;
   hubCount: number;
+  color: string | null;
 };
+
+// Силуэт папки для режима плитки: один замкнутый контур с «язычком» слева
+// сверху. У навигационной ссылки-оверлея тот же clip-path — иначе можно было
+// бы кликнуть мимо видимого силуэта (в вырезе рядом с язычком) и всё равно
+// попасть в папку.
+const FOLDER_CLIP_PATH =
+  "polygon(6% 0%, 40% 0%, 46% 10%, 100% 10%, 100% 100%, 0% 100%, 0% 10%)";
 
 export function FolderRow({
   folder,
@@ -40,6 +49,10 @@ export function FolderRow({
     });
   }
 
+  // Карточка сама — растянутая ссылка (см. overlayLink ниже), поэтому имя —
+  // просто текст, а не второй <a> на тот же адрес. Ссылку в режиме
+  // переименования не показываем: клик по карточке не должен сбрасывать
+  // незавершённое редактирование.
   const nameEl =
     mode === "rename" ? (
       <input
@@ -55,30 +68,44 @@ export function FolderRow({
             setMode("view");
           }
         }}
-        className={`rounded-lg border border-border bg-background px-2 py-1 text-sm outline-none focus:border-blue-500 ${
+        className={`relative z-20 rounded-lg border border-border bg-background px-2 py-1 text-sm outline-none focus:border-blue-500 ${
           grid ? "w-full" : "min-w-0 flex-1 basis-full sm:basis-auto"
         }`}
       />
     ) : (
-      <Link
-        href={`/hubs/folders/${folder.id}`}
+      <span
         // basis-full — на телефоне название занимает свою строку целиком,
         // счётчик и кнопки уходят вниз, иначе имя обрезалось бы почти
         // сразу же, даже у коротких названий.
-        className={`truncate font-medium transition hover:text-blue-600 dark:hover:text-blue-400 ${
+        className={`truncate font-medium transition group-hover:text-blue-600 dark:group-hover:text-blue-400 ${
           grid ? "" : "min-w-0 flex-1 basis-full sm:basis-auto"
         }`}
       >
         {folder.name}
-      </Link>
+      </span>
     );
 
+  // Растянутая ссылка: сосед остального содержимого, а не обёртка вокруг
+  // него — внутри карточки есть настоящие интерактивные элементы (кнопки,
+  // поле ввода), а <button>/<input> внутри <a> невалидны и не работают
+  // предсказуемо. Порядок z-index по всей карточке: 0 (фигура/заливка,
+  // плитка) < 10 (эта ссылка) < 20 (действия) < 30 (шестерёнка/попап цвета).
+  const overlayLink =
+    mode === "view" ? (
+      <Link
+        href={`/hubs/folders/${folder.id}`}
+        aria-label={folder.name}
+        className="absolute inset-0 z-10"
+        style={grid ? { clipPath: FOLDER_CLIP_PATH } : undefined}
+      />
+    ) : null;
+
   const errorEl = error ? (
-    <span className="text-xs text-red-600 dark:text-red-400">{error}</span>
+    <span className="relative text-xs text-red-600 dark:text-red-400">{error}</span>
   ) : null;
 
   const countEl = (
-    <span className="shrink-0 text-sm text-muted">
+    <span className="relative shrink-0 text-sm text-muted">
       {withPlural(folder.hubCount, WORDS.hub)}
     </span>
   );
@@ -151,12 +178,32 @@ export function FolderRow({
       ) : null;
 
   if (grid) {
+    const tint = folder.color ? `${folder.color}20` : "var(--surface)";
+    const accent = folder.color ?? "var(--border)";
+    const showGear = canEdit && mode === "view";
+
     return (
-      <li className="flex h-full flex-col gap-2 rounded-xl border border-border bg-surface px-4 py-3">
-        {nameEl}
+      <li className="group relative flex h-full flex-col gap-2 px-4 py-3">
+        {/* Форма и цвет — отдельный слой позади содержимого (отрицательный
+            z-index), а не сам <li>: overflow-hidden на карточке сломал бы
+            попап выбора цвета, которому нужно выходить за её пределы. */}
+        <div
+          aria-hidden="true"
+          className="absolute inset-0 -z-10 border"
+          style={{ clipPath: FOLDER_CLIP_PATH, backgroundColor: tint, borderColor: accent }}
+        />
+        {overlayLink}
+        {showGear ? (
+          <FolderColorPicker
+            folderId={folder.id}
+            color={folder.color}
+            className="absolute top-2 right-2 z-30"
+          />
+        ) : null}
+        <div className="relative mt-2 mr-7">{nameEl}</div>
         {errorEl}
         {countEl}
-        <div className="mt-auto flex flex-wrap items-center gap-2 pt-1">
+        <div className="relative z-20 mt-auto flex flex-wrap items-center gap-2 pt-1">
           {actions}
         </div>
       </li>
@@ -164,11 +211,14 @@ export function FolderRow({
   }
 
   return (
-    <li className="flex flex-wrap items-center gap-3 rounded-xl border border-border bg-surface px-4 py-3">
+    <li className="group relative flex flex-wrap items-center gap-3 rounded-xl border border-border bg-surface px-4 py-3">
+      {overlayLink}
       {nameEl}
       {errorEl}
       {countEl}
-      {actions}
+      <div className="relative z-20 flex flex-wrap items-center gap-2">
+        {actions}
+      </div>
     </li>
   );
 }

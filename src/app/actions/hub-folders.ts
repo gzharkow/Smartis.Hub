@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { requireUser } from "@/lib/auth";
 import { hasEdit } from "@/lib/permissions";
 import { db } from "@/lib/db";
+import { isValidFolderColor } from "@/lib/folder-colors";
 
 // Папки общие на организацию: сотрудник заводит свою и складывает туда хабы
 // своих клиентов. Прав доступа папка не даёт — это полка, а не сейф.
@@ -83,6 +84,23 @@ export async function renameHubFolder(folderId: string, name: string) {
   await db.hubFolder.update({
     where: { id: folder.id },
     data: { name: parsed.data },
+  });
+
+  revalidate();
+}
+
+/** Цвет плитки папки — чисто визуальное, прав ни на что не даёт и не отнимает. */
+export async function updateHubFolderColor(folderId: string, color: string | null) {
+  const { folder } = await ownedFolder(folderId);
+
+  // Пресеты проверяем и на сервере — экшен можно дёрнуть в обход UI.
+  if (color !== null && !isValidFolderColor(color)) {
+    throw new Error("Недопустимый цвет.");
+  }
+
+  await db.hubFolder.update({
+    where: { id: folder.id },
+    data: { color },
   });
 
   revalidate();

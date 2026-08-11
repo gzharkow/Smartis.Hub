@@ -78,6 +78,7 @@ export default async function FoldersPage() {
                 id: folder.id,
                 name: folder.name,
                 hubCount: folder._count.hubs,
+                color: folder.color,
               }}
             />
           ))}

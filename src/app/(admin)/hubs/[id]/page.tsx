@@ -28,12 +28,41 @@ function metaOf(asset: { pageCount: number | null; sizeBytes: number | null }) {
     .join(" · ");
 }
 
+const FOLDER_FROM_RE = /^\/hubs\/folders\/([^/?#]+)$/;
+
+/**
+ * Куда ведёт «← Все хабы» вверху страницы. Хаб мог быть открыт из общего
+ * списка или из конкретной папки — в обоих случаях после просмотра/удаления
+ * хочется вернуться туда же, а не всегда на /hubs. `from` приходит из
+ * HubList (см. hub-list.tsx/backHref), но это внешний ввод: принимаем только
+ * "/hubs" либо ссылку на папку, которая реально существует в организации
+ * пользователя — иначе тихий откат на /hubs, как при прямом заходе.
+ */
+function resolveBack(
+  fromRaw: string | undefined,
+  folders: { id: string; name: string }[],
+): { href: string; label: string } {
+  if (!fromRaw) return { href: "/hubs", label: "Все хабы" };
+  if (fromRaw === "/hubs") return { href: "/hubs", label: "Все хабы" };
+
+  const match = fromRaw.match(FOLDER_FROM_RE);
+  if (match) {
+    const folder = folders.find((f) => f.id === match[1]);
+    if (folder) return { href: fromRaw, label: folder.name };
+  }
+
+  return { href: "/hubs", label: "Все хабы" };
+}
+
 export default async function HubPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ from?: string }>;
 }) {
   const { id } = await params;
+  const { from } = await searchParams;
   const user = await requireSectionView("hubs");
 
   const hub = await db.hub.findUnique({
@@ -70,6 +99,8 @@ export default async function HubPage({
     orderBy: { name: "asc" },
   });
 
+  const { href: backHref, label: backLabel } = resolveBack(from, folders);
+
   const usedAssetIds = new Set(hub.items.map((i) => i.assetId));
 
   // Только 4 самых используемых по хабам материала — библиотека организации
@@ -93,10 +124,10 @@ export default async function HubPage({
     <div className="mx-auto w-full max-w-7xl grid grid-cols-1 gap-8">
       <div>
         <Link
-          href="/hubs"
+          href={backHref}
           className="text-sm text-muted transition hover:text-foreground"
         >
-          ← Все хабы
+          ← {backLabel}
         </Link>
 
         <div className="mt-2 flex flex-wrap items-start justify-between gap-4">

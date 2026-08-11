@@ -118,10 +118,14 @@ export function HubList({
   hubs,
   showFolder = false,
   view = "list",
+  backHref = "/hubs",
 }: {
   hubs: HubRow[];
   showFolder?: boolean;
   view?: ViewMode;
+  /** Куда вернуться со страницы хаба — «Все хабы» по умолчанию, либо папка,
+   *  из которой открыт этот список (см. HubPage/resolveBack). */
+  backHref?: string;
 }) {
   const grid = view === "grid";
 
@@ -154,7 +158,11 @@ export function HubList({
         return (
           <li key={hub.id}>
             <Link
-              href={`/hubs/${hub.id}`}
+              href={
+                backHref === "/hubs"
+                  ? `/hubs/${hub.id}`
+                  : `/hubs/${hub.id}?from=${encodeURIComponent(backHref)}`
+              }
               className={`relative flex flex-col gap-0.5 overflow-hidden rounded-xl border border-border transition hover:border-muted ${
                 grid
                   ? `h-[248px] p-4 text-white ${archived ? "opacity-60" : ""}`
