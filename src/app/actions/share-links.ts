@@ -1,11 +1,11 @@
 "use server";
 
-import { randomBytes } from "node:crypto";
 import { z } from "zod";
 import { revalidatePath } from "next/cache";
 import { requireUser } from "@/lib/auth";
 import { hasEdit } from "@/lib/permissions";
 import { db } from "@/lib/db";
+import { newShareToken } from "@/lib/tokens";
 
 async function ownedHub(hubId: string) {
   const user = await requireUser();
@@ -22,14 +22,6 @@ async function ownedHub(hubId: string) {
     throw new Error("Хаб не найден.");
   }
   return { user, hub };
-}
-
-// Токен — единственное, что защищает витрину: кто знает ссылку, тот и внутри.
-// Поэтому он должен быть непредсказуемым. 16 случайных байт — это 2^128
-// вариантов, перебрать нельзя. Math.random() здесь недопустим: он
-// предсказуем, и по одной выданной ссылке можно было бы вычислить другие.
-function newToken(): string {
-  return randomBytes(16).toString("base64url");
 }
 
 const CreateSchema = z.object({
@@ -68,7 +60,7 @@ export async function createShareLink(
     data: {
       hubId: hub.id,
       createdById: user.id,
-      token: newToken(),
+      token: newShareToken(),
       recipientCompany: parsed.data.recipientCompany,
       greeting: parsed.data.greeting || null,
       expiresAt,

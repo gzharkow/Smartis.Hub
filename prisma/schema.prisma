@@ -322,6 +322,13 @@ model ShareLink {
   expiresAt DateTime? // по умолчанию бессрочно, срок задаётся при генерации
   revokedAt DateTime? // отозвать выданную ссылку
 
+  // false — только у автосозданной ссылки «Для АМО» (см. createHub/duplicateHub
+  // в actions/hubs.ts): её вставляют в CRM для внутреннего пользования, а не
+  // выдают клиенту, и открытия по ней — не интерес клиента, а свои же заходы.
+  // Проверяется один раз в v/[token]/track/route.ts — событий для такой
+  // ссылки просто не пишем, остальной showcase работает как обычно.
+  trackingEnabled Boolean @default(true)
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 

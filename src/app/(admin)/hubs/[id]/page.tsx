@@ -262,6 +262,7 @@ export default async function HubPage({
               revoked: link.revokedAt !== null,
               expired: link.expiresAt !== null && link.expiresAt < new Date(),
               visits: link._count.visits,
+              trackingEnabled: link.trackingEnabled,
             }))}
           />
         </div>

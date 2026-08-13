@@ -251,7 +251,10 @@ export async function hubDetail(
   const visitWhere = range ? { startedAt: { gte: range.from, lte: range.to } } : {};
 
   const links = await db.shareLink.findMany({
-    where: { hubId },
+    // Ссылки без трекинга («Для АМО») сюда не попадают — у них и так
+    // никогда не будет ни визитов, ни событий, а «0 заходов» на ссылке,
+    // которую активно используют в CRM, выглядело бы как «клиент не открыл».
+    where: { hubId, trackingEnabled: true },
     include: {
       visits: {
         where: visitWhere,

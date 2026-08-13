@@ -10,6 +10,7 @@ import { db } from "@/lib/db";
 import { isEmptyHtml, sanitizeHtml } from "@/lib/sanitize";
 import { storage, storageKeys } from "@/lib/storage";
 import { renderQuotePdf } from "@/lib/quote-pdf";
+import { newShareToken } from "@/lib/tokens";
 import {
   CONTACT_KIND_LABELS,
   ContactMethodsSchema,
@@ -71,6 +72,19 @@ export async function createHub(
       ownerId: user.id,
       title: parsed.data.title,
       headline: `Материалы для «${parsed.data.title}»`,
+    },
+  });
+
+  // Постоянная ссылка для внутреннего пользования — вставить в CRM (АМО),
+  // не выдать клиенту. trackingEnabled: false — заходы по ней не должны
+  // выглядеть как интерес клиента, см. v/[token]/track/route.ts.
+  await db.shareLink.create({
+    data: {
+      hubId: hub.id,
+      createdById: user.id,
+      token: newShareToken(),
+      recipientCompany: "Для АМО",
+      trackingEnabled: false,
     },
   });
 
@@ -267,6 +281,19 @@ export async function duplicateHub(hubId: string) {
         // Контакты кнопки «Задать вопрос» — тоже собственность хаба,
         // копируем вместе с остальным оформлением.
         contactMethods: hub.contactMethods ?? [],
+      },
+    });
+
+    // Копия — тоже «создаваемый хаб»: своя ссылка «Для АМО», не унаследованная
+    // от оригинала (ссылки клиентов и так не копируются, см. выше — эта
+    // не клиентская, но по той же причине должна быть у копии своя).
+    await tx.shareLink.create({
+      data: {
+        hubId: created.id,
+        createdById: user.id,
+        token: newShareToken(),
+        recipientCompany: "Для АМО",
+        trackingEnabled: false,
       },
     });
 

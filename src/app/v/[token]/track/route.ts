@@ -17,6 +17,13 @@ export async function POST(
     return NextResponse.json({ ok: false }, { status: 404 });
   }
 
+  // Ссылка «Для АМО» (и любая другая с выключенным трекингом) — открытия по
+  // ней не интерес клиента, а свои же заходы через CRM. Молча соглашаемся,
+  // ничего не пишем: ни Visit, ни Event.
+  if (!access.data.trackingEnabled) {
+    return NextResponse.json({ ok: true, stored: 0 });
+  }
+
   const visitorId = (await cookies()).get(VISITOR_COOKIE)?.value;
   if (!visitorId) {
     // Метку ставит proxy при первом заходе. Её отсутствие означает, что кук нет

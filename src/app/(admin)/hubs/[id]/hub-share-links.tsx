@@ -17,6 +17,8 @@ type Link = {
   revoked: boolean;
   expired: boolean;
   visits: number;
+  /** false — ссылка не пишет статистику (например, автосозданная «Для АМО»). */
+  trackingEnabled: boolean;
 };
 
 // navigator.clipboard существует только в "secure context" (https или
@@ -190,6 +192,13 @@ export function HubShareLinks({
                   ) : link.expired ? (
                     <span className="shrink-0 rounded bg-border/70 px-1.5 py-0.5 text-xs">
                       Истекла
+                    </span>
+                  ) : !link.trackingEnabled ? (
+                    <span
+                      className="shrink-0 rounded bg-border/70 px-1.5 py-0.5 text-xs"
+                      title="Заходы по этой ссылке не попадают в статистику — она для внутреннего пользования"
+                    >
+                      Без статистики
                     </span>
                   ) : (
                     <span className="shrink-0 text-xs text-muted">
