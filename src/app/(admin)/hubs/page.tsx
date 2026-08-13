@@ -59,6 +59,7 @@ export default async function HubsPage() {
         : null,
     brandColor: h.brandColor ?? h.organization.brandColor ?? "#2563eb",
     logoUrl: h.logoUrl ?? h.organization.logoUrl ?? "/logo.png",
+    canManage: user.role === "ADMIN" || h.ownerId === user.id,
   }));
 
   return (

@@ -5,6 +5,8 @@ import type { AssetKind } from "@/generated/prisma/enums";
 import type { ContactMethod } from "@/lib/contact-methods";
 import { useTracker } from "./use-tracker";
 import { PdfViewer } from "./pdf-viewer";
+import { DocxViewer } from "./docx-viewer";
+import { XlsxViewer } from "./xlsx-viewer";
 import { ShowcaseBackdrop } from "@/components/showcase/showcase-backdrop";
 import { ShowcaseHeader } from "@/components/showcase/showcase-header";
 import { ContactDialog } from "@/components/showcase/contact-dialog";
@@ -42,6 +44,8 @@ const KIND_TINT: Record<AssetKind, string> = {
   PDF: "#dc2626",
   VIDEO: "#7c3aed",
   IMAGE: "#0891b2",
+  DOCUMENT: "#2563eb",
+  SPREADSHEET: "#16a34a",
   LINK: "#0d9488",
   FILE: "#64748b",
 };
@@ -251,6 +255,10 @@ function Viewer({
               Скачать файл
             </a>
           </div>
+        ) : item.kind === "DOCUMENT" ? (
+          <DocxViewer key={item.id} src={src} />
+        ) : item.kind === "SPREADSHEET" ? (
+          <XlsxViewer key={item.id} src={src} />
         ) : (
           <PdfViewer
             // key заставляет пересоздать просмотрщик при переключении между

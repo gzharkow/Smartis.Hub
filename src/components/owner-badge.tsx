@@ -9,7 +9,7 @@ import { ownerColorClass } from "@/lib/owner-color";
 export function OwnerBadge({ id, label }: { id: string; label: string }) {
   return (
     <span
-      className={`w-fit shrink-0 truncate rounded-full px-2 py-0.5 text-xs font-medium ${ownerColorClass(id)}`}
+      className={`min-w-0 max-w-[10rem] truncate rounded-full px-2 py-0.5 text-xs font-medium ${ownerColorClass(id)}`}
       title={label}
     >
       {label}

@@ -187,7 +187,10 @@ export default async function HubPage({
           brandColor={hub.brandColor ?? hub.organization.brandColor ?? "#2563eb"}
           logoUrl={hub.logoUrl ?? hub.organization.logoUrl ?? "/logo.png"}
           orgName={hub.organization.name}
-          contacts={parseContactMethods(hub.organization.contactMethods)}
+          contacts={parseContactMethods(hub.contactMethods)}
+          contactTemplate={
+            user.contactMethodsTemplate ? parseContactMethods(user.contactMethodsTemplate) : null
+          }
           canEdit={canEdit}
         />
       </section>

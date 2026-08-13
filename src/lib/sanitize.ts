@@ -59,6 +59,46 @@ export function sanitizeHtml(dirty: string): string {
   });
 }
 
+// Отдельный, более широкий список для HTML, который получаем конвертацией
+// .docx (mammoth) во вьюере материалов — там реальный документ с таблицами,
+// заголовками и картинками, а не набранный в простом редакторе текст.
+// Отдельная функция, а не расширение ALLOWED_TAGS выше: не хотим тихо
+// разрешить <table>/<img> и в описании хаба заодно — там это не проверялось.
+const DOCUMENT_ALLOWED_TAGS = [
+  ...ALLOWED_TAGS,
+  "h1",
+  "h4",
+  "h5",
+  "h6",
+  "table",
+  "thead",
+  "tbody",
+  "tr",
+  "th",
+  "td",
+  "img",
+  "sup",
+  "sub",
+];
+
+const DOCUMENT_ALLOWED_ATTR = [...ALLOWED_ATTR, "src", "alt", "colspan", "rowspan"];
+
+// mammoth встраивает картинки .docx как data:image/... — обычный https-only
+// список их бы вырезал. Разрешаем только image/* через data:, никакой другой
+// data:-схемы (в частности, не data:text/html).
+const DOCUMENT_ALLOWED_URI_REGEXP =
+  /^(?:https?|mailto|tel):|^data:image\/(?:png|jpe?g|gif|webp);base64,/i;
+
+/** Санитизация HTML, сконвертированного из .docx — см. docx-viewer.tsx. */
+export function sanitizeDocumentHtml(dirty: string): string {
+  installHook();
+  return DOMPurify.sanitize(dirty, {
+    ALLOWED_TAGS: DOCUMENT_ALLOWED_TAGS,
+    ALLOWED_ATTR: DOCUMENT_ALLOWED_ATTR,
+    ALLOWED_URI_REGEXP: DOCUMENT_ALLOWED_URI_REGEXP,
+  });
+}
+
 /** Пустой ли текст описания. Редактор на пустом поле оставляет «<p></p>». */
 export function isEmptyHtml(html: string | null | undefined): boolean {
   if (!html) return true;

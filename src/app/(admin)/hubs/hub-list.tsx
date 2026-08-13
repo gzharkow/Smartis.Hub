@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { withPlural, WORDS } from "@/lib/plural";
 import { OwnerBadge } from "@/components/owner-badge";
+import { HubTileActions } from "./hub-tile-actions";
 import {
   VIEW_LIST_CLASS,
   type ViewMode,
@@ -30,6 +31,10 @@ export type HubRow = {
   /** Брендинг хаба — уже с фоллбэком на бренд организации, см. страницу-источник. */
   brandColor: string;
   logoUrl: string;
+  /** Может ли ТЕКУЩИЙ пользователь копировать/удалять этот хаб — ADMIN
+   *  либо владелец. Считается на странице-источнике, где есть текущий
+   *  пользователь; без этого поля пришлось бы протаскивать его сюда целиком. */
+  canManage: boolean;
 };
 
 function statusLabel(status: string): string {
@@ -45,7 +50,7 @@ function statusLabel(status: string): string {
 function StatusCaption({ status, grid = false }: { status: string; grid?: boolean }) {
   return (
     <span
-      className={`text-[11px] leading-none font-medium tracking-wide uppercase ${
+      className={`shrink-0 text-[11px] leading-none font-medium tracking-wide uppercase ${
         status === "PUBLISHED"
           ? grid
             ? "text-green-300"
@@ -105,7 +110,7 @@ function HubTilePreview({
 function GridOwnerChip({ label }: { label: string }) {
   return (
     <span
-      className="w-fit shrink-0 truncate rounded-full bg-black/35 px-2 py-0.5 text-xs font-medium text-white backdrop-blur-sm"
+      className="min-w-0 max-w-[7.5rem] truncate rounded-full bg-black/35 px-2 py-0.5 text-xs font-medium text-white backdrop-blur-sm"
       title={label}
     >
       {label}
@@ -163,7 +168,7 @@ export function HubList({
                   ? `/hubs/${hub.id}`
                   : `/hubs/${hub.id}?from=${encodeURIComponent(backHref)}`
               }
-              className={`relative flex flex-col gap-0.5 overflow-hidden rounded-xl border border-border transition hover:border-muted ${
+              className={`group relative flex flex-col gap-0.5 overflow-hidden rounded-xl border border-border transition hover:border-muted ${
                 grid
                   ? `h-[248px] p-4 text-white ${archived ? "opacity-60" : ""}`
                   : `px-4 py-3 ${archived ? "opacity-60" : "bg-surface"}`
@@ -172,6 +177,7 @@ export function HubList({
               {grid ? (
                 <HubTilePreview brandColor={hub.brandColor} logoUrl={hub.logoUrl} />
               ) : null}
+              {hub.canManage ? <HubTileActions hubId={hub.id} grid={grid} /> : null}
               <span className="relative z-10 flex items-center justify-between gap-2">
                 <StatusCaption status={hub.status} grid={grid} />
                 {hub.owner ? (

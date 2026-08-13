@@ -1,9 +1,13 @@
 import "dotenv/config";
 import { db } from "../src/lib/db";
 
-// Разовая настройка брендинга и контактов организации.
+// Разовая настройка брендинга организации.
 // Временная мера: экрана настроек ещё нет, а витрину надо на чём-то проверять.
 // Когда появится раздел настроек — скрипт удалить.
+//
+// Контакты кнопки «Задать вопрос» сюда больше не входят — они теперь
+// собственность конкретного хаба и настраиваются на его странице
+// (см. HubSettingsForm), а не одной строкой на всю организацию.
 
 async function main() {
   const org = await db.organization.update({
@@ -12,11 +16,6 @@ async function main() {
       name: "Smartis",
       logoUrl: "/logo.png",
       brandColor: "#7CA82D",
-      contactMethods: [
-        { kind: "EMAIL", label: "Почта", value: "get@smartis.bi" },
-        { kind: "PHONE", label: "Телефон", value: "+7 495 021-07-51" },
-        { kind: "WEBSITE", label: "Сайт", value: "https://smartis.bi" },
-      ],
     },
   });
 
@@ -24,7 +23,6 @@ async function main() {
     name: org.name,
     logoUrl: org.logoUrl,
     brandColor: org.brandColor,
-    contacts: org.contactMethods,
   });
 }
 

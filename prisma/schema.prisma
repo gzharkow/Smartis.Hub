@@ -26,15 +26,6 @@ model Organization {
   logoUrl    String?
   brandColor String? @default("#2563eb")
 
-  // Способы связи для всплывающего окна «Задать вопрос» на витрине.
-  // Список вида [{ kind: "TELEGRAM", label: "Телеграм", value: "@sales" }, ...].
-  //
-  // Здесь Json, а не отдельная таблица, намеренно: этот список всегда читается
-  // и переписывается целиком, по нему не ищут и не соединяют. Таблица дала бы
-  // миграции и возню с порядком строк, ничего не добавив. Форму проверяем схемой
-  // zod при сохранении — см. src/lib/contact-methods.ts.
-  contactMethods Json @default("[]")
-
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -64,6 +55,12 @@ model User {
   // это не флаг, а жёсткая проверка роли (см. hasEdit в src/lib/permissions.ts).
   canAddAssets Boolean @default(false)
 
+  // Личный шаблон контактов для кнопки «Задать вопрос» — сохраняется
+  // галочкой «Сохранить как шаблон» на странице хаба. null — шаблона нет,
+  // новый хаб предлагает заполнить контакты вручную без подсказки.
+  // Формат — тот же список, что и Hub.contactMethods.
+  contactMethodsTemplate Json?
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -88,6 +85,8 @@ enum AssetKind {
   PDF // свой вьюер на PDF.js — иначе не будет постраничной статистики
   VIDEO
   IMAGE
+  DOCUMENT // .docx — рендерится в браузере через mammoth
+  SPREADSHEET // .xlsx/.xls/.csv — рендерится в браузере через exceljs
   LINK // внешняя ссылка, файла нет
   FILE // прочее: только скачивание, внутри не посмотреть
 }
@@ -214,9 +213,16 @@ model Hub {
   coverImageKey String?
 
   // Кнопка призыва к действию в шапке витрины. По нажатию — всплывающее окно
-  // со способами связи из Organization.contactMethods.
+  // со способами связи из contactMethods ниже.
   ctaLabel   String  @default("Задать вопрос")
   ctaEnabled Boolean @default(true)
+
+  // Способы связи для окна «Задать вопрос» — собственность ЭТОГО хаба, не
+  // организации: раньше жили на Organization и были общими на всех
+  // (см. историю миграций), из-за чего правка в одном хабе меняла их
+  // везде, даже в чужих аккаунтах. Формат и валидация — как раньше,
+  // см. src/lib/contact-methods.ts.
+  contactMethods Json @default("[]")
 
   // Вторая кнопка: демо-кабинет. Уводит на внешний сервис в новой вкладке.
   // Отдельно от материалов намеренно — это не то, что смотрят, а то,

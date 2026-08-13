@@ -3,6 +3,8 @@
 import { useEffect } from "react";
 import type { AssetKind } from "@/generated/prisma/enums";
 import { PdfViewer } from "@/app/v/[token]/pdf-viewer";
+import { DocxViewer } from "@/app/v/[token]/docx-viewer";
+import { XlsxViewer } from "@/app/v/[token]/xlsx-viewer";
 import { useCloseOnBack } from "@/lib/use-close-on-back";
 
 export type PreviewAsset = {
@@ -111,6 +113,10 @@ export function AssetPreviewModal({
               Скачать файл
             </a>
           </div>
+        ) : asset.kind === "DOCUMENT" ? (
+          <DocxViewer src={src} />
+        ) : asset.kind === "SPREADSHEET" ? (
+          <XlsxViewer src={src} />
         ) : (
           <PdfViewer src={src} pageCount={asset.pageCount} onPageChange={() => {}} />
         )}

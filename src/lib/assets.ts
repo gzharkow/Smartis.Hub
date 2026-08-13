@@ -8,10 +8,25 @@ import type { AssetKind } from "@/generated/prisma/enums";
 // напрямую в хранилище мимо нас, и ограничение можно будет поднять.
 export const MAX_UPLOAD_BYTES = 500 * 1024 * 1024;
 
+// Легаси-форматы (.doc бинарный, .ppt/.pptx) сюда намеренно не попадают —
+// mammoth умеет только OOXML .docx, а вменяемой клиентской библиотеки для
+// презентаций нет. Такие файлы остаются FILE — только скачивание, как раньше.
+const SPREADSHEET_MIME_TYPES = new Set([
+  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", // .xlsx
+  "application/vnd.ms-excel", // .xls
+  "text/csv",
+]);
+
 export function detectKind(mimeType: string): AssetKind {
   if (mimeType === "application/pdf") return "PDF";
   if (mimeType.startsWith("video/")) return "VIDEO";
   if (mimeType.startsWith("image/")) return "IMAGE";
+  if (
+    mimeType ===
+    "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+  )
+    return "DOCUMENT";
+  if (SPREADSHEET_MIME_TYPES.has(mimeType)) return "SPREADSHEET";
   return "FILE";
 }
 
@@ -48,6 +63,8 @@ export const KIND_LABELS: Record<AssetKind, string> = {
   PDF: "PDF",
   VIDEO: "Видео",
   IMAGE: "Изображение",
+  DOCUMENT: "Документ",
+  SPREADSHEET: "Таблица",
   LINK: "Ссылка",
   FILE: "Файл",
 };

@@ -51,7 +51,7 @@ export async function resolveShowcase(token: string): Promise<ShowcaseAccess> {
   // тот же переключатель (ctaEnabled) и та же подпись, а связаться всё равно
   // должно быть можно, даже если материалы сейчас недоступны.
   const contact = (): UnavailableContact | undefined => {
-    const contacts = parseContactMethods(link.hub.organization.contactMethods);
+    const contacts = parseContactMethods(link.hub.contactMethods);
     if (!link.hub.ctaEnabled || contacts.length === 0) return undefined;
     return {
       brandColor: link.hub.brandColor ?? link.hub.organization.brandColor ?? "#2563eb",

@@ -43,7 +43,7 @@ export default async function ShowcasePage({
 
   const brandColor = hub.brandColor ?? org.brandColor ?? "#2563eb";
   const logoUrl = hub.logoUrl ?? org.logoUrl ?? "/logo.png";
-  const contacts = parseContactMethods(org.contactMethods);
+  const contacts = parseContactMethods(hub.contactMethods);
 
   return (
     <ShowcaseBody

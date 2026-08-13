@@ -27,8 +27,11 @@ type Props = {
   brandColor: string;
   logoUrl: string;
   orgName: string;
-  /** Способы связи из настроек компании — общие для всех хабов организации. */
+  /** Способы связи для кнопки «Задать вопрос» — собственность этого хаба. */
   contacts: ContactMethod[];
+  /** Личный шаблон контактов текущего аккаунта, если сохранён — см. чекбокс
+   *  «Сохранить как шаблон» ниже. null — шаблона ещё нет. */
+  contactTemplate: ContactMethod[] | null;
 };
 
 const MAX_CONTACTS = 8;
@@ -39,6 +42,7 @@ export function HubSettingsForm({
   logoUrl,
   orgName,
   contacts: initialContacts,
+  contactTemplate,
   canEdit = true,
 }: Props & { canEdit?: boolean }) {
   const [state, action, pending] = useActionState<UpdateHubState, FormData>(
@@ -57,6 +61,22 @@ export function HubSettingsForm({
   const [demoNote, setDemoNote] = useState(hub.demoNote ?? "");
   const [title, setTitle] = useState(hub.title);
   const [contacts, setContacts] = useState<ContactMethod[]>(initialContacts);
+  const [saveAsTemplate, setSaveAsTemplate] = useState(false);
+  // Подсказка «есть шаблон» видна, пока пользователь явно не выбрал один
+  // из двух путей — заполнить из шаблона или вручную. Если контакты и так
+  // не пустые (хаб уже настроен) или шаблона нет вовсе, подсказка не нужна.
+  const [templateChoiceMade, setTemplateChoiceMade] = useState(false);
+  const showTemplatePrompt =
+    !templateChoiceMade && contacts.length === 0 && !!contactTemplate?.length;
+
+  function applyTemplate() {
+    setContacts(contactTemplate ?? []);
+    setTemplateChoiceMade(true);
+  }
+
+  function fillManually() {
+    setTemplateChoiceMade(true);
+  }
 
   function addContact() {
     if (contacts.length >= MAX_CONTACTS) return;
@@ -158,10 +178,30 @@ export function HubSettingsForm({
               <span className="text-sm">Контакты</span>
               <p className="text-xs text-muted">
                 {hasContacts
-                  ? "По нажатию клиент увидит их в окне связи. Общие для всех ваших хабов — правка здесь изменит их везде."
+                  ? "По нажатию клиент увидит их в окне связи."
                   : "Ни одного не задано — кнопка не появится ни на витрине, ни на странице недоступной ссылки."}
               </p>
             </div>
+
+            {showTemplatePrompt ? (
+              <div className="flex flex-wrap items-center gap-2 rounded-lg border border-blue-500/30 bg-blue-500/10 px-3 py-2 text-sm">
+                <span>У вас есть сохранённый шаблон контактов.</span>
+                <button
+                  type="button"
+                  onClick={applyTemplate}
+                  className="rounded-lg bg-blue-600 px-2.5 py-1 text-xs font-medium text-white transition hover:bg-blue-700"
+                >
+                  Заполнить из шаблона
+                </button>
+                <button
+                  type="button"
+                  onClick={fillManually}
+                  className="rounded-lg border border-border px-2.5 py-1 text-xs font-medium transition hover:bg-border/60"
+                >
+                  Заполнить вручную
+                </button>
+              </div>
+            ) : null}
 
             {contacts.length > 0 ? (
               <ul className="grid gap-2">
@@ -230,6 +270,22 @@ export function HubSettingsForm({
                 Добавить контакт
               </button>
             ) : null}
+
+            <label className="flex items-center gap-2 pt-1">
+              <input
+                type="checkbox"
+                name="saveAsTemplate"
+                checked={saveAsTemplate}
+                onChange={(e) => setSaveAsTemplate(e.target.checked)}
+                className="size-4 accent-blue-600"
+              />
+              <span className="text-sm">Сохранить как шаблон</span>
+            </label>
+            <p className="-mt-1 text-xs text-muted">
+              Эти контакты предложатся заготовкой при создании ваших следующих
+              хабов — привязано к вашему аккаунту, других сотрудников не
+              затронет.
+            </p>
 
             <input
               type="hidden"

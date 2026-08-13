@@ -148,13 +148,16 @@ export async function updateHub(
   if (contactMethods === null) {
     return { error: "Проверьте контакты — что-то в них не так." };
   }
+  const saveAsTemplate = formData.get("saveAsTemplate") === "on";
 
   // Чистим ЗДЕСЬ, а не только в редакторе: до этой строки данные шли
   // из браузера, а ему верить нельзя — запрос можно послать и мимо формы.
   const clean = sanitizeHtml(parsed.data.descriptionHtml);
 
-  // Контакты живут на организации, а не на хабе — общие для всех хабов,
-  // как и раньше, только теперь их можно править прямо со страницы хаба.
+  // Контакты — собственность ЭТОГО хаба (раньше жили на организации и были
+  // общими на все хабы, включая чужие аккаунты — см. миграцию
+  // add_hub_contact_methods_and_asset_kinds). Шаблон — отдельно, на аккаунте,
+  // и пишется только если явно попросили галочкой «Сохранить как шаблон».
   await Promise.all([
     db.hub.update({
       where: { id: hub.id },
@@ -167,12 +170,15 @@ export async function updateHub(
         demoUrl: parsed.data.demoUrl || null,
         demoLabel: parsed.data.demoLabel || "Демо-кабинет",
         demoNote: parsed.data.demoNote || null,
+        contactMethods,
       },
     }),
-    db.organization.update({
-      where: { id: user.organizationId },
-      data: { contactMethods },
-    }),
+    saveAsTemplate
+      ? db.user.update({
+          where: { id: user.id },
+          data: { contactMethodsTemplate: contactMethods },
+        })
+      : Promise.resolve(),
   ]);
 
   // /v/[token] сам всегда динамический (force-dynamic) — свежие контакты
@@ -258,6 +264,9 @@ export async function duplicateHub(hubId: string) {
         demoUrl: hub.demoUrl,
         demoLabel: hub.demoLabel,
         demoNote: hub.demoNote,
+        // Контакты кнопки «Задать вопрос» — тоже собственность хаба,
+        // копируем вместе с остальным оформлением.
+        contactMethods: hub.contactMethods ?? [],
       },
     });
 
