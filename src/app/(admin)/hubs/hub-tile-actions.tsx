@@ -5,7 +5,7 @@ import { archiveHub, duplicateHub } from "@/app/actions/hubs";
 
 function CopyIcon() {
   return (
-    <svg viewBox="0 0 20 20" fill="none" className="size-3.5" aria-hidden="true">
+    <svg viewBox="0 0 20 20" fill="none" className="size-4.5" aria-hidden="true">
       <rect x="7" y="7" width="10" height="10" rx="1.5" stroke="currentColor" strokeWidth="1.5" />
       <path
         d="M13 7V4.5A1.5 1.5 0 0 0 11.5 3H4.5A1.5 1.5 0 0 0 3 4.5v7A1.5 1.5 0 0 0 4.5 13H7"
@@ -18,7 +18,7 @@ function CopyIcon() {
 
 function TrashIcon() {
   return (
-    <svg viewBox="0 0 20 20" fill="none" className="size-3.5" aria-hidden="true">
+    <svg viewBox="0 0 20 20" fill="none" className="size-4.5" aria-hidden="true">
       <path
         d="M4 6h12M8 6V4.5A1.5 1.5 0 0 1 9.5 3h1A1.5 1.5 0 0 1 12 4.5V6m-6.5 0 .6 9a1.5 1.5 0 0 0 1.497 1.4h3.806A1.5 1.5 0 0 0 14.9 15l.6-9"
         stroke="currentColor"
@@ -44,13 +44,12 @@ export function HubTileActions({ hubId, grid }: { hubId: string; grid: boolean }
   const [pending, startTransition] = useTransition();
 
   const iconBtn =
-    "grid size-7 cursor-pointer place-items-center rounded-full backdrop-blur-sm transition disabled:opacity-50";
-  // В плитке фон — тёмное фото витрины, нужен светлый глянцевый значок.
-  // В строке фон светлый (bg-surface), берём тот же стиль бордера,
-  // что и у остальных кнопок действий в сервисе.
-  const neutral = grid
-    ? "bg-black/55 text-white hover:bg-black/75"
-    : "border border-border bg-surface text-muted hover:bg-border/60 hover:text-foreground";
+    "grid size-9 cursor-pointer place-items-center rounded-full shadow-sm backdrop-blur-sm transition disabled:opacity-50";
+  // Сплошной цвет читается одинаково и на фото витрины (плитка), и на
+  // светлом фоне строки — поэтому, в отличие от прежней нейтральной версии,
+  // grid/list здесь больше не различаются.
+  const copyClass = "bg-blue-600 text-white hover:bg-blue-700";
+  const trashClass = "bg-red-600 text-white hover:bg-red-700";
 
   return (
     <span
@@ -68,7 +67,7 @@ export function HubTileActions({ hubId, grid }: { hubId: string; grid: boolean }
           startTransition(() => duplicateHub(hubId));
         }}
         title="Сделать копию"
-        className={`${iconBtn} ${neutral}`}
+        className={`${iconBtn} ${copyClass}`}
       >
         <CopyIcon />
       </button>
@@ -86,8 +85,10 @@ export function HubTileActions({ hubId, grid }: { hubId: string; grid: boolean }
           startTransition(() => archiveHub(hubId));
         }}
         title={confirming ? "Точно удалить? Нажмите ещё раз" : "Удалить"}
-        className={`${iconBtn} ${
-          confirming ? "bg-red-600 text-white hover:bg-red-700" : neutral
+        className={`${iconBtn} ${trashClass} ${
+          // Подтверждение — то же красное, но с кольцом, чтобы второй клик
+          // отличался от первого не только текстом подсказки.
+          confirming ? "ring-2 ring-white/80" : ""
         }`}
       >
         <TrashIcon />
