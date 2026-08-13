@@ -23,6 +23,7 @@
     "bcryptjs": "^3.0.3",
     "decimal.js": "^10.6.0",
     "exceljs": "^4.4.0",
+    "html2canvas": "^1.4.1",
     "isomorphic-dompurify": "^3.18.0",
     "jose": "^6.2.3",
     "mammoth": "^1.12.1",

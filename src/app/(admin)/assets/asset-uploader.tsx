@@ -4,6 +4,11 @@ import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { makeThumbnail } from "@/lib/make-thumbnail";
 import { SECTIONS } from "@/lib/asset-sections";
+import {
+  isUploadSupported,
+  SUPPORTED_FORMATS_TEXT,
+  UPLOAD_ACCEPT,
+} from "@/lib/asset-formats";
 import type { AssetSection } from "@/generated/prisma/enums";
 
 type QueueItem = {
@@ -99,6 +104,18 @@ export function AssetUploader({
 
     for (const [index, file] of Array.from(files).entries()) {
       const item = items[index];
+
+      // Проверяем ДО превью и отправки — не тратим время на файл, который
+      // сервер всё равно отклонит (та же проверка в api/assets/upload/route.ts,
+      // это лишь чтобы не гонять байты впустую и показать ошибку сразу).
+      if (!isUploadSupported(file.type, file.name)) {
+        update(item.id, {
+          status: "error",
+          error: `Формат не поддерживается — вьювер и превью для него нет. Загружайте: ${SUPPORTED_FORMATS_TEXT}.`,
+        });
+        continue;
+      }
+
       try {
         // Превью рисуем до отправки: сервер получит готовую картинку
         // и ему не понадобятся графические библиотеки.
@@ -143,7 +160,7 @@ export function AssetUploader({
       >
         <p className="font-medium">Перетащите файлы сюда</p>
         <p className="mt-1 text-sm text-muted">
-          PDF, видео, изображения — или любой файл на скачивание
+          Поддерживаемые форматы: {SUPPORTED_FORMATS_TEXT}
         </p>
 
         {/* Раздел выбирается ДО загрузки: так не приходится потом искать
@@ -175,6 +192,7 @@ export function AssetUploader({
           ref={inputRef}
           type="file"
           multiple
+          accept={UPLOAD_ACCEPT}
           className="hidden"
           onChange={(e) => {
             void handleFiles(e.target.files);

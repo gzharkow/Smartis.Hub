@@ -3,12 +3,14 @@ import { getCurrentUser } from "@/lib/auth";
 import { canAddMaterials } from "@/lib/permissions";
 import { db } from "@/lib/db";
 import { storage, storageKeys } from "@/lib/storage";
+import { readPdfPageCount } from "@/lib/assets";
 import {
   detectKind,
   fileExtension,
+  isUploadSupported,
   MAX_UPLOAD_BYTES,
-  readPdfPageCount,
-} from "@/lib/assets";
+  SUPPORTED_FORMATS_TEXT,
+} from "@/lib/asset-formats";
 import { parseSection } from "@/lib/asset-sections";
 
 export async function POST(request: Request) {
@@ -34,7 +36,21 @@ export async function POST(request: Request) {
   }
 
   const mimeType = file.type || "application/octet-stream";
-  const kind = detectKind(mimeType);
+
+  // Проверяем и здесь, а не только в форме на клиенте: маршрут дёргают
+  // напрямую, клиентскую проверку легко обойти. Всё, что вьювер не умеет
+  // показать и превью для него не сделать, в библиотеку не кладём —
+  // раньше такие файлы просто падали в FILE (только скачивание).
+  if (!isUploadSupported(mimeType, file.name)) {
+    return NextResponse.json(
+      {
+        error: `Формат файла «${file.name}» не поддерживается. Можно загрузить: ${SUPPORTED_FORMATS_TEXT}.`,
+      },
+      { status: 415 },
+    );
+  }
+
+  const kind = detectKind(mimeType, file.name);
   const buffer = Buffer.from(await file.arrayBuffer());
 
   // Имя файла берём как заголовок по умолчанию — продавец потом переименует.

@@ -89,7 +89,12 @@ export default async function AssetsPage({
     archived: a.archivedAt !== null,
     hasThumbnail: a.thumbnailKey !== null,
     // У ссылок и прочих файлов картинку рисовать не из чего.
-    canThumbnail: a.kind === "PDF" || a.kind === "VIDEO" || a.kind === "IMAGE",
+    canThumbnail:
+      a.kind === "PDF" ||
+      a.kind === "VIDEO" ||
+      a.kind === "IMAGE" ||
+      a.kind === "DOCUMENT" ||
+      a.kind === "SPREADSHEET",
     // Не то же самое, что canEdit страницы: на «/assets» без фильтра
     // материалы разных разделов лежат вперемешку, и право на изменение
     // проверяется по разделу КОНКРЕТНОГО материала, а не по разделу страницы.
