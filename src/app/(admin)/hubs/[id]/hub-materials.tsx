@@ -287,8 +287,26 @@ export function HubMaterials({
           })}
         </div>
 
+        {/* Строка поиска всегда сразу под чипами разделов — независимо от
+            того, что показывается ниже («Часто используемые» или результаты
+            поиска). Раньше «Часто используемые» рендерились перед полем
+            поиска, и на вкладке «Все» с пустым запросом список оказывался
+            НАД строкой поиска, а на остальных чипах (где этот блок не
+            показывается) — под ней. */}
+        <label className="grid gap-1.5">
+          <span className="text-xs font-medium text-muted">
+            Поиск по названию
+          </span>
+          <input
+            value={query}
+            onChange={onQueryChange}
+            placeholder="Название материала…"
+            className="rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:border-blue-500"
+          />
+        </label>
+
         {showFrequent ? (
-          <div className="mb-3">
+          <div className="mt-3">
             <h3 className="mb-1.5 text-xs font-medium text-muted">
               Часто используемые
             </h3>
@@ -313,18 +331,6 @@ export function HubMaterials({
             )}
           </div>
         ) : null}
-
-        <label className="grid gap-1.5">
-          <span className="text-xs font-medium text-muted">
-            Поиск по названию
-          </span>
-          <input
-            value={query}
-            onChange={onQueryChange}
-            placeholder="Название материала…"
-            className="rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:border-blue-500"
-          />
-        </label>
 
         <ul className="mt-3 grid grid-cols-1 gap-2">
           {searching ? (
