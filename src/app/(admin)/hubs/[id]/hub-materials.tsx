@@ -133,11 +133,11 @@ export function HubMaterials({
     const params = new URLSearchParams();
     if (q) params.set("q", q);
     if (section) params.set("section", section);
-    const exclude = new Set([
-      ...excludeAssetIds,
-      ...frequentlyUsed.map((a) => a.id),
-      ...addedIds,
-    ]);
+    // «Часто используемые» и результаты поиска никогда не показываются
+    // одновременно (см. showFrequent ниже) — их не нужно исключать друг
+    // из друга. Раньше id из «Часто используемые» исключались всегда,
+    // из-за чего эти материалы было невозможно найти поиском вообще.
+    const exclude = new Set([...excludeAssetIds, ...addedIds]);
     for (const id of exclude) params.append("exclude", id);
 
     // "searching" не выставляем здесь синхронно (правило
