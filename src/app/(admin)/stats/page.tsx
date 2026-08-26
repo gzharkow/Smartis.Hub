@@ -11,13 +11,17 @@ import {
   VIEW_LIST_CLASS,
 } from "@/lib/view-mode";
 import { ViewToggle } from "@/components/view-toggle";
+import { StatsSortControl } from "@/components/stats-sort-control";
+import { parseStatsSort, STATS_SORT_COOKIE } from "@/lib/stats-sort";
 
 export const dynamic = "force-dynamic";
 
 export default async function StatsPage() {
   const user = await requireSectionView("stats");
-  const view = parseViewMode((await cookies()).get(VIEW_COOKIE)?.value);
+  const jar = await cookies();
+  const view = parseViewMode(jar.get(VIEW_COOKIE)?.value);
   const grid = view === "grid";
+  const sort = parseStatsSort(jar.get(STATS_SORT_COOKIE)?.value);
 
   const [hubs, stats] = await Promise.all([
     db.hub.findMany({
@@ -35,15 +39,25 @@ export default async function StatsPage() {
     hubStats(user.organizationId),
   ]);
 
-  // Сначала те, где было движение, и притом недавнее: продавцу важно
-  // «кто зашевелился», а не алфавитный порядок.
-  const rows = hubs
-    .map((hub) => ({ hub, stat: stats.get(hub.id)! }))
-    .sort((a, b) => {
-      const at = a.stat.lastSeenAt?.getTime() ?? 0;
-      const bt = b.stat.lastSeenAt?.getTime() ?? 0;
-      return bt - at;
-    });
+  // По умолчанию — сначала те, где было движение, и притом недавнее:
+  // продавцу важно «кто зашевелился», а не алфавитный порядок. Остальные
+  // поля выбираются панелью сортировки (см. StatsSortControl).
+  const dirMul = sort.dir === "asc" ? 1 : -1;
+  const rows = hubs.map((hub) => ({ hub, stat: stats.get(hub.id)! })).sort((a, b) => {
+    switch (sort.field) {
+      case "visits":
+        return dirMul * (a.stat.visits - b.stat.visits);
+      case "duration":
+        return dirMul * (a.stat.totalMs - b.stat.totalMs);
+      case "title":
+        return dirMul * a.hub.title.localeCompare(b.hub.title, "ru");
+      default: {
+        const at = a.stat.lastSeenAt?.getTime() ?? 0;
+        const bt = b.stat.lastSeenAt?.getTime() ?? 0;
+        return dirMul * (at - bt);
+      }
+    }
+  });
 
   const touched = rows.filter((r) => r.stat.visits > 0);
 
@@ -56,7 +70,12 @@ export default async function StatsPage() {
             Кто из клиентов что смотрел и сколько времени
           </p>
         </div>
-        {hubs.length > 0 ? <ViewToggle value={view} /> : null}
+        {hubs.length > 0 ? (
+          <div className="flex flex-wrap items-center gap-2">
+            <StatsSortControl sort={sort} />
+            <ViewToggle value={view} />
+          </div>
+        ) : null}
       </div>
 
       {hubs.length === 0 ? (

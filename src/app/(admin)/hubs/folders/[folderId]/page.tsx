@@ -4,7 +4,7 @@ import { notFound } from "next/navigation";
 import { requireSectionView, showsOtherOwners, visibleOwnerFilter } from "@/lib/permissions";
 import { db } from "@/lib/db";
 import { parseViewMode, VIEW_COOKIE } from "@/lib/view-mode";
-import { hubOrderBy, HUB_SORT_COOKIE, parseHubSort } from "@/lib/hub-sort";
+import { DEFAULT_HUB_SORT, hubOrderBy, HUB_SORT_COOKIE, parseHubSort } from "@/lib/hub-sort";
 import { formatHubCreated } from "@/lib/hub-format";
 import { ownerLabel } from "@/lib/owner-color";
 import { ViewToggle } from "@/components/view-toggle";
@@ -20,9 +20,11 @@ export default async function FolderPage({
 }) {
   const { folderId } = await params;
   const user = await requireSectionView("hubs.folders");
+  const isAdmin = user.role === "ADMIN";
   const jar = await cookies();
   const view = parseViewMode(jar.get(VIEW_COOKIE)?.value);
-  const sort = parseHubSort(jar.get(HUB_SORT_COOKIE)?.value);
+  let sort = parseHubSort(jar.get(HUB_SORT_COOKIE)?.value);
+  if (sort.field === "creator" && !isAdmin) sort = DEFAULT_HUB_SORT;
 
   const folder = await db.hubFolder.findUnique({ where: { id: folderId } });
 
@@ -61,7 +63,7 @@ export default async function FolderPage({
         : null,
     brandColor: h.brandColor ?? h.organization.brandColor ?? "#2563eb",
     logoUrl: h.logoUrl ?? h.organization.logoUrl ?? "/logo.png",
-    canManage: user.role === "ADMIN" || h.ownerId === user.id,
+    canManage: isAdmin || h.ownerId === user.id,
   }));
 
   return (
@@ -77,7 +79,7 @@ export default async function FolderPage({
         <h1 className="text-xl font-semibold tracking-tight">{folder.name}</h1>
         {rows.length > 0 ? (
           <div className="flex flex-wrap items-center gap-2">
-            <HubSortControl sort={sort} />
+            <HubSortControl sort={sort} isAdmin={isAdmin} />
             <ViewToggle value={view} />
           </div>
         ) : null}

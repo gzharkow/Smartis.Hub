@@ -3,6 +3,7 @@ import { requireSectionView } from "@/lib/permissions";
 import { db } from "@/lib/db";
 import { parseViewMode, VIEW_COOKIE } from "@/lib/view-mode";
 import {
+  DEFAULT_HUB_SORT,
   hubOrderBy,
   HUB_SORT_COOKIE,
   parseHubSort,
@@ -18,9 +19,13 @@ import { HubTabs, hubTabVisibleKeys } from "./hub-tabs";
 
 export default async function HubsPage() {
   const user = await requireSectionView("hubs");
+  const isAdmin = user.role === "ADMIN";
   const jar = await cookies();
   const view = parseViewMode(jar.get(VIEW_COOKIE)?.value);
-  const sort = parseHubSort(jar.get(HUB_SORT_COOKIE)?.value);
+  let sort = parseHubSort(jar.get(HUB_SORT_COOKIE)?.value);
+  // «Создателю» — только для ADMIN; подделанную cookie у MEMBER молча
+  // откатываем на дефолт, а не падаем и не даём подглядывать порядок.
+  if (sort.field === "creator" && !isAdmin) sort = DEFAULT_HUB_SORT;
 
   const hubs = await db.hub.findMany({
     where: {
@@ -59,7 +64,7 @@ export default async function HubsPage() {
         : null,
     brandColor: h.brandColor ?? h.organization.brandColor ?? "#2563eb",
     logoUrl: h.logoUrl ?? h.organization.logoUrl ?? "/logo.png",
-    canManage: user.role === "ADMIN" || h.ownerId === user.id,
+    canManage: isAdmin || h.ownerId === user.id,
   }));
 
   return (
@@ -80,7 +85,7 @@ export default async function HubsPage() {
         right={
           rows.length > 0 ? (
             <div className="flex flex-wrap items-center gap-2">
-              <HubSortControl sort={sort} />
+              <HubSortControl sort={sort} isAdmin={isAdmin} />
               <ViewToggle value={view} />
             </div>
           ) : null

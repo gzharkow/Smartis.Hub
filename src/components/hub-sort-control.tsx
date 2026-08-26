@@ -42,7 +42,7 @@ function ArrowIcon({ dir }: { dir: HubSortDir }) {
  * Как и переключатель вида, пишет cookie и перерисовывает страницу с сервера
  * — сама сортировка делается в запросе к базе, а не в браузере.
  */
-export function HubSortControl({ sort }: { sort: HubSort }) {
+export function HubSortControl({ sort, isAdmin }: { sort: HubSort; isAdmin: boolean }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
 
@@ -52,6 +52,7 @@ export function HubSortControl({ sort }: { sort: HubSort }) {
   }
 
   const dirLabel = sort.dir === "asc" ? "По возрастанию" : "По убыванию";
+  const fields = HUB_SORT_FIELDS.filter((f) => !f.adminOnly || isAdmin);
 
   return (
     <div className="flex shrink-0 items-center gap-1.5 text-sm">
@@ -65,7 +66,7 @@ export function HubSortControl({ sort }: { sort: HubSort }) {
         }
         className="rounded-lg border border-border bg-background px-2 py-1 text-sm disabled:opacity-50"
       >
-        {HUB_SORT_FIELDS.map((f) => (
+        {fields.map((f) => (
           <option key={f.value} value={f.value}>
             {f.label}
           </option>
