@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { requireSectionView, hasEdit } from "@/lib/permissions";
 import { db } from "@/lib/db";
 import { parseCalculatorConfig } from "@/lib/quote-calculator";
+import { specAvailability } from "@/lib/spec-build";
 import { QuoteEditor } from "./quote-editor";
 import { QuoteActionsBar } from "./quote-actions-bar";
 
@@ -30,6 +31,19 @@ export default async function QuotePage({
 
   const canEdit = hasEdit(user, "calculator");
 
+  // Спецификацию пока выпускает только администратор (см. loadQuoteForSpec).
+  // Остальным кнопку не показываем вовсе, а не блокируем: неактивная кнопка
+  // без внятной причины читается как поломка.
+  const availability =
+    user.role === "ADMIN"
+      ? await specAvailability({
+          organizationId: quote.organizationId,
+          clientType: quote.clientType,
+          boxIntegrationSelected: quote.boxIntegrationSelected,
+          vatRatePct: quote.vatRatePct.toString(),
+        })
+      : null;
+
   return (
     <div className="mx-auto w-full max-w-7xl grid grid-cols-1 gap-6">
       <div>
@@ -44,7 +58,17 @@ export default async function QuotePage({
           <h1 className="text-xl font-semibold tracking-tight">
             {quote.clientName}
           </h1>
-          <QuoteActionsBar quoteId={quote.id} canEdit={canEdit} />
+          <QuoteActionsBar
+            quoteId={quote.id}
+            canEdit={canEdit}
+            spec={
+              availability === null
+                ? undefined
+                : availability.ok
+                  ? { ok: true }
+                  : { ok: false, reason: availability.reason }
+            }
+          />
         </div>
       </div>
 

@@ -9,10 +9,13 @@ import { CalculatorTabs, calculatorTabVisibleKeys } from "../calculator-tabs";
 
 export const dynamic = "force-dynamic";
 
-// PDF, которые Генератор КП кладёт в хабы (см. addQuotePdfToHub в
-// actions/hubs.ts), — это Asset с проставленным quoteId. Библиотека
-// «Материалы» такие Asset нарочно не показывает (иначе расчёты забивают
-// её вперемешку с презентациями), а этот раздел — их единственное место.
+// Файлы, порождённые расчётом, — это Asset с проставленным quoteId: PDF
+// коммерческого предложения (addQuotePdfToHub в actions/hubs.ts) и
+// Спецификация в .docx (finalizeQuoteSpec в actions/quote-spec.ts).
+// Библиотека «Материалы» такие Asset нарочно не показывает (иначе расчёты
+// забивают её вперемешку с презентациями), а этот раздел — их единственное
+// место. Признак один — quoteId, поэтому оба вида файлов попадают сюда сами,
+// без отдельной ветки.
 
 export default async function CalculatorFilesPage() {
   const user = await requireSectionView("calculator.files");
@@ -43,6 +46,10 @@ export default async function CalculatorFilesPage() {
 
   const toRow = (a: (typeof files)[number]): QuoteFileRowData => ({
     id: a.id,
+    // Бейдж берём из расширения в ключе хранилища, а не из AssetKind: у КП и
+    // у Спецификации kind разный (PDF против DOCUMENT), но человеку нужно
+    // видеть формат файла, а не наш внутренний вид материала.
+    kindLabel: (a.storageKey?.split(".").pop() ?? "файл").toUpperCase(),
     title: a.title,
     meta: [
       a.pageCount ? `${a.pageCount} стр.` : null,
@@ -69,8 +76,8 @@ export default async function CalculatorFilesPage() {
       <div className="mb-4">
         <h1 className="text-xl font-semibold tracking-tight">Файлы</h1>
         <p className="mt-0.5 text-sm text-muted">
-          PDF, сгенерированные Генератором КП — не показываются в общей
-          библиотеке материалов
+          Файлы, сгенерированные Генератором КП: PDF коммерческих предложений и
+          Спецификации в .docx — в общей библиотеке материалов не показываются
         </p>
       </div>
 
@@ -80,8 +87,8 @@ export default async function CalculatorFilesPage() {
         <div className="rounded-xl border border-dashed border-border py-16 text-center">
           <p className="font-medium">Пока ни одного файла</p>
           <p className="mx-auto mt-1 max-w-md text-sm text-muted">
-            Файл появится здесь, как только PDF расчёта добавят в хаб —
-            кнопка «Добавить расчёт из Генератора КП» на странице хаба.
+            Здесь появятся PDF расчётов, добавленных в хаб, и Спецификации,
+            выпущенные со страницы расчёта.
           </p>
         </div>
       ) : (

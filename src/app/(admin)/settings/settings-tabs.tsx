@@ -5,6 +5,7 @@ import Link from "next/link";
 const SETTINGS_TABS = [
   { key: "general", href: "/settings/general", label: "Общие" },
   { key: "administration", href: "/settings/administration", label: "Администрирование" },
+  { key: "spec-templates", href: "/settings/spec-templates", label: "Шаблоны документов" },
 ] as const;
 
 export type SettingsTabKey = (typeof SETTINGS_TABS)[number]["key"];

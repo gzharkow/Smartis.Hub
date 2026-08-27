@@ -40,4 +40,8 @@ export const storageKeys = {
   hubCover: (orgId: string, hubId: string, ext: string) =>
     `hubs/${orgId}/${hubId}/cover${ext}`,
   orgLogo: (orgId: string, ext: string) => `orgs/${orgId}/logo${ext}`,
+  // Шаблоны Спецификации всегда .docx — расширение не параметр: файл другого
+  // формата до хранилища не доходит, его отбивает загрузчик.
+  specTemplate: (orgId: string, templateId: string) =>
+    `spec-templates/${orgId}/${templateId}.docx`,
 };

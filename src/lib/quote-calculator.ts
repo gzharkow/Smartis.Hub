@@ -171,6 +171,47 @@ export type DerivedQuoteDocument = {
 const SA_SECTION_TITLE = "Сквозная аналитика Smartis";
 const ADDONS_SECTION_TITLE = "Дополнительные решения";
 
+/** Названия строк секции «Сквозная аналитика». Экспортируются, потому что по
+ * ним же генератор Спецификации (spec-values.ts) узнаёт строку в расчёте —
+ * два списка строковых литералов разъехались бы при первом переименовании. */
+export const LINE_TITLES = {
+  techSupport: "Техническая поддержка ПО",
+  customCrm: "Поток CRM данных нестандартного источника",
+  objectsBuilder: "Количество объектов",
+  objectsAutoDealer: "Количество объектов (ДЦ)",
+  supportUsers: "Пользователи технической поддержки",
+  mediaPlan: "Загрузка медиапланов",
+  boxSupport: "Поддержка продукта в контуре клиента",
+} as const;
+
+/** Цены позиций, которые умножаются на количество. Вынесены из
+ * derive*Document, потому что Спецификация печатает их в таблице «за каждый
+ * дополнительный …» всегда — даже когда позиция в расчёт не вошла и строки
+ * в документе КП нет. */
+export type UnitTariffs = {
+  object: number;
+  supportUser: number;
+  mediaPlan: number;
+};
+
+export function builderUnitTariffs(enterpriseLicense: boolean): UnitTariffs {
+  return enterpriseLicense
+    ? { object: 15_000, supportUser: 4_000, mediaPlan: 5_000 }
+    : { object: 12_000, supportUser: 3_500, mediaPlan: 4_500 };
+}
+
+export const AUTO_DEALER_UNIT_TARIFFS: UnitTariffs = {
+  object: 6_000,
+  supportUser: 4_000,
+  mediaPlan: 3_500,
+};
+
+export function unitTariffs(config: QuoteCalculatorConfig): UnitTariffs {
+  return config.clientType === "BUILDER"
+    ? builderUnitTariffs(config.enterpriseLicense)
+    : AUTO_DEALER_UNIT_TARIFFS;
+}
+
 const TECH_SUPPORT_DESCRIPTION =
   "Доступ к лицензии, персональный менеджер + Настройка, поддержка, интеграция";
 const CRM_LINE_DESCRIPTION =
@@ -197,29 +238,31 @@ function line(
 }
 
 function deriveBuilderDocument(config: BuilderCalculatorConfig): DerivedQuoteDocument {
+  const tariffs = builderUnitTariffs(config.enterpriseLicense);
+
   const saLines: DerivedLine[] = [
-    line("Техническая поддержка ПО", config.enterpriseLicense ? 120_000 : 90_000, {
+    line(LINE_TITLES.techSupport, config.enterpriseLicense ? 120_000 : 90_000, {
       description: TECH_SUPPORT_DESCRIPTION,
     }),
   ];
 
   if (config.customCrmIntegration) {
     saLines.push(
-      line("Поток CRM данных нестандартного источника", 50_000, {
+      line(LINE_TITLES.customCrm, 50_000, {
         description: CRM_LINE_DESCRIPTION,
       }),
     );
   }
 
   saLines.push(
-    line("Количество объектов", config.enterpriseLicense ? 15_000 : 12_000, {
+    line(LINE_TITLES.objectsBuilder, tariffs.object, {
       description: "Количество объектов, подключаемых к нам",
       quantity: config.objectsCount,
     }),
   );
 
   saLines.push(
-    line("Пользователи технической поддержки", config.enterpriseLicense ? 4_000 : 3_500, {
+    line(LINE_TITLES.supportUsers, tariffs.supportUser, {
       description: SUPPORT_USERS_DESCRIPTION,
       quantity: config.supportUsersCount,
     }),
@@ -227,7 +270,7 @@ function deriveBuilderDocument(config: BuilderCalculatorConfig): DerivedQuoteDoc
 
   if (config.mediaPlanUpload) {
     saLines.push(
-      line("Загрузка медиапланов", config.enterpriseLicense ? 5_000 : 4_500, {
+      line(LINE_TITLES.mediaPlan, tariffs.mediaPlan, {
         description: MEDIA_PLAN_UPLOAD_DESCRIPTION,
         quantity: config.objectsCount,
       }),
@@ -235,7 +278,7 @@ function deriveBuilderDocument(config: BuilderCalculatorConfig): DerivedQuoteDoc
   }
 
   if (config.box) {
-    saLines.push(line("Поддержка продукта в контуре клиента", 50_000));
+    saLines.push(line(LINE_TITLES.boxSupport, 50_000));
   }
 
   const addonLines: DerivedLine[] = [];
@@ -273,27 +316,29 @@ function deriveBuilderDocument(config: BuilderCalculatorConfig): DerivedQuoteDoc
 }
 
 function deriveAutoDealerDocument(config: AutoDealerCalculatorConfig): DerivedQuoteDocument {
+  const tariffs = AUTO_DEALER_UNIT_TARIFFS;
+
   const saLines: DerivedLine[] = [
-    line("Техническая поддержка ПО", 90_000, { description: TECH_SUPPORT_DESCRIPTION }),
+    line(LINE_TITLES.techSupport, 90_000, { description: TECH_SUPPORT_DESCRIPTION }),
   ];
 
   if (config.customCrmIntegration) {
     saLines.push(
-      line("Поток CRM данных нестандартного источника", 50_000, {
+      line(LINE_TITLES.customCrm, 50_000, {
         description: CRM_LINE_DESCRIPTION,
       }),
     );
   }
 
   saLines.push(
-    line("Количество объектов (ДЦ)", 6_000, {
+    line(LINE_TITLES.objectsAutoDealer, tariffs.object, {
       description: "Количество единиц медиапланирования, подключаемых к нам",
       quantity: config.objectsCount,
     }),
   );
 
   saLines.push(
-    line("Пользователи технической поддержки", 4_000, {
+    line(LINE_TITLES.supportUsers, tariffs.supportUser, {
       description: SUPPORT_USERS_DESCRIPTION,
       quantity: config.supportUsersCount,
     }),
@@ -301,7 +346,7 @@ function deriveAutoDealerDocument(config: AutoDealerCalculatorConfig): DerivedQu
 
   if (config.mediaPlanUpload) {
     saLines.push(
-      line("Загрузка медиапланов", 3_500, {
+      line(LINE_TITLES.mediaPlan, tariffs.mediaPlan, {
         description: MEDIA_PLAN_UPLOAD_DESCRIPTION,
         quantity: config.objectsCount,
       }),
@@ -309,7 +354,7 @@ function deriveAutoDealerDocument(config: AutoDealerCalculatorConfig): DerivedQu
   }
 
   if (config.box) {
-    saLines.push(line("Поддержка продукта в контуре клиента", 50_000));
+    saLines.push(line(LINE_TITLES.boxSupport, 50_000));
   }
 
   const addonLines: DerivedLine[] = [];

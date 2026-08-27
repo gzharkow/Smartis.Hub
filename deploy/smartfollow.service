@@ -22,5 +22,12 @@ NoNewPrivileges=true
 ProtectSystem=strict
 ReadWritePaths=/var/lib/smartfollow
 
+# Точный предпросмотр Спецификации конвертирует .docx в PDF через headless
+# LibreOffice (см. src/lib/soffice.ts), а тот пишет во временный каталог и
+# в свой профиль. С ProtectSystem=strict и без PrivateTmp каталог /tmp
+# доступен процессу только на чтение — конвертация молча падала бы.
+PrivateTmp=true
+Environment=HOME=/var/lib/smartfollow
+
 [Install]
 WantedBy=multi-user.target

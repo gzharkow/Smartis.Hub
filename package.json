@@ -11,7 +11,11 @@
     "db:seed": "tsx prisma/seed.ts",
     "db:studio": "prisma studio",
     "check:sanitize": "tsx scripts/check-sanitize.ts",
-    "check:tracking": "tsx scripts/check-tracking.ts"
+    "check:tracking": "tsx scripts/check-tracking.ts",
+    "check:spec": "tsx scripts/check-spec-values.ts",
+    "check:docx": "tsx scripts/check-docx-fill.ts",
+    "prepare:spec": "tsx scripts/prepare-spec-template.ts",
+    "check:sample": "tsx scripts/check-spec-against-sample.ts"
   },
   "dependencies": {
     "@pdf-lib/fontkit": "^1.1.1",
@@ -26,6 +30,7 @@
     "html2canvas": "^1.4.1",
     "isomorphic-dompurify": "^3.18.0",
     "jose": "^6.2.3",
+    "jszip": "^3.10.1",
     "mammoth": "^1.12.1",
     "next": "16.2.10",
     "pdf-lib": "^1.17.1",

@@ -8,6 +8,10 @@ import { OwnerBadge } from "@/components/owner-badge";
 
 export type QuoteFileRowData = {
   id: string;
+  /** Что за файл: «PDF» у коммерческого предложения, «DOCX» у Спецификации.
+   * Раньше бейдж был захардкожен — до Спецификации других файлов тут и не
+   * бывало. */
+  kindLabel: string;
   title: string;
   meta: string;
   created: string;
@@ -83,7 +87,7 @@ export function QuoteFileRow({
       }`}
     >
       <span className="shrink-0 rounded-md bg-border/70 px-2 py-0.5 text-xs font-medium">
-        PDF
+        {file.kindLabel}
       </span>
 
       <span className="min-w-40 flex-1 truncate font-medium">

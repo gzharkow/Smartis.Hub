@@ -34,6 +34,8 @@ model Organization {
   hubs    Hub[]
   folders HubFolder[]
   quotes  Quote[]
+
+  specTemplates SpecTemplate[]
 }
 
 enum UserRole {
@@ -74,6 +76,8 @@ model User {
   // создании/правке аккаунта в администрировании.
   visibleOwners User[] @relation("AccountVisibility")
   visibleTo     User[] @relation("AccountVisibility")
+
+  uploadedSpecTemplates SpecTemplate[]
 
   @@unique([organizationId, email])
   @@index([organizationId])
@@ -125,12 +129,12 @@ model Asset {
   // (X-Frame-Options, CSP frame-ancestors) — тогда встроенный просмотр
   // покажет клиенту пустоту, и ссылку надо открывать новой вкладкой.
   // null — проверить не удалось: сайт не ответил или ответил ошибкой.
-  embeddable Boolean?
+  embeddable  Boolean?
 
   // Нужны трекингу: без pageCount не посчитать «дочитал ли», без durationSec — «досмотрел ли»
-  pageCount    Int?
-  durationSec  Int?
-  thumbnailKey String?
+  pageCount     Int?
+  durationSec   Int?
+  thumbnailKey  String?
   // Тип картинки превью. У файлов оно всегда JPEG (рисует браузер), поэтому
   // раньше тип был зашит в коде. У ссылок превью — это og:image сайта, а он
   // бывает png/webp/gif. null трактуем как image/jpeg (старые превью файлов).
@@ -231,7 +235,7 @@ model Hub {
   demoLabel String  @default("Демо-кабинет")
   // Подпись под кнопкой: логин и пароль от демо. Обычный текст с переносами,
   // без форматирования — реквизиты в оформлении не нуждаются.
-  demoNote String?
+  demoNote  String?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -452,18 +456,18 @@ model Quote {
   // null — свободный КП (сегодняшнее поведение). Значение — КП управляется
   // калькулятором; смена типа сбрасывает calculatorConfig на дефолт своего
   // типа и полностью пересобирает секции/строки.
-  clientType QuoteClientType?
+  clientType             QuoteClientType?
   // Форма калькулятора целиком — типизирована и валидируется Zod-схемой в
   // src/lib/quote-calculator.ts, здесь Postgres формы не знает. null, пока
   // clientType не выбран.
-  calculatorConfig Json?
+  calculatorConfig       Json?
   // Денормализованный флаг «Коробка» — источник третьего итога в футере
   // документа («Интеграционный платёж коробочного решения», см.
   // src/lib/quote-calc.ts). Держится в синхроне с calculatorConfig.box при
   // каждой пересборке секций/строк, а не читается из JSON на каждый рендер —
   // ровно как countsTowardImplementationPayment уже выделен в QuoteSection,
   // а не инферится на лету.
-  boxIntegrationSelected Boolean @default(false)
+  boxIntegrationSelected Boolean          @default(false)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -530,4 +534,49 @@ model QuoteLine {
   section QuoteSection @relation(fields: [sectionId], references: [id], onDelete: Cascade)
 
   @@index([sectionId])
+}
+
+// ─────────────────────────────  Шаблоны Спецификации  ─────────────────────────────
+
+// Спецификация — приложение к договору, которое собирается из расчёта КП
+// (см. src/lib/spec-build.ts). Текст шаблона согласован юристами, поэтому мы
+// его не генерируем, а заполняем: подставляем значения в метки {{…}} внутри
+// загруженного .docx, не трогая ни шрифты, ни вёрстку.
+//
+// Формулировки отличаются у застройщика и автодилера, и отдельно — у
+// коробочного решения, отсюда четыре вида. Ставка НДС зашита в текст шаблона
+// примерно в десяти местах, поэтому она часть ключа: расчёт с НДС 7% нельзя
+// заполнить шаблоном, написанным под 5%.
+enum SpecTemplateKind {
+  BUILDER_CLOUD // Застройщик, облако
+  BUILDER_BOX // Застройщик, коробка
+  AUTO_DEALER_CLOUD // Автодилер, облако
+  AUTO_DEALER_BOX // Автодилер, коробка
+}
+
+model SpecTemplate {
+  id             String           @id @default(cuid())
+  organizationId String
+  kind           SpecTemplateKind
+  vatRatePct     Decimal          @default(5) @db.Decimal(5, 2)
+
+  // Имя исходного файла — только чтобы админ узнал в списке то, что грузил.
+  fileName   String
+  storageKey String
+  sizeBytes  Int
+
+  // Кто загрузил. SetNull, а не Cascade: удаление сотрудника не должно
+  // уносить с собой действующий шаблон договора.
+  uploadedById String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  uploadedBy   User?        @relation(fields: [uploadedById], references: [id], onDelete: SetNull)
+
+  // Один действующий шаблон на вид и ставку. Повторная загрузка заменяет
+  // файл, а не плодит вторую запись, между которыми потом гадать.
+  @@unique([organizationId, kind, vatRatePct])
+  @@index([organizationId])
 }
