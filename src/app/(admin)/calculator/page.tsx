@@ -29,7 +29,6 @@ export default async function CalculatorPage() {
       organizationId: user.organizationId,
       // Продавец видит свои расчёты плюс те, что явно открыл суперадмин.
       ...visibleOwnerFilter(user),
-      archivedAt: null,
     },
     include: {
       // Порядок секций важен теперь, когда список различает «первую» секцию

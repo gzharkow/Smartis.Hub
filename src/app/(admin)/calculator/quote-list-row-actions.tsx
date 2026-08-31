@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { archiveQuote } from "@/app/actions/quotes";
+import { purgeQuote } from "@/app/actions/quotes";
 import { buttonClasses } from "@/components/ui/button";
 
 // Тот же confirm-then-archive приём, что и в quote-actions-bar.tsx на
@@ -22,11 +22,12 @@ export function QuoteListRowActions({
 
   if (confirming) {
     return (
-      <span className="flex shrink-0 items-center gap-2">
+      <span className="flex flex-wrap items-center justify-end gap-2">
+        <span className="text-xs text-danger">Вернуть будет нельзя</span>
         <button
           type="button"
           disabled={deleting}
-          onClick={() => startDelete(() => archiveQuote(quoteId))}
+          onClick={() => startDelete(() => purgeQuote(quoteId))}
           className={buttonClasses("danger", "sm")}
         >
           {deleting ? "…" : "Удалить"}

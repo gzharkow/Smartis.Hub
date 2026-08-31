@@ -57,19 +57,21 @@ export type SpecEditableValues = {
   /** Таблица 2.2, строка «за предоставление доступа к платформе». */
   platformNet: string;
 
+  /** Итог за объекты — не отдельное поле: count × unitObjectNet (см.
+   * computeSpecValues). Раньше это было ещё одно свободно вводимое число,
+   * и правка одного количества не меняла сумму — ту же цену теперь держит
+   * только унитарная цена ниже, единственный источник истины. */
   includeObjects: boolean;
   objectsCount: number;
-  /** Итог за все объекты, а не цена за один. */
-  objectsNet: string;
 
   includeUsers: boolean;
   usersCount: number;
-  usersNet: string;
 
   includeMediaPlan: boolean;
   mediaPlanNet: string;
 
-  /** Таблица 2.3 — цена за одну дополнительную единицу. */
+  /** Таблица 2.3 — цена за одну дополнительную единицу; она же цена, по
+   * которой считается итог за объекты/пользователей в таблице 2.2. */
   unitObjectNet: string;
   unitUserNet: string;
   unitMediaPlanNet: string;
@@ -90,10 +92,8 @@ export const SpecEditableValuesSchema = z.object({
   platformNet: moneySchema,
   includeObjects: z.boolean(),
   objectsCount: countSchema,
-  objectsNet: moneySchema,
   includeUsers: z.boolean(),
   usersCount: countSchema,
-  usersNet: moneySchema,
   includeMediaPlan: z.boolean(),
   mediaPlanNet: moneySchema,
   unitObjectNet: moneySchema,
@@ -180,10 +180,8 @@ function emptyEditable(): SpecEditableValues {
     platformNet: ZERO,
     includeObjects: false,
     objectsCount: 0,
-    objectsNet: ZERO,
     includeUsers: false,
     usersCount: 0,
-    usersNet: ZERO,
     includeMediaPlan: false,
     mediaPlanNet: ZERO,
     unitObjectNet: ZERO,
@@ -264,8 +262,8 @@ export function deriveSpecValues(quote: SpecQuoteInput): {
   }
 
   for (const [bucket, field, name] of [
-    [objects, "objectsNet", "объектов"],
-    [users, "usersNet", "пользователей"],
+    [objects, "objectsCount", "объектов"],
+    [users, "usersCount", "пользователей"],
     [mediaPlan, "mediaPlanNet", "медиапланов"],
   ] as const) {
     if (bucket.seen > 1) {
@@ -318,11 +316,9 @@ export function deriveSpecValues(quote: SpecQuoteInput): {
 
       includeObjects: objects.count.greaterThan(0),
       objectsCount: objects.count.round().toNumber(),
-      objectsNet: objects.total.toFixed(2),
 
       includeUsers: users.count.greaterThan(0),
       usersCount: users.count.round().toNumber(),
-      usersNet: users.total.toFixed(2),
 
       includeMediaPlan: mediaPlan.count.greaterThan(0),
       mediaPlanNet: mediaPlan.total.toFixed(2),
@@ -363,8 +359,16 @@ export function computeSpecValues(
   const rate = new Decimal(vatRatePct);
 
   const platform = money(editable.platformNet, rate);
-  const objects = editable.includeObjects ? money(editable.objectsNet, rate) : null;
-  const users = editable.includeUsers ? money(editable.usersNet, rate) : null;
+  // Итог всегда count × цена за единицу — та самая цена, что напечатана в
+  // таблице 2.3 (unitObjectNet/unitUserNet). Раньше итог хранился отдельным
+  // свободно вводимым полем, и правка количества не меняла сумму — теперь
+  // разъехаться им физически нечем, потому что независимого поля-суммы нет.
+  const objects = editable.includeObjects
+    ? money(new Decimal(editable.objectsCount).times(editable.unitObjectNet), rate)
+    : null;
+  const users = editable.includeUsers
+    ? money(new Decimal(editable.usersCount).times(editable.unitUserNet), rate)
+    : null;
   const mediaPlan = editable.includeMediaPlan ? money(editable.mediaPlanNet, rate) : null;
 
   const rows = [platform, objects, users, mediaPlan].filter((r): r is SpecMoney => r !== null);

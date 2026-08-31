@@ -11,13 +11,13 @@ import { PageHeader } from "@/components/ui/page-header";
 
 export const dynamic = "force-dynamic";
 
-// Файлы, порождённые расчётом, — это Asset с проставленным quoteId: PDF
-// коммерческого предложения (addQuotePdfToHub в actions/hubs.ts) и
-// Спецификация в .docx (finalizeQuoteSpec в actions/quote-spec.ts).
-// Библиотека «Материалы» такие Asset нарочно не показывает (иначе расчёты
-// забивают её вперемешку с презентациями), а этот раздел — их единственное
-// место. Признак один — quoteId, поэтому оба вида файлов попадают сюда сами,
-// без отдельной ветки.
+// PDF коммерческого предложения (addQuotePdfToHub в actions/hubs.ts) — это
+// Asset с проставленным quoteId и kind=PDF. Библиотека «Материалы» такие
+// Asset нарочно не показывает (иначе расчёты забивают её вперемешку с
+// презентациями), а этот раздел — их единственное место. Спецификации
+// (kind=DOCUMENT, тот же quoteId) живут отдельно, в «Спецификации»
+// (../spec/page.tsx) — там другое поведение клика по названию (открывает
+// предпросмотр, а не расчёт).
 
 export default async function CalculatorFilesPage() {
   const user = await requireUser();
@@ -26,6 +26,7 @@ export default async function CalculatorFilesPage() {
     where: {
       organizationId: user.organizationId,
       quoteId: { not: null },
+      kind: "PDF",
       // Продавец видит файлы своих расчётов плюс те, что явно открыл
       // суперадмин, как и в самом списке «Генератор КП».
       quote: visibleOwnerFilter(user),
@@ -48,9 +49,6 @@ export default async function CalculatorFilesPage() {
 
   const toRow = (a: (typeof files)[number]): QuoteFileRowData => ({
     id: a.id,
-    // Бейдж берём из расширения в ключе хранилища, а не из AssetKind: у КП и
-    // у Спецификации kind разный (PDF против DOCUMENT), но человеку нужно
-    // видеть формат файла, а не наш внутренний вид материала.
     kindLabel: (a.storageKey?.split(".").pop() ?? "файл").toUpperCase(),
     title: a.title,
     meta: [
@@ -78,7 +76,7 @@ export default async function CalculatorFilesPage() {
       <PageHeader
         className="mb-4"
         title="Файлы"
-        subtitle="Файлы, сгенерированные Генератором КП: PDF коммерческих предложений и Спецификации в .docx — в общей библиотеке материалов не показываются"
+        subtitle="PDF коммерческих предложений, добавленных в хаб, — сгенерированы Генератором КП, в общей библиотеке материалов не показываются"
       />
 
       <CalculatorTabs current="files" />
@@ -87,8 +85,8 @@ export default async function CalculatorFilesPage() {
         <div className="rounded-xl border border-dashed border-border py-16 text-center">
           <p className="font-medium">Пока ни одного файла</p>
           <p className="mx-auto mt-1 max-w-md text-sm text-muted">
-            Здесь появятся PDF расчётов, добавленных в хаб, и Спецификации,
-            выпущенные со страницы расчёта.
+            Здесь появятся PDF расчётов, добавленные в хаб — кнопка «Добавить
+            расчёт из Генератора КП» на странице хаба.
           </p>
         </div>
       ) : (

@@ -60,7 +60,6 @@ export async function GET(request: Request) {
         organizationId: user.organizationId,
         // Та же логика видимости, что у хабов.
         ...visibleOwnerFilter(user),
-        archivedAt: null,
         clientName: { contains: q, mode: "insensitive" },
       },
       select: { id: true, clientName: true },

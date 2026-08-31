@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
-import { archiveQuote, duplicateQuote } from "@/app/actions/quotes";
+import { duplicateQuote, purgeQuote } from "@/app/actions/quotes";
 import { buttonClasses } from "@/components/ui/button";
 
 export function QuoteActionsBar({
@@ -62,14 +62,18 @@ export function QuoteActionsBar({
           </button>
 
           {confirming ? (
-            <span className="flex items-center gap-2">
-              <span className="text-xs text-muted">Удалить расчёт?</span>
+            <span className="flex flex-wrap items-center gap-2">
+              <span className="text-xs text-danger">
+                Удалится навсегда. Прикреплённые PDF и Спецификации останутся
+                в хранилище, но пропадут из «Файлы»/«Спецификации» (если уже
+                добавлены в хаб — останутся видны там).
+              </span>
               <button
                 type="button"
                 disabled={deleting}
                 onClick={() =>
                   startDelete(async () => {
-                    await archiveQuote(quoteId);
+                    await purgeQuote(quoteId);
                     router.push("/calculator");
                   })
                 }

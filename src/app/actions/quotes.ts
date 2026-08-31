@@ -519,17 +519,19 @@ export async function duplicateQuote(quoteId: string) {
 }
 
 /**
- * Удаление КП — мягкое, как у Hub/Asset: запись остаётся в базе с
- * archivedAt, просто пропадает из списка. Отдельной корзины с восстановлением
- * пока нет — если понадобится, archivedAt уже на месте для этого.
+ * Удаление КП — настоящее, без корзины. Секции и строки уходят вместе с ним
+ * (Cascade), а уже выпущенные PDF/Спецификации (Asset.quoteId) переживают
+ * удаление — SetNull, потому что снимок расчёта не должен исчезать вместе с
+ * оригиналом. Такой файл при этом пропадает из «Файлы»/«Спецификации» (обе
+ * страницы фильтруют quoteId: { not: null }), но остаётся видимым в хабе,
+ * если уже был туда добавлен — HubItem это не трогает.
  */
-export async function archiveQuote(quoteId: string) {
+export async function purgeQuote(quoteId: string) {
   const { quote } = await ownedQuote(quoteId);
 
-  await db.quote.update({
-    where: { id: quote.id },
-    data: { archivedAt: new Date() },
-  });
+  await db.quote.delete({ where: { id: quote.id } });
 
   revalidatePath("/calculator");
+  revalidatePath("/calculator/files");
+  revalidatePath("/calculator/spec");
 }

@@ -115,11 +115,9 @@ export function SpecReview({
             count={values.objectsCount}
             onCount={(v) => set("objectsCount", v)}
             caption={objectsLabel(values.objectsCount, clientType)}
-            value={values.objectsNet}
-            invalid={invalid.has("objectsNet")}
-            onChange={(v) => set("objectsNet", v)}
+            readOnlyTotal={computed?.t22.objects ?? null}
             derived={computed?.t22.objects ?? undefined}
-            issue={issueFor("objectsNet")}
+            issue={issueFor("objectsCount")}
           />
 
           <ToggledMoneyRow
@@ -129,11 +127,9 @@ export function SpecReview({
             count={values.usersCount}
             onCount={(v) => set("usersCount", v)}
             caption={usersLabel(values.usersCount)}
-            value={values.usersNet}
-            invalid={invalid.has("usersNet")}
-            onChange={(v) => set("usersNet", v)}
+            readOnlyTotal={computed?.t22.users ?? null}
             derived={computed?.t22.users ?? undefined}
-            issue={issueFor("usersNet")}
+            issue={issueFor("usersCount")}
           />
 
           <ToggledMoneyRow
@@ -274,8 +270,6 @@ export function SpecReview({
 
 const MONEY_FIELDS = [
   "platformNet",
-  "objectsNet",
-  "usersNet",
   "mediaPlanNet",
   "unitObjectNet",
   "unitUserNet",
@@ -497,6 +491,7 @@ function ToggledMoneyRow({
   count,
   onCount,
   caption,
+  readOnlyTotal,
   value,
   invalid,
   onChange,
@@ -509,9 +504,14 @@ function ToggledMoneyRow({
   count?: number;
   onCount?: (value: number) => void;
   caption?: string;
-  value: string;
-  invalid: boolean;
-  onChange: (value: string) => void;
+  /** Когда передан (объекты/пользователи) — итог считается как count × цена
+   * за единицу из таблицы 2.3, и вместо поля ввода показывается только
+   * результат. Отдельного свободного поля суммы для этой строки больше нет —
+   * иначе количество и сумма опять могли бы разъехаться. */
+  readOnlyTotal?: SpecMoney | null;
+  value?: string;
+  invalid?: boolean;
+  onChange?: (value: string) => void;
   derived?: SpecMoney;
   issue: string | null;
 }) {
@@ -527,13 +527,24 @@ function ToggledMoneyRow({
           />
           {label}
         </label>
-        <input
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-          disabled={!included}
-          inputMode="decimal"
-          className={`${invalid ? badInputCls : inputCls} disabled:opacity-40`}
-        />
+        {readOnlyTotal !== undefined ? (
+          <div className="grid justify-items-end gap-0.5">
+            <span
+              className={`${inputCls} inline-flex items-center justify-end ${!included ? "opacity-40" : ""}`}
+            >
+              {included && readOnlyTotal ? formatAmount(readOnlyTotal.net) : "—"}
+            </span>
+            <span className="text-xs text-muted">Цена за единицу — в таблице 2.3 ниже</span>
+          </div>
+        ) : (
+          <input
+            value={value}
+            onChange={(e) => onChange?.(e.target.value)}
+            disabled={!included}
+            inputMode="decimal"
+            className={`${invalid ? badInputCls : inputCls} disabled:opacity-40`}
+          />
+        )}
       </div>
 
       {included && onCount ? (

@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import Link from "next/link";
-import { archiveAsset, restoreAsset } from "@/app/actions/assets";
+import { archiveAsset, deleteAssetPermanently, restoreAsset } from "@/app/actions/assets";
 import { withPlural, WORDS } from "@/lib/plural";
 import { OwnerBadge } from "@/components/owner-badge";
 import { buttonClasses } from "@/components/ui/button";
@@ -37,17 +37,52 @@ export function QuoteFileRow({
   canEdit?: boolean;
 }) {
   const [confirming, setConfirming] = useState(false);
+  const [purgeConfirming, setPurgeConfirming] = useState(false);
   const [pending, startTransition] = useTransition();
 
   const actionCluster = !canEdit ? null : file.archived ? (
-    <button
-      type="button"
-      disabled={pending}
-      onClick={() => startTransition(() => restoreAsset(file.id))}
-      className={buttonClasses("link", "sm", "shrink-0")}
-    >
-      {pending ? "…" : "Восстановить"}
-    </button>
+    purgeConfirming ? (
+      <span className="flex shrink-0 items-center gap-2">
+        <span className="text-xs text-danger">
+          {file.hubCount > 0
+            ? `Стоит в ${withPlural(file.hubCount, WORDS.hubIn)} — исчезнет и оттуда. Вернуть будет нельзя`
+            : "Вернуть будет нельзя"}
+        </span>
+        <button
+          type="button"
+          disabled={pending}
+          onClick={() => startTransition(() => deleteAssetPermanently(file.id))}
+          className={buttonClasses("danger", "sm")}
+        >
+          {pending ? "…" : "Удалить навсегда"}
+        </button>
+        <button
+          type="button"
+          onClick={() => setPurgeConfirming(false)}
+          className={buttonClasses("ghost", "sm")}
+        >
+          Отмена
+        </button>
+      </span>
+    ) : (
+      <span className="flex shrink-0 items-center gap-2">
+        <button
+          type="button"
+          disabled={pending}
+          onClick={() => startTransition(() => restoreAsset(file.id))}
+          className={buttonClasses("link", "sm", "shrink-0")}
+        >
+          {pending ? "…" : "Восстановить"}
+        </button>
+        <button
+          type="button"
+          onClick={() => setPurgeConfirming(true)}
+          className={buttonClasses("ghostDanger", "sm", "shrink-0")}
+        >
+          Удалить навсегда
+        </button>
+      </span>
+    )
   ) : confirming ? (
     <span className="flex shrink-0 items-center gap-2">
       <span className="text-xs text-muted">
@@ -91,9 +126,18 @@ export function QuoteFileRow({
         {file.kindLabel}
       </span>
 
-      <span className="min-w-40 flex-1 truncate font-medium">
-        {file.title}
-      </span>
+      {file.quoteId ? (
+        <Link
+          href={`/calculator/${file.quoteId}`}
+          className="min-w-40 flex-1 truncate font-medium transition hover:text-accent"
+        >
+          {file.title}
+        </Link>
+      ) : (
+        <span className="min-w-40 flex-1 truncate font-medium">
+          {file.title}
+        </span>
+      )}
 
       {file.owner ? <OwnerBadge id={file.owner.id} label={file.owner.label} /> : null}
 
@@ -108,15 +152,6 @@ export function QuoteFileRow({
           ? `в ${withPlural(file.hubCount, WORDS.hubIn)}`
           : "не в хабах"}
       </span>
-
-      {file.quoteId ? (
-        <Link
-          href={`/calculator/${file.quoteId}`}
-          className={buttonClasses("link", "sm", "shrink-0")}
-        >
-          Открыть расчёт
-        </Link>
-      ) : null}
 
       <a
         href={`/api/assets/${file.id}/file`}

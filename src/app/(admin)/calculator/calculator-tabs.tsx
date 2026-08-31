@@ -12,6 +12,7 @@ import Link from "next/link";
 export const CALCULATOR_TABS = [
   { key: "quotes", href: "/calculator", label: "Расчёты" },
   { key: "files", href: "/calculator/files", label: "Файлы" },
+  { key: "specs", href: "/calculator/spec", label: "Спецификации" },
 ] as const;
 
 export type CalculatorTabKey = (typeof CALCULATOR_TABS)[number]["key"];
