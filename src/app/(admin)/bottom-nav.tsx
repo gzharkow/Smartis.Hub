@@ -43,14 +43,23 @@ function BottomTabLink({
   return (
     <Link
       href={href}
-      title={label}
       aria-label={label}
       aria-current={active ? "page" : undefined}
-      className={`flex h-full flex-1 flex-col items-center justify-center gap-0.5 text-xs transition ${
+      className={`flex h-full flex-1 flex-col items-center justify-center gap-0.5 text-xs transition duration-100 ${
         active ? "text-accent" : "text-muted"
       }`}
     >
-      <span className={active ? "" : "opacity-80"}>{icon}</span>
+      {/* Уменьшение на нажатии — единственный отклик, который здесь вообще
+          возможен: бар живёт только в установленном PWA, то есть всегда на
+          тач-экране, где hover не бывает. Без него самый нажимаемый элемент
+          приложения не отзывается на касание совсем. */}
+      <span
+        className={`transition duration-100 ease-out active:scale-[0.92] ${
+          active ? "" : "opacity-80"
+        }`}
+      >
+        {icon}
+      </span>
     </Link>
   );
 }
@@ -70,14 +79,19 @@ function BottomTabButton({
     <button
       type="button"
       onClick={onClick}
-      title={label}
       aria-label={label}
       aria-pressed={active}
-      className={`flex h-full flex-1 flex-col items-center justify-center gap-0.5 text-xs transition ${
+      className={`flex h-full flex-1 flex-col items-center justify-center gap-0.5 text-xs transition duration-100 ${
         active ? "text-accent" : "text-muted"
       }`}
     >
-      <span className={active ? "" : "opacity-80"}>{icon}</span>
+      <span
+        className={`transition duration-100 ease-out active:scale-[0.92] ${
+          active ? "" : "opacity-80"
+        }`}
+      >
+        {icon}
+      </span>
     </button>
   );
 }
@@ -106,7 +120,13 @@ export function BottomNav() {
           компенсирующий отступ у <main> больше не нужен.
           flex-1 на каждом пункте сам делит ширину поровну — на 5 или 6
           пунктов, без явного grid-cols. */}
-      <nav className="sticky bottom-0 z-30 hidden w-full standalone:max-md:flex h-20 items-stretch border-t border-border bg-surface pb-[env(safe-area-inset-bottom)]">
+      {/* Высота считается ОТ полосы значков, а не до неё. Раньше стояло h-20
+          с тем же нижним отступом под вырез: при box-sizing: border-box он
+          вычитался из тех же 80px, и полоса значков выходила
+          46px на iPhone с чертой против 80px на телефоне без неё — область
+          нажатия у одного и того же бара отличалась почти вдвое. Теперь
+          полоса всегда 3.5rem, а вырез добавляется под ней. */}
+      <nav className="sticky bottom-0 z-30 hidden h-[calc(3.5rem+env(safe-area-inset-bottom))] w-full items-stretch border-t border-border bg-surface pb-[env(safe-area-inset-bottom)] standalone:max-md:flex">
         {/* Ведёт в раздел «Настройки»: подраздел «Общие» (тема/аккаунт/выход/
             смена пароля) виден всем, «Администрирование» — только админу. */}
         <BottomTabLink

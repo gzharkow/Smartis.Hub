@@ -1,4 +1,5 @@
 {
+  "id": "/hubs",
   "name": "Smartis.Flite — Админка",
   "short_name": "Smartis.Flite",
   "description": "Контент-хабы для клиентов",
@@ -6,8 +7,34 @@
   "scope": "/",
   "display": "standalone",
   "lang": "ru",
-  "background_color": "#ffffff",
+  "background_color": "#0b0f14",
   "theme_color": "#7CA82D",
+  "shortcuts": [
+    {
+      "name": "Хабы",
+      "short_name": "Хабы",
+      "url": "/hubs",
+      "icons": [
+        {
+          "src": "/icon-192-any.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ]
+    },
+    {
+      "name": "Генератор КП",
+      "short_name": "Генератор КП",
+      "url": "/calculator",
+      "icons": [
+        {
+          "src": "/icon-192-any.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ]
+    }
+  ],
   "icons": [
     {
       "src": "/icon-192-any.png",

@@ -5,6 +5,7 @@ import { useGlobalSearch } from "@/components/use-global-search";
 import { SearchResultsList } from "@/components/search-results-list";
 import { useCloseOnBack } from "@/lib/use-close-on-back";
 import { SearchIcon } from "./nav-icons";
+import { buttonClasses } from "@/components/ui/button";
 
 /**
  * Поиск нижнего PWA-бара — своя кнопка, не под шестерёнкой (решение
@@ -48,13 +49,16 @@ export function SearchOverlay({ onClose }: { onClose: () => void }) {
         <button
           type="button"
           onClick={onClose}
-          className="shrink-0 rounded-lg px-3 py-2 text-sm text-muted transition hover:bg-border/60 hover:text-foreground"
+          className={buttonClasses("ghost", "md", "shrink-0")}
         >
           Отмена
         </button>
       </div>
 
-      <div className="flex-1 overflow-y-auto">
+      {/* Панель — fixed inset-0, то есть тянется до самого низа экрана, под
+          «домашнюю черту». Без этого отступа последний результат оказывался
+          прямо под ней и не нажимался. */}
+      <div className="flex-1 overflow-y-auto pb-[env(safe-area-inset-bottom)]">
         {query.trim().length > 0 ? (
           <SearchResultsList
             result={result}

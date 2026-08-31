@@ -2,6 +2,7 @@
 
 import { useSyncExternalStore } from "react";
 import {
+  syncThemeColor,
   THEME_COOKIE,
   THEME_COOKIE_MAX_AGE,
   type Theme,
@@ -61,6 +62,9 @@ function readTheme(): Theme {
 function apply(theme: Theme) {
   document.documentElement.dataset.theme = theme;
   document.cookie = `${THEME_COOKIE}=${theme}; path=/; max-age=${THEME_COOKIE_MAX_AGE}; samesite=lax`;
+  // Полоса состояния в установленном PWA красится мета-тегом, а не CSS —
+  // без этой строки она осталась бы от прежней темы до перезапуска.
+  syncThemeColor(theme);
   listeners.forEach((notify) => notify());
 }
 

@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth";
 import { LoginForm } from "./login-form";
@@ -13,6 +13,21 @@ export const metadata: Metadata = {
     title: "Smartis.Flite",
     statusBarStyle: "black-translucent",
   },
+};
+
+// Своего viewport у этой страницы не было, хотя statusBarStyle ниже —
+// "black-translucent", то есть страница разворачивается ПОД полосу состояния.
+// Без viewportFit: "cover" это заявление ничем не подкреплено: env(safe-area-*)
+// остаются нулевыми, и отступ под вырез взять неоткуда. Дефолт Next здесь не
+// подставляется — как только сегмент дерева задаёт viewport, он задаёт его
+// целиком (та же оговорка, что и в (admin)/layout.tsx).
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
+  // Одиночный тег без media — намеренно: подложка входа тёмная в любой теме
+  // кабинета, и syncThemeColor такие теги не трогает (см. src/lib/theme.ts).
+  themeColor: "#0b0f14",
 };
 
 export default async function LoginPage({

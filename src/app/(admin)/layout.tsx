@@ -1,7 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { cookies } from "next/headers";
 import { requireUser } from "@/lib/auth";
-import { parseTheme, THEME_COOKIE } from "@/lib/theme";
+import { parseTheme, THEME_COLORS, THEME_COOKIE } from "@/lib/theme";
 import { NAV_COOKIE, NAV_SHUT_COOKIE } from "./nav-cookie";
 import { Sidebar } from "./sidebar";
 import { Topbar } from "./topbar";
@@ -28,11 +28,34 @@ export const metadata: Metadata = {
 // повторить и дефолты (width/initialScale) — как только сегмент дерева
 // определяет viewport, автоматическая подстановка дефолта для него
 // перестаёт срабатывать.
-export const viewport: Viewport = {
-  width: "device-width",
-  initialScale: 1,
-  viewportFit: "cover",
-};
+//
+// Функция, а не статический объект: цвет полосы состояния над установленным
+// приложением зависит от темы, а тема живёт в cookie — на сервере она известна,
+// и отдать сразу верный цвет честнее, чем править мета-теги скриптом в браузере
+// (React при гидратации возвращает свою разметку обратно). Читать cookie здесь
+// разрешено — это документированный пример из
+// node_modules/next/dist/docs/.../generate-viewport.md, раздел «With Cache
+// Components». Экспортировать одновременно и viewport, и generateViewport
+// нельзя, поэтому статический объект заменён целиком.
+export async function generateViewport(): Promise<Viewport> {
+  const theme = parseTheme((await cookies()).get(THEME_COOKIE)?.value);
+
+  return {
+    width: "device-width",
+    initialScale: 1,
+    viewportFit: "cover",
+    // Цвет равен --background: в узком standalone шапки нет, и под полосой
+    // состояния лежит сам фон страницы. Выбора ещё не было — идём за
+    // настройкой системы парой тегов, это единственный случай, когда она
+    // и есть правильный ответ.
+    themeColor: theme
+      ? THEME_COLORS[theme]
+      : [
+          { media: "(prefers-color-scheme: light)", color: THEME_COLORS.light },
+          { media: "(prefers-color-scheme: dark)", color: THEME_COLORS.dark },
+        ],
+  };
+}
 
 export default async function AdminLayout({
   children,
