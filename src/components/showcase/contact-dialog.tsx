@@ -1,5 +1,6 @@
 "use client";
 
+import { brandTextOn } from "@/lib/brand-color";
 import {
   contactHref,
   CONTACT_KIND_LABELS,
@@ -54,7 +55,12 @@ export function ContactDialog({
                 <span className="text-xs text-zinc-400">
                   {c.label || CONTACT_KIND_LABELS[c.kind]}
                 </span>
-                <span className="font-medium" style={{ color: brandColor }}>
+                <span
+                  className="font-medium"
+                  // Карточка окна белая — фирменный цвет пускаем в текст только
+                  // если он на белом читается, иначе обычный тёмный.
+                  style={{ color: brandTextOn("#ffffff", brandColor, "#18181b") }}
+                >
                   {c.value}
                 </span>
               </>

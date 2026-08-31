@@ -2,6 +2,8 @@
 
 import { useActionState, useState } from "react";
 import { createHub, type CreateHubState } from "@/app/actions/hubs";
+import { buttonClasses } from "@/components/ui/button";
+import { fieldClasses } from "@/components/ui/field";
 
 export function CreateHubForm() {
   const [open, setOpen] = useState(false);
@@ -15,7 +17,7 @@ export function CreateHubForm() {
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-blue-700"
+        className={buttonClasses("primary")}
       >
         Создать хаб
       </button>
@@ -34,10 +36,10 @@ export function CreateHubForm() {
           required
           maxLength={120}
           placeholder="Название компании клиента"
-          className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:border-blue-500 sm:w-72"
+          className={fieldClasses("w-full sm:w-72")}
         />
         {state?.error ? (
-          <span role="alert" className="text-xs text-red-600 dark:text-red-400">
+          <span role="alert" className="text-xs text-danger">
             {state.error}
           </span>
         ) : (
@@ -50,14 +52,14 @@ export function CreateHubForm() {
       <button
         type="submit"
         disabled={pending}
-        className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-blue-700 disabled:opacity-60"
+        className={buttonClasses("primary")}
       >
         {pending ? "Создаём…" : "Создать"}
       </button>
       <button
         type="button"
         onClick={() => setOpen(false)}
-        className="rounded-lg px-3 py-2 text-sm text-muted transition hover:bg-border/60"
+        className={buttonClasses("ghost", "md")}
       >
         Отмена
       </button>

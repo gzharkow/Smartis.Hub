@@ -7,10 +7,10 @@ import { POST_VIEW_VOLUME_TIERS } from "@/lib/quote-calculator";
 // строка «название — контрол — посчитанная цена», числовое поле, пара
 // взаимоисключающих галочек для тарифа «до/более 1 млн».
 
-export const checkboxCls = "size-4 accent-blue-600";
+export const checkboxCls = "size-4";
 
 const numberFieldCls =
-  "w-24 rounded-lg border border-border bg-background px-2 py-1.5 text-sm text-right outline-none focus:border-blue-500";
+  "w-24 rounded-lg border border-border bg-background px-2 py-1.5 text-sm text-right focus:border-accent";
 
 export function CalcRow({
   label,
@@ -116,7 +116,7 @@ export function VolumeTierField({
     <select
       value={value}
       onChange={(e) => onChange(e.target.value as PostViewVolumeTier)}
-      className="w-full max-w-56 rounded-lg border border-border bg-background px-2 py-1.5 text-sm outline-none focus:border-blue-500"
+      className="w-full max-w-56 rounded-lg border border-border bg-background px-2 py-1.5 text-sm focus:border-accent"
     >
       <option value="NONE">Не выбрано</option>
       {(Object.keys(POST_VIEW_VOLUME_TIERS) as (keyof typeof POST_VIEW_VOLUME_TIERS)[]).map(

@@ -3,6 +3,7 @@
 import { useRef, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { formatStatsRange, toISODate, type StatsRange } from "@/lib/stats-range";
+import { buttonClasses } from "@/components/ui/button";
 
 const WEEKDAYS = ["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"];
 const MONTHS = [
@@ -246,11 +247,11 @@ export function StatsRangePicker({ range }: { range: StatsRange }) {
                   onClick={() => pickDay(day)}
                   className={`grid size-8 place-items-center rounded-full text-sm transition ${
                     isFrom || isTo
-                      ? "bg-blue-600 font-medium text-white"
+                      ? "bg-accent-fill font-medium text-on-accent"
                       : inRange
-                        ? "bg-blue-500/15"
+                        ? "bg-accent/15"
                         : "hover:bg-border/60"
-                  } ${isToday && !isFrom && !isTo ? "font-semibold text-blue-600 dark:text-blue-400" : ""}`}
+                  } ${isToday && !isFrom && !isTo ? "font-semibold text-accent" : ""}`}
                 >
                   {day.getDate()}
                 </button>
@@ -270,7 +271,7 @@ export function StatsRangePicker({ range }: { range: StatsRange }) {
               type="button"
               disabled={!draftFrom || !draftTo}
               onClick={() => goTo(draftFrom, draftTo)}
-              className="shrink-0 rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-medium text-white transition hover:bg-blue-700 disabled:opacity-50"
+              className={buttonClasses("primary", "sm", "shrink-0")}
             >
               Применить
             </button>

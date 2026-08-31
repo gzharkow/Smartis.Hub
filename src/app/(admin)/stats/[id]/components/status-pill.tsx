@@ -5,7 +5,7 @@
 export function StatusPill({ tag }: { tag: "hot" | "cold" | null }) {
   if (tag === "hot") {
     return (
-      <span className="rounded-full border border-brand/30 bg-brand/10 px-2.5 py-1 text-xs font-medium text-brand">
+      <span className="rounded-full border border-accent/30 bg-accent/10 px-2.5 py-1 text-xs font-medium text-accent">
         Активный интерес
       </span>
     );

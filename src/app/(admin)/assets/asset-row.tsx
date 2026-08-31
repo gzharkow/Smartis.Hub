@@ -17,6 +17,8 @@ import { withPlural, WORDS } from "@/lib/plural";
 import type { ViewMode } from "@/lib/view-mode";
 import type { AssetKind, AssetSection } from "@/generated/prisma/enums";
 import { AssetPreviewModal } from "@/components/asset-preview-modal";
+import { buttonClasses } from "@/components/ui/button";
+import { iconButtonClasses } from "@/components/ui/icon-button";
 
 export type AssetRowData = {
   id: string;
@@ -101,7 +103,7 @@ export function AssetRow({
           setRenaming(false);
         }
       }}
-      className="min-w-0 flex-1 rounded-md border border-blue-500 bg-background px-1.5 py-0.5 text-sm outline-none"
+      className="min-w-0 flex-1 rounded-md border border-accent bg-background px-1.5 py-0.5 text-sm"
     />
   );
 
@@ -110,7 +112,7 @@ export function AssetRow({
       type="button"
       title="Переименовать"
       onClick={() => setRenaming(true)}
-      className="shrink-0 rounded p-1 text-muted transition hover:bg-border/60 hover:text-foreground"
+      className={iconButtonClasses("muted", "shrink-0")}
     >
       <svg
         viewBox="0 0 20 20"
@@ -141,7 +143,7 @@ export function AssetRow({
 
   const newTabBadge = asset.opensInNewTab ? (
     <span
-      className="shrink-0 rounded bg-amber-500/15 px-1.5 py-0.5 text-xs text-amber-700 dark:text-amber-400"
+      className="shrink-0 rounded bg-warn/15 px-1.5 py-0.5 text-xs text-warn"
       title="Сайт запрещает показывать себя внутри других страниц"
     >
       новой вкладкой
@@ -157,7 +159,7 @@ export function AssetRow({
         const next = e.target.value;
         startTransition(() => setAssetSection(asset.id, next));
       }}
-      className="shrink-0 rounded-md border border-border bg-background px-1.5 py-1 text-xs text-muted disabled:opacity-50"
+      className="shrink-0 rounded-md border border-border bg-background px-1.5 py-1 text-xs text-muted pointer-coarse:min-h-11 disabled:opacity-50"
     >
       {SECTIONS.map((s) => (
         <option key={s.value} value={s.value}>
@@ -168,7 +170,7 @@ export function AssetRow({
   ) : null;
 
   const thumbErrorEl = thumbError ? (
-    <span className="shrink-0 text-xs text-red-600 dark:text-red-400">
+    <span className="shrink-0 text-xs text-danger">
       {thumbError}
     </span>
   ) : null;
@@ -200,7 +202,7 @@ export function AssetRow({
           if (error) setThumbError(error);
           else router.refresh();
         }}
-        className="shrink-0 rounded px-2 py-1 text-xs font-medium text-blue-600 transition hover:bg-blue-500/10 disabled:opacity-50 dark:text-blue-400"
+        className={buttonClasses("link", "sm", "shrink-0")}
       >
         {thumbing ? "Готовим…" : "Сделать превью"}
       </button>
@@ -220,14 +222,14 @@ export function AssetRow({
           type="button"
           disabled={pending || loadingUsage}
           onClick={() => startTransition(() => deleteAssetPermanently(asset.id))}
-          className="rounded px-2 py-1 text-xs font-medium text-red-600 transition hover:bg-red-500/10 disabled:opacity-50 dark:text-red-400"
+          className={buttonClasses("danger", "sm")}
         >
           {pending ? "…" : "Удалить навсегда"}
         </button>
         <button
           type="button"
           onClick={() => setConfirmingDelete(false)}
-          className="rounded px-2 py-1 text-xs text-muted transition hover:bg-border/60"
+          className={buttonClasses("ghost", "sm")}
         >
           Отмена
         </button>
@@ -238,14 +240,14 @@ export function AssetRow({
           type="button"
           disabled={pending}
           onClick={() => startTransition(() => restoreAsset(asset.id))}
-          className="shrink-0 rounded px-2 py-1 text-xs font-medium text-blue-600 transition hover:bg-blue-500/10 disabled:opacity-50 dark:text-blue-400"
+          className={buttonClasses("link", "sm", "shrink-0")}
         >
           {pending ? "…" : "Восстановить"}
         </button>
         <button
           type="button"
           onClick={startConfirmingDelete}
-          className="shrink-0 rounded px-2 py-1 text-xs text-muted transition hover:bg-red-500/10 hover:text-red-600 dark:hover:text-red-400"
+          className={buttonClasses("ghostDanger", "sm", "shrink-0")}
         >
           Удалить навсегда
         </button>
@@ -264,14 +266,14 @@ export function AssetRow({
         type="button"
         disabled={pending}
         onClick={() => startTransition(() => archiveAsset(asset.id))}
-        className="rounded px-2 py-1 text-xs font-medium text-red-600 transition hover:bg-red-500/10 disabled:opacity-50 dark:text-red-400"
+        className={buttonClasses("danger", "sm")}
       >
         {pending ? "…" : "Удалить"}
       </button>
       <button
         type="button"
         onClick={() => setConfirming(false)}
-        className="rounded px-2 py-1 text-xs text-muted transition hover:bg-border/60"
+        className={buttonClasses("ghost", "sm")}
       >
         Отмена
       </button>
@@ -280,7 +282,7 @@ export function AssetRow({
     <button
       type="button"
       onClick={() => setConfirming(true)}
-      className="shrink-0 rounded px-2 py-1 text-xs text-muted transition hover:bg-red-500/10 hover:text-red-600 dark:hover:text-red-400"
+      className={buttonClasses("ghostDanger", "sm", "shrink-0")}
     >
       Удалить
     </button>

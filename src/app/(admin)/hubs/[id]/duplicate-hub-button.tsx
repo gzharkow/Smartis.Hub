@@ -2,6 +2,7 @@
 
 import { useTransition } from "react";
 import { duplicateHub } from "@/app/actions/hubs";
+import { buttonClasses } from "@/components/ui/button";
 
 /**
  * Копия хаба. Отдельных шаблонов в сервисе нет намеренно: удачно собранный
@@ -19,7 +20,7 @@ export function DuplicateHubButton({ hubId }: { hubId: string }) {
       disabled={pending}
       onClick={() => startTransition(() => duplicateHub(hubId))}
       title="Создать черновик с теми же настройками и материалами"
-      className="rounded-lg border border-border px-3 py-1.5 text-sm transition hover:bg-border/60 disabled:opacity-50"
+      className={buttonClasses("secondary", "md")}
     >
       {pending ? "Копируем…" : "Сделать копию"}
     </button>

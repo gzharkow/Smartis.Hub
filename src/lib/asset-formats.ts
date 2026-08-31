@@ -86,6 +86,27 @@ export const KIND_LABELS: Record<AssetKind, string> = {
   FILE: "Файл",
 };
 
+/**
+ * Цвет типа материала на витрине: подложка превью и значок на плитке.
+ *
+ * Это палитра различения, а не семантика темы, — как и цвета авторов в
+ * owner-color.ts. Токены --accent/--danger сюда не годятся: их задача
+ * в том, чтобы значить одно и то же везде, а здесь семь цветов нужны
+ * ровно затем, чтобы отличаться друг от друга.
+ *
+ * Лежит рядом с KIND_LABELS: подпись и цвет типа — одна пара, и разъезжаться
+ * им нельзя. Раньше палитра была захардкожена в showcase-body.tsx.
+ */
+export const KIND_TINTS: Record<AssetKind, string> = {
+  PDF: "#dc2626",
+  VIDEO: "#7c3aed",
+  IMAGE: "#0891b2",
+  DOCUMENT: "#2563eb",
+  SPREADSHEET: "#16a34a",
+  LINK: "#0d9488",
+  FILE: "#64748b",
+};
+
 const SIZE_UNITS = ["Б", "КБ", "МБ", "ГБ"];
 
 export function formatFileSize(bytes: number): string {

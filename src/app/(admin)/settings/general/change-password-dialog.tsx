@@ -4,9 +4,10 @@ import { useEffect, useState } from "react";
 import { useActionState } from "react";
 import { changePassword, type ChangePasswordState } from "@/app/actions/account";
 import { useCloseOnBack } from "@/lib/use-close-on-back";
+import { buttonClasses } from "@/components/ui/button";
 
 const inputClassName =
-  "rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:border-blue-500";
+  "rounded-lg border border-border bg-background px-3 py-2 text-sm focus:border-accent";
 
 function ChangePasswordForm({ onDone }: { onDone: () => void }) {
   const [state, action, pending] = useActionState<ChangePasswordState, FormData>(
@@ -17,13 +18,13 @@ function ChangePasswordForm({ onDone }: { onDone: () => void }) {
   if (state && "success" in state) {
     return (
       <div className="grid gap-4">
-        <p className="text-sm font-medium text-green-800 dark:text-green-400">
+        <p className="text-sm font-medium text-ok">
           Пароль изменён.
         </p>
         <button
           type="button"
           onClick={onDone}
-          className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-blue-700"
+          className={buttonClasses("primary")}
         >
           Готово
         </button>
@@ -69,7 +70,7 @@ function ChangePasswordForm({ onDone }: { onDone: () => void }) {
       </label>
 
       {state && "error" in state ? (
-        <p role="alert" className="text-sm text-red-600 dark:text-red-400">
+        <p role="alert" className="text-sm text-danger">
           {state.error}
         </p>
       ) : null}
@@ -82,7 +83,7 @@ function ChangePasswordForm({ onDone }: { onDone: () => void }) {
         <button
           type="submit"
           disabled={pending}
-          className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-blue-700 disabled:opacity-60"
+          className={buttonClasses("primary")}
         >
           {pending ? "Сохраняем…" : "Сменить пароль"}
         </button>
@@ -150,7 +151,7 @@ export function ChangePasswordButton() {
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="rounded-lg border border-border px-4 py-2 text-sm font-medium transition hover:bg-border/60"
+        className={buttonClasses("secondary")}
       >
         Сменить пароль
       </button>

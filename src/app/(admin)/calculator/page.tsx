@@ -1,7 +1,8 @@
 import Link from "next/link";
+import { requireUser } from "@/lib/auth";
 import Decimal from "decimal.js";
 import { cookies } from "next/headers";
-import { requireSectionView, hasEdit, showsOtherOwners, visibleOwnerFilter } from "@/lib/permissions";
+import { hasEdit, showsOtherOwners, visibleOwnerFilter } from "@/lib/permissions";
 import { db } from "@/lib/db";
 import { formatHubCreated } from "@/lib/hub-format";
 import { ownerLabel } from "@/lib/owner-color";
@@ -15,10 +16,11 @@ import {
 import { QuoteSortControl } from "@/components/quote-sort-control";
 import { CreateQuoteForm } from "./create-quote-form";
 import { QuoteListRowActions } from "./quote-list-row-actions";
-import { CalculatorTabs, calculatorTabVisibleKeys } from "./calculator-tabs";
+import { CalculatorTabs } from "./calculator-tabs";
+import { PageHeader } from "@/components/ui/page-header";
 
 export default async function CalculatorPage() {
-  const user = await requireSectionView("calculator");
+  const user = await requireUser();
   const jar = await cookies();
   const sort = parseQuoteSort(jar.get(QUOTE_SORT_COOKIE)?.value);
 
@@ -73,17 +75,14 @@ export default async function CalculatorPage() {
 
   return (
     <div>
-      <div className="mb-6 flex flex-wrap items-start justify-between gap-4">
-        <div>
-          <h1 className="text-xl font-semibold tracking-tight">Генератор КП</h1>
-          <p className="mt-0.5 text-sm text-muted">
-            Расчёты стоимости для клиентов — замена общей таблицы
-          </p>
-        </div>
-        {hasEdit(user, "calculator") ? <CreateQuoteForm /> : null}
-      </div>
+      <PageHeader
+        className="mb-6"
+        title="Генератор КП"
+        subtitle="Расчёты стоимости для клиентов — замена общей таблицы"
+        actions={hasEdit(user, "calculator") ? <CreateQuoteForm /> : null}
+      />
 
-      <CalculatorTabs current="quotes" visibleKeys={calculatorTabVisibleKeys(user)} />
+      <CalculatorTabs current="quotes" />
 
       {rows.length === 0 ? (
         <div className="rounded-xl border border-dashed border-border py-16 text-center">

@@ -1,6 +1,4 @@
 import Link from "next/link";
-import { hasView } from "@/lib/permissions";
-import type { CurrentUser } from "@/lib/auth";
 
 /**
  * Разделы страницы хабов. Как и у материалов, дублируют подпункты бокового
@@ -17,36 +15,15 @@ export const HUB_TABS = [
 
 export type HubTabKey = (typeof HUB_TABS)[number]["key"];
 
-/** Ключи подразделов, доступные пользователю по матрице — прокидывать в `visibleKeys`. */
-export function hubTabVisibleKeys(user: CurrentUser): string[] {
-  return HUB_TABS.filter(
-    (t) => t.key !== "all" && hasView(user, `hubs.${t.key}`),
-  ).map((t) => `hubs.${t.key}`);
-}
-
 export function HubTabs({
   current,
   right,
-  visibleKeys,
 }: {
   current: HubTabKey;
   /** Правый край ряда вкладок — сюда кладём переключатель вида. */
   right?: React.ReactNode;
-  /**
-   * Ключи из permission-sections.ts, доступные пользователю ("hubs.folders",
-   * "hubs.trash") — по матрице доступа. "all" не проверяется: раз страница
-   * вообще открылась, значит "hubs" уже разрешён. Не передан — показываем
-   * все вкладки (сохраняет прежнее поведение там, где вызывающая страница
-   * ещё не прокинула матрицу).
-   */
-  visibleKeys?: string[];
 }) {
-  const tabs = HUB_TABS.filter(
-    (tab) =>
-      tab.key === "all" ||
-      !visibleKeys ||
-      visibleKeys.includes(`hubs.${tab.key}`),
-  );
+  const tabs = HUB_TABS;
 
   return (
     // flex-wrap + nav shrink-0: когда места мало, вниз уезжает блок управления
@@ -60,7 +37,7 @@ export function HubTabs({
               key={tab.key}
               href={tab.href}
               aria-current={active ? "page" : undefined}
-              className={`rounded-full px-3 py-1.5 text-sm transition ${
+              className={`inline-flex items-center rounded-full px-3 py-1.5 text-sm transition duration-100 pointer-coarse:min-h-11 ${
                 active
                   ? "bg-border font-medium"
                   : "text-muted hover:bg-border/50 hover:text-foreground"

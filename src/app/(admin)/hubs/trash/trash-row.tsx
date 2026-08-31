@@ -6,6 +6,7 @@ import { purgeHub, restoreHub } from "@/app/actions/hubs";
 import { plural, withPlural, WORDS } from "@/lib/plural";
 import { OwnerBadge } from "@/components/owner-badge";
 import type { ViewMode } from "@/lib/view-mode";
+import { buttonClasses } from "@/components/ui/button";
 
 const DAY: [string, string, string] = ["день", "дня", "дней"];
 
@@ -39,7 +40,7 @@ export function TrashRow({
       href={`/hubs/${hub.id}`}
       // basis-full — на телефоне название занимает свою строку целиком,
       // остальное (счётчики, срок, кнопки) уходит вниз (см. folder-row.tsx).
-      className={`truncate font-medium transition hover:text-blue-600 dark:hover:text-blue-400 ${
+      className={`truncate font-medium transition hover:text-accent ${
         grid ? "line-clamp-2 whitespace-normal" : "min-w-0 flex-1 basis-full sm:basis-auto"
       }`}
     >
@@ -68,21 +69,21 @@ export function TrashRow({
         <span className="flex flex-wrap items-center gap-2">
           {/* Здесь предупреждение жёстче, чем при обычном удалении: это
               единственное место в сервисе, где данные исчезают навсегда. */}
-          <span className="text-xs text-red-600 dark:text-red-400">
+          <span className="text-xs text-danger">
             Вся статистика по хабу пропадёт. Вернуть будет нельзя
           </span>
           <button
             type="button"
             disabled={pending}
             onClick={() => startTransition(() => purgeHub(hub.id))}
-            className="shrink-0 rounded px-2 py-1 text-xs font-medium text-red-600 transition hover:bg-red-500/10 disabled:opacity-50 dark:text-red-400"
+            className={buttonClasses("danger", "sm", "shrink-0")}
           >
             {pending ? "…" : "Стереть"}
           </button>
           <button
             type="button"
             onClick={() => setConfirming(false)}
-            className="shrink-0 rounded px-2 py-1 text-xs text-muted transition hover:bg-border/60"
+            className={buttonClasses("ghost", "sm", "shrink-0")}
           >
             Отмена
           </button>
@@ -93,14 +94,14 @@ export function TrashRow({
             type="button"
             disabled={pending}
             onClick={() => startTransition(() => restoreHub(hub.id))}
-            className="shrink-0 rounded px-2 py-1 text-xs font-medium text-blue-600 transition hover:bg-blue-500/10 disabled:opacity-50 dark:text-blue-400"
+            className={buttonClasses("link", "sm", "shrink-0")}
           >
             {pending ? "…" : "Вернуть"}
           </button>
           <button
             type="button"
             onClick={() => setConfirming(true)}
-            className="shrink-0 rounded px-2 py-1 text-xs text-muted transition hover:bg-red-500/10 hover:text-red-600 dark:hover:text-red-400"
+            className={buttonClasses("ghostDanger", "sm", "shrink-0")}
           >
             Удалить навсегда
           </button>

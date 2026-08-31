@@ -14,6 +14,7 @@ import { SPEC_TAGS, SPEC_TAG_GROUPS } from "@/lib/spec-tags";
 import { SettingsTabs } from "../settings-tabs";
 import { SpecTemplatesPanel, type SpecTemplateRow } from "./spec-templates-panel";
 import { TagReference } from "./tag-reference";
+import { PageHeader } from "@/components/ui/page-header";
 
 export const dynamic = "force-dynamic";
 
@@ -54,13 +55,20 @@ export default async function SpecTemplatesPage() {
     <div className="grid max-w-4xl gap-8">
       <div>
         <SettingsTabs current="spec-templates" isAdmin />
-        <h1 className="text-xl font-semibold tracking-tight">Шаблоны документов</h1>
-        <p className="mt-0.5 max-w-2xl text-sm text-muted">
-          Спецификация собирается из вашего .docx: мы подставляем суммы в метки
-          вида <code className="rounded bg-border/60 px-1">{"{{MONTH_SUM}}"}</code>,
-          не трогая шрифты и вёрстку. Загруженный здесь шаблон главнее
-          встроенного в программу.
-        </p>
+        <PageHeader
+          title="Шаблоны документов"
+          subtitle={
+            // Ширину ограничиваем на самом тексте, а не на <p> из PageHeader:
+            // длинное объяснение читается плохо во всю ширину страницы.
+            <span className="block max-w-2xl">
+              Спецификация собирается из вашего .docx: мы подставляем суммы в
+              метки вида{" "}
+              <code className="rounded bg-border/60 px-1">{"{{MONTH_SUM}}"}</code>
+              , не трогая шрифты и вёрстку. Загруженный здесь шаблон главнее
+              встроенного в программу.
+            </span>
+          }
+        />
       </div>
 
       <SpecTemplatesPanel

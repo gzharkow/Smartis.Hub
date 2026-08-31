@@ -1,6 +1,6 @@
 import Link from "next/link";
+import { requireUser } from "@/lib/auth";
 import { notFound } from "next/navigation";
-import { requireSectionView } from "@/lib/permissions";
 import { db } from "@/lib/db";
 import { KIND_LABELS } from "@/lib/assets";
 import {
@@ -22,6 +22,7 @@ import { DonutChart } from "./components/donut-chart";
 import { RankedBarChart } from "./components/ranked-bar-chart";
 import { PageHeatmap } from "./components/page-heatmap";
 import { VisitTimeline } from "./components/visit-timeline";
+import { cardClasses } from "@/components/ui/card";
 
 export const dynamic = "force-dynamic";
 
@@ -53,7 +54,7 @@ export default async function HubStatsPage({
   searchParams: Promise<{ from?: string; to?: string }>;
 }) {
   const { id } = await params;
-  const user = await requireSectionView("stats");
+  const user = await requireUser();
   const range = parseStatsRange(await searchParams);
 
   const hub = await db.hub.findUnique({
@@ -94,7 +95,7 @@ export default async function HubStatsPage({
       </div>
 
       {range && links.length > 0 && opened.length === 0 ? (
-        <p className="rounded-lg bg-amber-500/10 px-3 py-2 text-sm text-amber-700 dark:text-amber-400">
+        <p className="rounded-lg bg-warn/10 px-3 py-2 text-sm text-warn">
           За выбранный период ссылки не открывали.
         </p>
       ) : null}
@@ -103,7 +104,7 @@ export default async function HubStatsPage({
         <div className="rounded-xl border border-dashed border-border py-16 text-center">
           <p className="font-medium">Ссылок ещё не выдавали</p>
           <p className="mx-auto mt-1 max-w-md text-sm text-muted">
-            <Link href={`/hubs/${hub.id}`} className="text-blue-600 underline dark:text-blue-400">
+            <Link href={`/hubs/${hub.id}`} className="text-accent underline">
               Выдайте ссылку клиенту
             </Link>{" "}
             — и здесь появится, что он смотрел.
@@ -171,13 +172,13 @@ export default async function HubStatsPage({
             {link.demoClicks > 0 || link.contactClicks > 0 ? (
               <p className="flex flex-wrap gap-x-4 gap-y-1 text-sm">
                 {link.demoClicks > 0 ? (
-                  <span className="text-emerald-700 dark:text-emerald-400">
+                  <span className="text-ok">
                     Демо-кабинет открывали{" "}
                     {withPlural(link.demoClicks, WORDS.time)}
                   </span>
                 ) : null}
                 {link.contactClicks > 0 ? (
-                  <span className="text-emerald-700 dark:text-emerald-400">
+                  <span className="text-ok">
                     «Задать вопрос» нажимали{" "}
                     {withPlural(link.contactClicks, WORDS.time)}
                   </span>
@@ -192,7 +193,7 @@ export default async function HubStatsPage({
             ) : (
               <>
                 <div className="grid gap-4 sm:grid-cols-2">
-                  <div className="rounded-xl border border-border bg-surface p-4">
+                  <div className={cardClasses("card")}>
                     <p className="mb-3 font-mono text-[11px] tracking-wide text-muted uppercase">
                       Куда ушло время
                     </p>
@@ -203,7 +204,7 @@ export default async function HubStatsPage({
                     />
                   </div>
 
-                  <div className="rounded-xl border border-border bg-surface p-4">
+                  <div className={cardClasses("card")}>
                     <p className="mb-3 font-mono text-[11px] tracking-wide text-muted uppercase">
                       Глубина прочтения
                     </p>
@@ -243,7 +244,7 @@ export default async function HubStatsPage({
                   </div>
                 </div>
 
-                <div className="rounded-xl border border-border bg-surface p-4">
+                <div className={cardClasses("card")}>
                   <p className="mb-3 font-mono text-[11px] tracking-wide text-muted uppercase">
                     Рейтинг материалов по времени
                   </p>
@@ -254,7 +255,7 @@ export default async function HubStatsPage({
                   {link.items.map((item) => (
                     <li
                       key={item.assetId}
-                      className="rounded-xl border border-border bg-surface px-4 py-3"
+                      className={cardClasses("row")}
                     >
                       <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
                         <span className="rounded bg-border/70 px-1.5 py-0.5 text-xs">

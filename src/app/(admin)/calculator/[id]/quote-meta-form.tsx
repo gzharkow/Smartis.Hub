@@ -2,9 +2,10 @@
 
 import { useActionState } from "react";
 import { updateQuoteMeta, type UpdateQuoteMetaState } from "@/app/actions/quotes";
+import { buttonClasses } from "@/components/ui/button";
 
 const inputCls =
-  "rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:border-blue-500";
+  "rounded-lg border border-border bg-background px-3 py-2 text-sm focus:border-accent";
 
 // Шапка КП (клиент/НДС/дата) — общая для свободного редактора и калькулятора,
 // вынесена из quote-editor.tsx без изменения логики. Значения — контролируемые
@@ -86,17 +87,17 @@ export function QuoteMetaForm({
         <button
           type="submit"
           disabled={metaPending}
-          className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-blue-700 disabled:opacity-60"
+          className={buttonClasses("primary")}
         >
           {metaPending ? "Сохраняем…" : "Сохранить"}
         </button>
         {metaState?.saved ? (
-          <span className="text-sm text-green-600 dark:text-green-400">
+          <span className="text-sm text-ok">
             Сохранено
           </span>
         ) : null}
         {metaState?.error ? (
-          <span role="alert" className="text-sm text-red-600 dark:text-red-400">
+          <span role="alert" className="text-sm text-danger">
             {metaState.error}
           </span>
         ) : null}

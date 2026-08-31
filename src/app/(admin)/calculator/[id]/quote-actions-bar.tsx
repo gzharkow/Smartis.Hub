@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { archiveQuote, duplicateQuote } from "@/app/actions/quotes";
+import { buttonClasses } from "@/components/ui/button";
 
 export function QuoteActionsBar({
   quoteId,
@@ -27,7 +28,7 @@ export function QuoteActionsBar({
     <div className="flex flex-wrap items-center gap-2">
       <a
         href={`/api/quotes/${quoteId}/pdf`}
-        className="rounded-lg border border-border px-3 py-1.5 text-sm transition hover:bg-border/60"
+        className={buttonClasses("secondary", "md")}
       >
         Скачать PDF
       </a>
@@ -35,7 +36,7 @@ export function QuoteActionsBar({
       {spec?.ok ? (
         <Link
           href={`/calculator/${quoteId}/spec`}
-          className="rounded-lg border border-border px-3 py-1.5 text-sm transition hover:bg-border/60"
+          className={buttonClasses("secondary", "md")}
         >
           Спецификация
         </Link>
@@ -55,7 +56,7 @@ export function QuoteActionsBar({
             disabled={duplicating}
             onClick={() => startDuplicate(() => duplicateQuote(quoteId))}
             title="Создать копию со всеми секциями и строками"
-            className="rounded-lg border border-border px-3 py-1.5 text-sm transition hover:bg-border/60 disabled:opacity-50"
+            className={buttonClasses("secondary", "md")}
           >
             {duplicating ? "Копируем…" : "Сделать копию"}
           </button>
@@ -72,14 +73,14 @@ export function QuoteActionsBar({
                     router.push("/calculator");
                   })
                 }
-                className="rounded-lg px-3 py-1.5 text-sm font-medium text-red-600 transition hover:bg-red-500/10 disabled:opacity-50 dark:text-red-400"
+                className={buttonClasses("danger", "md")}
               >
                 {deleting ? "…" : "Удалить"}
               </button>
               <button
                 type="button"
                 onClick={() => setConfirming(false)}
-                className="rounded-lg px-3 py-1.5 text-sm text-muted transition hover:bg-border/60"
+                className={buttonClasses("ghost", "md")}
               >
                 Отмена
               </button>
@@ -88,7 +89,7 @@ export function QuoteActionsBar({
             <button
               type="button"
               onClick={() => setConfirming(true)}
-              className="rounded-lg px-3 py-1.5 text-sm text-muted transition hover:bg-red-500/10 hover:text-red-600 dark:hover:text-red-400"
+              className={buttonClasses("ghostDanger", "md")}
             >
               Удалить
             </button>

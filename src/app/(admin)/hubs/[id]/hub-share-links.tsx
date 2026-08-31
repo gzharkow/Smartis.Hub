@@ -1,6 +1,8 @@
 "use client";
 
 import { useActionState, useState, useTransition } from "react";
+import { buttonClasses } from "@/components/ui/button";
+import { fieldClasses } from "@/components/ui/field";
 import {
   createShareLink,
   restoreShareLink,
@@ -66,7 +68,7 @@ function CopyButton({ url }: { url: string }) {
           setTimeout(() => setCopied(false), 1500);
         }
       }}
-      className="shrink-0 rounded px-2 py-1 text-xs font-medium text-blue-600 transition hover:bg-blue-500/10 dark:text-blue-400"
+      className={buttonClasses("link", "sm", "shrink-0")}
     >
       {copied ? "Скопировано" : "Копировать"}
     </button>
@@ -96,7 +98,7 @@ export function HubShareLinks({
   return (
     <div className="grid grid-cols-1 gap-5">
       {!published ? (
-        <p className="rounded-lg bg-amber-500/10 px-3 py-2 text-sm text-amber-700 dark:text-amber-400">
+        <p className="rounded-lg bg-warn/10 px-3 py-2 text-sm text-warn">
           Хаб не опубликован — выданные ссылки пока не открываются. Опубликуйте
           его, когда будете готовы.
         </p>
@@ -114,7 +116,7 @@ export function HubShareLinks({
               required
               maxLength={120}
               placeholder='например «ГК РОЛЬФ»'
-              className="rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:border-blue-500"
+              className={fieldClasses()}
             />
           </label>
 
@@ -123,7 +125,7 @@ export function HubShareLinks({
             <select
               name="expiresInDays"
               defaultValue=""
-              className="rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:border-blue-500"
+              className={fieldClasses()}
             >
               <option value="">Бессрочно</option>
               <option value="7">7 дней</option>
@@ -140,7 +142,7 @@ export function HubShareLinks({
             name="greeting"
             maxLength={200}
             defaultValue="Коллеги, добрый день!"
-            className="rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:border-blue-500"
+            className={fieldClasses()}
           />
           <span className="text-xs text-muted">
             Обращение к компании — встанет над описанием подборки
@@ -148,7 +150,7 @@ export function HubShareLinks({
         </label>
 
         {state?.error ? (
-          <p role="alert" className="text-sm text-red-600 dark:text-red-400">
+          <p role="alert" className="text-sm text-danger">
             {state.error}
           </p>
         ) : null}
@@ -157,7 +159,7 @@ export function HubShareLinks({
           <button
             type="submit"
             disabled={pending}
-            className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-blue-700 disabled:opacity-60"
+            className={buttonClasses("primary")}
           >
             {pending ? "Создаём…" : "Выдать ссылку"}
           </button>
@@ -217,7 +219,7 @@ export function HubShareLinks({
                             : revokeShareLink(hubId, link.id),
                         )
                       }
-                      className="shrink-0 rounded px-2 py-1 text-xs text-muted transition hover:bg-border/60 hover:text-foreground disabled:opacity-50"
+                      className={buttonClasses("ghost", "sm", "shrink-0")}
                     >
                       {link.revoked ? "Вернуть" : "Отозвать"}
                     </button>

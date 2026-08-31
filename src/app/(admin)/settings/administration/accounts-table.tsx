@@ -4,6 +4,7 @@ import { useActionState, useState } from "react";
 import { deleteAccount, type DeleteAccountState } from "@/app/actions/users";
 import { EditAccountPanel } from "./edit-account-panel";
 import type { AccountOption } from "./account-visibility-picker";
+import { buttonClasses } from "@/components/ui/button";
 
 export type AccountRow = {
   id: string;
@@ -63,7 +64,7 @@ export function AccountsTable({
                 <button
                   type="button"
                   onClick={() => setOpenId(open ? null : account.id)}
-                  className="rounded-lg px-3 py-1.5 text-sm text-muted transition hover:bg-border/60 hover:text-foreground"
+                  className={buttonClasses("ghost", "md")}
                 >
                   {open ? "Свернуть" : "Изменить доступ"}
                 </button>
@@ -91,7 +92,7 @@ function DeleteAccountButton({ accountId }: { accountId: string }) {
   );
 
   if (state && "error" in state) {
-    return <p className="text-xs text-red-600 dark:text-red-400">{state.error}</p>;
+    return <p className="text-xs text-danger">{state.error}</p>;
   }
 
   if (!confirming) {
@@ -99,7 +100,7 @@ function DeleteAccountButton({ accountId }: { accountId: string }) {
       <button
         type="button"
         onClick={() => setConfirming(true)}
-        className="rounded-lg px-3 py-1.5 text-sm text-muted transition hover:bg-red-500/10 hover:text-red-600 dark:hover:text-red-400"
+        className={buttonClasses("ghostDanger", "md")}
       >
         Удалить
       </button>
@@ -113,14 +114,14 @@ function DeleteAccountButton({ accountId }: { accountId: string }) {
       <button
         type="submit"
         disabled={pending}
-        className="rounded-lg px-2 py-1 text-xs font-medium text-red-600 transition hover:bg-red-500/10 disabled:opacity-50 dark:text-red-400"
+        className={buttonClasses("danger", "sm")}
       >
         {pending ? "…" : "Да, удалить"}
       </button>
       <button
         type="button"
         onClick={() => setConfirming(false)}
-        className="rounded-lg px-2 py-1 text-xs text-muted transition hover:bg-border/60"
+        className={buttonClasses("ghost", "sm")}
       >
         Отмена
       </button>

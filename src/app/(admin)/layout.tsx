@@ -11,24 +11,6 @@ import { PullToRefresh } from "./pull-to-refresh";
 // Скобки в имени папки (admin) — это группа маршрутов: она объединяет страницы
 // общим оформлением, но в адресе не появляется. /hubs остаётся /hubs.
 
-// Ключи разделов/подразделов меню. Раньше это была матрица доступа
-// (permission-sections.ts) — теперь любой вошедший видит всё (см.
-// src/lib/permissions.ts), список остался только чтобы Sidebar/BottomNav
-// знали, какие пункты меню вообще существуют.
-const ALL_SECTION_KEYS = [
-  "hubs",
-  "hubs.folders",
-  "hubs.trash",
-  "assets",
-  "assets.auto",
-  "assets.realty",
-  "assets.common",
-  "assets.cases",
-  "calculator",
-  "calculator.files",
-  "stats",
-];
-
 // Манифест и apple-web-app теги — здесь и на /login, не в корневом layout:
 // это делает установку на экран доступной только для админки, не витрины.
 export const metadata: Metadata = {
@@ -68,7 +50,6 @@ export default async function AdminLayout({
     .filter(Boolean);
 
   const theme = parseTheme(jar.get(THEME_COOKIE)?.value);
-  const visibleSections = ALL_SECTION_KEYS;
 
   return (
     // Фрагмент, не общая обёртка: BottomNav должен быть ПРЯМЫМ flex-child'ом
@@ -86,11 +67,7 @@ export default async function AdminLayout({
             составным условием убирает элемент целиком. На десктопе и в
             обычной вкладке браузера ничего не меняется. */}
         <div className="contents standalone:max-md:hidden">
-          <Sidebar
-            visibleSections={visibleSections}
-            initialCollapsed={collapsed}
-            initialShut={shut}
-          />
+          <Sidebar initialCollapsed={collapsed} initialShut={shut} />
         </div>
 
         <div className="flex min-w-0 flex-1 flex-col">
@@ -109,7 +86,7 @@ export default async function AdminLayout({
       </div>
 
       <PullToRefresh />
-      <BottomNav visibleSections={visibleSections} />
+      <BottomNav />
     </>
   );
 }

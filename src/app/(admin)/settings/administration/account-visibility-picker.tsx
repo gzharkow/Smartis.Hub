@@ -24,7 +24,7 @@ export function AccountVisibilityPicker({
           <label key={o.id} className="flex items-center gap-2 text-sm">
             <input
               type="checkbox"
-              className="size-4 accent-blue-600"
+              className="size-4"
               checked={selected.includes(o.id)}
               onChange={(e) =>
                 onChange(

@@ -10,6 +10,7 @@ import { XlsxViewer } from "./xlsx-viewer";
 import { ShowcaseBackdrop } from "@/components/showcase/showcase-backdrop";
 import { ShowcaseHeader } from "@/components/showcase/showcase-header";
 import { ContactDialog } from "@/components/showcase/contact-dialog";
+import { KIND_TINTS } from "@/lib/asset-formats";
 
 export type ShowcaseItem = {
   id: string;
@@ -40,16 +41,6 @@ type Props = {
   items: ShowcaseItem[];
 };
 
-const KIND_TINT: Record<AssetKind, string> = {
-  PDF: "#dc2626",
-  VIDEO: "#7c3aed",
-  IMAGE: "#0891b2",
-  DOCUMENT: "#2563eb",
-  SPREADSHEET: "#16a34a",
-  LINK: "#0d9488",
-  FILE: "#64748b",
-};
-
 function Tile({
   item,
   token,
@@ -65,11 +56,11 @@ function Tile({
     <button
       type="button"
       onClick={onOpen}
-      className="group flex h-full w-full min-w-0 cursor-pointer flex-col overflow-hidden rounded-2xl border border-zinc-200 bg-white text-left transition hover:-translate-y-0.5 hover:border-zinc-300 hover:shadow-lg focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none"
+      className="group flex h-full w-full min-w-0 cursor-pointer flex-col overflow-hidden rounded-2xl border border-zinc-200 bg-white text-left transition hover:-translate-y-0.5 hover:border-zinc-300 hover:shadow-lg focus-visible:outline-2 focus-visible:outline-accent-bright focus-visible:outline-offset-2"
     >
       <span
         className="relative grid h-40 place-items-center overflow-hidden"
-        style={{ backgroundColor: `${KIND_TINT[item.kind]}12` }}
+        style={{ backgroundColor: `${KIND_TINTS[item.kind]}12` }}
       >
         {item.hasThumbnail ? (
           <>
@@ -93,7 +84,7 @@ function Tile({
         ) : (
           <span
             className="rounded-lg px-2.5 py-1 text-xs font-semibold tracking-wide text-white"
-            style={{ backgroundColor: KIND_TINT[item.kind] }}
+            style={{ backgroundColor: KIND_TINTS[item.kind] }}
           >
             {item.kindLabel}
           </span>

@@ -8,6 +8,7 @@ import { QuotePreview } from "./quote-preview";
 import { QuoteMetaForm } from "./quote-meta-form";
 import { QuoteTotalsSummary } from "./quote-totals-summary";
 import type { QuoteData, QuoteLineData } from "./quote-types";
+import { buttonClasses } from "@/components/ui/button";
 
 // Свободный редактор — сегодняшнее поведение калькулятора, без изменений
 // логики. Используется только для КП без выбранного clientType; см.
@@ -110,7 +111,7 @@ export function FreeformQuoteEditor({ quote }: { quote: QuoteData }) {
         type="button"
         disabled={addingSection}
         onClick={() => startAddSection(() => addQuoteSection(quote.id))}
-        className="justify-self-start rounded-lg border border-border px-3 py-1.5 text-sm transition hover:bg-border/60 disabled:opacity-50"
+        className={buttonClasses("secondary", "md", "justify-self-start")}
       >
         {addingSection ? "Добавляем…" : "+ Добавить секцию"}
       </button>

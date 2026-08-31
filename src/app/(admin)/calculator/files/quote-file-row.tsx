@@ -5,6 +5,7 @@ import Link from "next/link";
 import { archiveAsset, restoreAsset } from "@/app/actions/assets";
 import { withPlural, WORDS } from "@/lib/plural";
 import { OwnerBadge } from "@/components/owner-badge";
+import { buttonClasses } from "@/components/ui/button";
 
 export type QuoteFileRowData = {
   id: string;
@@ -43,7 +44,7 @@ export function QuoteFileRow({
       type="button"
       disabled={pending}
       onClick={() => startTransition(() => restoreAsset(file.id))}
-      className="shrink-0 rounded px-2 py-1 text-xs font-medium text-blue-600 transition hover:bg-blue-500/10 disabled:opacity-50 dark:text-blue-400"
+      className={buttonClasses("link", "sm", "shrink-0")}
     >
       {pending ? "…" : "Восстановить"}
     </button>
@@ -58,14 +59,14 @@ export function QuoteFileRow({
         type="button"
         disabled={pending}
         onClick={() => startTransition(() => archiveAsset(file.id))}
-        className="rounded px-2 py-1 text-xs font-medium text-red-600 transition hover:bg-red-500/10 disabled:opacity-50 dark:text-red-400"
+        className={buttonClasses("danger", "sm")}
       >
         {pending ? "…" : "Удалить"}
       </button>
       <button
         type="button"
         onClick={() => setConfirming(false)}
-        className="rounded px-2 py-1 text-xs text-muted transition hover:bg-border/60"
+        className={buttonClasses("ghost", "sm")}
       >
         Отмена
       </button>
@@ -74,7 +75,7 @@ export function QuoteFileRow({
     <button
       type="button"
       onClick={() => setConfirming(true)}
-      className="shrink-0 rounded px-2 py-1 text-xs text-muted transition hover:bg-red-500/10 hover:text-red-600 dark:hover:text-red-400"
+      className={buttonClasses("ghostDanger", "sm", "shrink-0")}
     >
       Удалить
     </button>
@@ -111,7 +112,7 @@ export function QuoteFileRow({
       {file.quoteId ? (
         <Link
           href={`/calculator/${file.quoteId}`}
-          className="shrink-0 rounded px-2 py-1 text-xs font-medium text-blue-600 transition hover:bg-blue-500/10 dark:text-blue-400"
+          className={buttonClasses("link", "sm", "shrink-0")}
         >
           Открыть расчёт
         </Link>
@@ -119,7 +120,7 @@ export function QuoteFileRow({
 
       <a
         href={`/api/assets/${file.id}/file`}
-        className="shrink-0 rounded px-2 py-1 text-xs font-medium text-blue-600 transition hover:bg-blue-500/10 dark:text-blue-400"
+        className={buttonClasses("link", "sm", "shrink-0")}
       >
         Скачать
       </a>

@@ -44,16 +44,20 @@ export function HubTileActions({ hubId, grid }: { hubId: string; grid: boolean }
   const [pending, startTransition] = useTransition();
 
   const iconBtn =
-    "grid size-9 cursor-pointer place-items-center rounded-full shadow-sm backdrop-blur-sm transition disabled:opacity-50";
+    "grid size-9 pointer-coarse:size-11 cursor-pointer place-items-center rounded-full " +
+    "shadow-sm backdrop-blur-sm transition duration-100 active:scale-[0.92] disabled:opacity-50";
   // Сплошной цвет читается одинаково и на фото витрины (плитка), и на
   // светлом фоне строки — поэтому, в отличие от прежней нейтральной версии,
   // grid/list здесь больше не различаются.
-  const copyClass = "bg-blue-600 text-white hover:bg-blue-700";
-  const trashClass = "bg-red-600 text-white hover:bg-red-700";
+  const copyClass = "bg-accent-fill text-on-accent hover:bg-accent-fill-hover";
+  const trashClass = "bg-danger-fill text-white hover:opacity-90";
 
   return (
     <span
-      className={`absolute z-20 flex items-center gap-1 opacity-0 transition group-hover:opacity-100 ${
+      // pointer-coarse:opacity-100 — не косметика: на телефоне hover не бывает,
+      // и «Копировать»/«Удалить» были не просто незаметны, а недостижимы —
+      // тап по плитке сразу уходил на страницу хаба. На мыши поведение прежнее.
+      className={`absolute z-20 flex items-center gap-1 opacity-0 transition group-hover:opacity-100 pointer-coarse:opacity-100 ${
         grid ? "top-2 right-2" : "inset-y-0 right-3"
       }`}
       onMouseLeave={() => setConfirming(false)}

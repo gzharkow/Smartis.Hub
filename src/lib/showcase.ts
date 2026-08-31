@@ -3,6 +3,7 @@ import "server-only";
 import { cache } from "react";
 import { db } from "./db";
 import { parseContactMethods, type ContactMethod } from "./contact-methods";
+import { DEFAULT_BRAND_COLOR } from "./brand-color";
 
 // Разбор клиентской ссылки. Здесь и происходят «живые коллекции»:
 // по токену мы находим ХАБ и читаем его текущее состояние. Ссылка ничего
@@ -54,7 +55,7 @@ export async function resolveShowcase(token: string): Promise<ShowcaseAccess> {
     const contacts = parseContactMethods(link.hub.contactMethods);
     if (!link.hub.ctaEnabled || contacts.length === 0) return undefined;
     return {
-      brandColor: link.hub.brandColor ?? link.hub.organization.brandColor ?? "#2563eb",
+      brandColor: link.hub.brandColor ?? link.hub.organization.brandColor ?? DEFAULT_BRAND_COLOR,
       contacts,
     };
   };

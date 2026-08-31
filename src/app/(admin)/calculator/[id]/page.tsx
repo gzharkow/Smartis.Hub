@@ -1,11 +1,13 @@
 import Link from "next/link";
+import { requireUser } from "@/lib/auth";
 import { notFound } from "next/navigation";
-import { requireSectionView, hasEdit } from "@/lib/permissions";
+import { hasEdit } from "@/lib/permissions";
 import { db } from "@/lib/db";
 import { parseCalculatorConfig } from "@/lib/quote-calculator";
 import { specAvailability } from "@/lib/spec-build";
 import { QuoteEditor } from "./quote-editor";
 import { QuoteActionsBar } from "./quote-actions-bar";
+import { PageHeader } from "@/components/ui/page-header";
 
 export default async function QuotePage({
   params,
@@ -13,7 +15,7 @@ export default async function QuotePage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const user = await requireSectionView("calculator");
+  const user = await requireUser();
 
   const quote = await db.quote.findUnique({
     where: { id },
@@ -54,22 +56,23 @@ export default async function QuotePage({
           ← Все расчёты
         </Link>
 
-        <div className="mt-2 flex flex-wrap items-start justify-between gap-4">
-          <h1 className="text-xl font-semibold tracking-tight">
-            {quote.clientName}
-          </h1>
-          <QuoteActionsBar
-            quoteId={quote.id}
-            canEdit={canEdit}
-            spec={
-              availability === null
-                ? undefined
-                : availability.ok
-                  ? { ok: true }
-                  : { ok: false, reason: availability.reason }
-            }
-          />
-        </div>
+        <PageHeader
+          className="mt-2"
+          title={quote.clientName}
+          actions={
+            <QuoteActionsBar
+              quoteId={quote.id}
+              canEdit={canEdit}
+              spec={
+                availability === null
+                  ? undefined
+                  : availability.ok
+                    ? { ok: true }
+                    : { ok: false, reason: availability.reason }
+              }
+            />
+          }
+        />
       </div>
 
       <QuoteEditor

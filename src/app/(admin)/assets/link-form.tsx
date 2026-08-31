@@ -5,6 +5,8 @@ import { useRouter } from "next/navigation";
 import { addLinkAsset, type AddLinkState } from "@/app/actions/assets";
 import { SECTIONS } from "@/lib/asset-sections";
 import type { AssetSection } from "@/generated/prisma/enums";
+import { buttonClasses } from "@/components/ui/button";
+import { fieldClasses } from "@/components/ui/field";
 
 /**
  * Добавление ссылки как материала: кейс, статья, видео на чужом сервисе.
@@ -39,7 +41,7 @@ export function LinkForm({
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="mb-6 rounded-lg border border-border px-4 py-2 text-sm font-medium transition hover:bg-border/60"
+        className={buttonClasses("secondary", "md", "mb-6")}
       >
         Добавить ссылку
       </button>
@@ -60,7 +62,7 @@ export function LinkForm({
             name="url"
             required
             placeholder="https://example.com/case"
-            className="rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:border-blue-500"
+            className={fieldClasses()}
           />
         </label>
 
@@ -70,7 +72,7 @@ export function LinkForm({
             name="title"
             maxLength={200}
             placeholder="Возьмём с сайта"
-            className="rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:border-blue-500"
+            className={fieldClasses()}
           />
         </label>
 
@@ -94,20 +96,20 @@ export function LinkForm({
         <button
           type="submit"
           disabled={pending}
-          className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-blue-700 disabled:opacity-60"
+          className={buttonClasses("primary")}
         >
           {pending ? "Проверяем…" : "Добавить"}
         </button>
         <button
           type="button"
           onClick={() => setOpen(false)}
-          className="rounded-lg px-3 py-2 text-sm text-muted transition hover:bg-border/60"
+          className={buttonClasses("ghost", "md")}
         >
           Готово
         </button>
 
         {state && "error" in state ? (
-          <span role="alert" className="text-sm text-red-600 dark:text-red-400">
+          <span role="alert" className="text-sm text-danger">
             {state.error}
           </span>
         ) : null}
@@ -116,11 +118,11 @@ export function LinkForm({
             о нём от клиента, который открыл материал и увидел пустоту. */}
         {added ? (
           state.embeddable ? (
-            <span className="text-sm text-green-600 dark:text-green-400">
+            <span className="text-sm text-ok">
               «{state.title}» добавлена — откроется прямо в хабе
             </span>
           ) : (
-            <span className="text-sm text-amber-700 dark:text-amber-400">
+            <span className="text-sm text-warn">
               «{state.title}» добавлена. Сайт запрещает показывать себя внутри
               других страниц — у клиента она откроется новой вкладкой
             </span>

@@ -4,6 +4,7 @@ import { formatHubCreated } from "@/lib/hub-format";
 import { CreateAccountForm } from "./create-account-form";
 import { AccountsTable, type AccountRow } from "./accounts-table";
 import { SettingsTabs } from "../settings-tabs";
+import { PageHeader } from "@/components/ui/page-header";
 
 export const dynamic = "force-dynamic";
 
@@ -34,10 +35,7 @@ export default async function AdministrationPage() {
     <div className="grid gap-8">
       <div>
         <SettingsTabs current="administration" isAdmin={true} />
-        <h1 className="text-xl font-semibold tracking-tight">Администрирование</h1>
-        <p className="mt-0.5 text-sm text-muted">
-          Создание аккаунтов сотрудников и настройка их доступа
-        </p>
+        <PageHeader title="Администрирование" subtitle="Создание аккаунтов сотрудников и настройка их доступа" />
       </div>
 
       <section className="grid gap-3">

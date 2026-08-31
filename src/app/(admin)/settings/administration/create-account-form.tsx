@@ -4,6 +4,8 @@ import { useActionState, useState } from "react";
 import { createAccount, type CreateAccountState } from "@/app/actions/users";
 import { AccountVisibilityPicker, type AccountOption } from "./account-visibility-picker";
 import { copyText } from "./copy-text";
+import { buttonClasses } from "@/components/ui/button";
+import { fieldClasses } from "@/components/ui/field";
 
 /**
  * Обёртка нужна только чтобы «Создать ещё аккаунт» полностью пересоздавала
@@ -39,8 +41,8 @@ function CreateAccountFormInner({
 
   if (state && "success" in state) {
     return (
-      <div className="rounded-xl border border-green-600/30 bg-green-600/5 p-5">
-        <p className="font-medium text-green-800 dark:text-green-400">Аккаунт создан</p>
+      <div className="rounded-xl border border-ok/30 bg-ok/5 p-5">
+        <p className="font-medium text-ok">Аккаунт создан</p>
         <p className="mt-1 text-sm">
           Почта: <b>{state.email}</b>
         </p>
@@ -60,7 +62,7 @@ function CreateAccountFormInner({
                 setTimeout(() => setCopied(false), 1500);
               }
             }}
-            className="rounded-lg px-3 py-2 text-sm font-medium text-blue-600 transition hover:bg-blue-500/10 dark:text-blue-400"
+            className="rounded-lg px-3 py-2 text-sm font-medium text-accent transition hover:bg-accent/10"
           >
             {copied ? "Скопировано" : "Копировать"}
           </button>
@@ -68,7 +70,7 @@ function CreateAccountFormInner({
         <button
           type="button"
           onClick={onCreateAnother}
-          className="mt-4 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-blue-700"
+          className={buttonClasses("primary", "md", "mt-4")}
         >
           Создать ещё аккаунт
         </button>
@@ -86,7 +88,7 @@ function CreateAccountFormInner({
             type="email"
             required
             placeholder="ivan@smartis.bi"
-            className="rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:border-blue-500"
+            className={fieldClasses()}
           />
         </label>
         <label className="grid gap-1.5">
@@ -94,7 +96,7 @@ function CreateAccountFormInner({
           <input
             name="name"
             placeholder="Иван Иванов"
-            className="rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:border-blue-500"
+            className={fieldClasses()}
           />
         </label>
       </div>
@@ -109,7 +111,7 @@ function CreateAccountFormInner({
               value="MEMBER"
               checked={role === "MEMBER"}
               onChange={() => setRole("MEMBER")}
-              className="size-4 accent-blue-600"
+              className="size-4"
             />
             Обычный пользователь — доступ как у администратора, кроме материалов
           </label>
@@ -120,7 +122,7 @@ function CreateAccountFormInner({
               value="ADMIN"
               checked={role === "ADMIN"}
               onChange={() => setRole("ADMIN")}
-              className="size-4 accent-blue-600"
+              className="size-4"
             />
             Администратор — полный доступ
           </label>
@@ -132,7 +134,7 @@ function CreateAccountFormInner({
           <label className="flex items-center gap-2 text-sm">
             <input
               type="checkbox"
-              className="size-4 accent-blue-600"
+              className="size-4"
               checked={canAddAssets}
               onChange={(e) => setCanAddAssets(e.target.checked)}
             />
@@ -153,7 +155,7 @@ function CreateAccountFormInner({
       ) : null}
 
       {state && "error" in state ? (
-        <p role="alert" className="text-sm text-red-600 dark:text-red-400">
+        <p role="alert" className="text-sm text-danger">
           {state.error}
         </p>
       ) : null}
@@ -162,7 +164,7 @@ function CreateAccountFormInner({
         <button
           type="submit"
           disabled={pending}
-          className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-blue-700 disabled:opacity-60"
+          className={buttonClasses("primary")}
         >
           {pending ? "Создаём…" : "Создать аккаунт"}
         </button>

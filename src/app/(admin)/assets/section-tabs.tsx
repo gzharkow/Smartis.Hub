@@ -1,7 +1,5 @@
 import Link from "next/link";
-import { SECTIONS, permissionKeyForSection } from "@/lib/asset-sections";
-import { hasView } from "@/lib/permissions";
-import type { CurrentUser } from "@/lib/auth";
+import { SECTIONS } from "@/lib/asset-sections";
 
 /**
  * Переключатель разделов на самой странице материалов.
@@ -13,36 +11,18 @@ import type { CurrentUser } from "@/lib/auth";
  * Обычные ссылки, без клиентского кода: какая вкладка выбрана, видно
  * из адреса, и страница всё равно перерисовывается на сервере.
  */
-/** Ключи разделов, доступные пользователю по матрице — прокидывать в `visibleKeys`. */
-export function sectionTabVisibleKeys(user: CurrentUser): string[] {
-  return [
-    ...(hasView(user, "assets") ? ["assets"] : []),
-    ...SECTIONS.filter((s) => hasView(user, permissionKeyForSection(s.value))).map((s) =>
-      permissionKeyForSection(s.value),
-    ),
-  ];
-}
-
 export function SectionTabs({
   current,
   right,
-  visibleKeys,
 }: {
   current: string | null;
   /** Правый край ряда вкладок — сюда кладём переключатель вида. */
   right?: React.ReactNode;
-  /** См. hubTabVisibleKeys в hubs/hub-tabs.tsx — не передан, значит показываем все. */
-  visibleKeys?: string[];
 }) {
-  const allTabs = [
-    { slug: null, key: "assets", label: "Все" },
-    ...SECTIONS.map((s) => ({
-      slug: s.slug,
-      key: permissionKeyForSection(s.value),
-      label: s.label,
-    })),
+  const tabs = [
+    { slug: null, label: "Все" },
+    ...SECTIONS.map((s) => ({ slug: s.slug, label: s.label })),
   ];
-  const tabs = allTabs.filter((tab) => !visibleKeys || visibleKeys.includes(tab.key));
 
   return (
     <div className="mb-6 flex items-center gap-3">
@@ -54,7 +34,7 @@ export function SectionTabs({
               key={tab.label}
               href={tab.slug ? `/assets/${tab.slug}` : "/assets"}
               aria-current={active ? "page" : undefined}
-              className={`rounded-full px-3 py-1.5 text-sm transition ${
+              className={`inline-flex items-center rounded-full px-3 py-1.5 text-sm transition duration-100 pointer-coarse:min-h-11 ${
                 active
                   ? "bg-border font-medium"
                   : "text-muted hover:bg-border/50 hover:text-foreground"

@@ -1,5 +1,6 @@
 import { cookies } from "next/headers";
-import { requireSectionView, hasEdit, showsOtherOwners, visibleOwnerFilter } from "@/lib/permissions";
+import { requireUser } from "@/lib/auth";
+import { hasEdit, showsOtherOwners, visibleOwnerFilter } from "@/lib/permissions";
 import { db } from "@/lib/db";
 import { daysLeft, purgeExpiredHubs, TRASH_DAYS } from "@/lib/hub-trash";
 import { ownerLabel } from "@/lib/owner-color";
@@ -10,13 +11,14 @@ import {
   VIEW_LIST_CLASS,
 } from "@/lib/view-mode";
 import { ViewToggle } from "@/components/view-toggle";
-import { HubTabs, hubTabVisibleKeys } from "../hub-tabs";
+import { HubTabs } from "../hub-tabs";
 import { TrashRow, type TrashRowData } from "./trash-row";
+import { PageHeader } from "@/components/ui/page-header";
 
 export const dynamic = "force-dynamic";
 
 export default async function TrashPage() {
-  const user = await requireSectionView("hubs.trash");
+  const user = await requireUser();
   const view = parseViewMode((await cookies()).get(VIEW_COOKIE)?.value);
 
   // Уборка просроченного — здесь, при открытии раздела. Настоящее место для
@@ -57,19 +59,14 @@ export default async function TrashPage() {
 
   return (
     <div>
-      <div className="mb-4">
-        <h1 className="text-xl font-semibold tracking-tight">
-          Недавно удалённые
-        </h1>
-        <p className="mt-0.5 text-sm text-muted">
-          Хранятся {TRASH_DAYS} дней, потом исчезают навсегда. Ссылки у клиентов
-          уже не открываются
-        </p>
-      </div>
+      <PageHeader
+        className="mb-4"
+        title="Недавно удалённые"
+        subtitle={`Хранятся ${TRASH_DAYS} дней, потом исчезают навсегда. Ссылки у клиентов уже не открываются`}
+      />
 
       <HubTabs
         current="trash"
-        visibleKeys={hubTabVisibleKeys(user)}
         right={rows.length > 0 ? <ViewToggle value={view} /> : null}
       />
 

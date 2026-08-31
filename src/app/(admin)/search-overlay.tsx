@@ -41,7 +41,7 @@ export function SearchOverlay({ onClose }: { onClose: () => void }) {
               if (e.key === "Escape") onClose();
             }}
             placeholder="Поиск по хабам, папкам, материалам"
-            className="w-full rounded-full border border-border bg-surface py-2.5 pr-3 pl-9 text-sm outline-none transition focus:border-blue-500"
+            className="w-full rounded-full border border-border bg-surface py-2.5 pr-3 pl-9 text-sm transition focus:border-accent"
           />
         </div>
 

@@ -1,5 +1,6 @@
 import { cookies } from "next/headers";
-import { requireSectionView, hasEdit } from "@/lib/permissions";
+import { requireUser } from "@/lib/auth";
+import { hasEdit } from "@/lib/permissions";
 import { db } from "@/lib/db";
 import { withPlural, WORDS } from "@/lib/plural";
 import {
@@ -9,14 +10,15 @@ import {
   VIEW_LIST_CLASS,
 } from "@/lib/view-mode";
 import { ViewToggle } from "@/components/view-toggle";
-import { HubTabs, hubTabVisibleKeys } from "../hub-tabs";
+import { HubTabs } from "../hub-tabs";
 import { CreateFolderForm } from "./create-folder-form";
 import { FolderRow } from "./folder-row";
+import { PageHeader } from "@/components/ui/page-header";
 
 export const dynamic = "force-dynamic";
 
 export default async function FoldersPage() {
-  const user = await requireSectionView("hubs.folders");
+  const user = await requireUser();
   const view = parseViewMode((await cookies()).get(VIEW_COOKIE)?.value);
 
   const folders = await db.hubFolder.findMany({
@@ -43,19 +45,15 @@ export default async function FoldersPage() {
 
   return (
     <div>
-      <div className="mb-4 flex flex-wrap items-start justify-between gap-4">
-        <div>
-          <h1 className="text-xl font-semibold tracking-tight">Папки</h1>
-          <p className="mt-0.5 text-sm text-muted">
-            Чтобы под одним аккаунтом хабы разных сотрудников не терялись
-          </p>
-        </div>
-        {canEdit ? <CreateFolderForm /> : null}
-      </div>
+      <PageHeader
+        className="mb-4"
+        title="Папки"
+        subtitle="Чтобы под одним аккаунтом хабы разных сотрудников не терялись"
+        actions={canEdit ? <CreateFolderForm /> : null}
+      />
 
       <HubTabs
         current="folders"
-        visibleKeys={hubTabVisibleKeys(user)}
         right={folders.length > 0 ? <ViewToggle value={view} /> : null}
       />
 

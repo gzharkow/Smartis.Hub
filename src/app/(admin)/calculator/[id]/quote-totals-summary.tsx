@@ -1,4 +1,5 @@
 import { formatMoney, type QuoteTotals } from "@/lib/quote-calc";
+import { cardClasses } from "@/components/ui/card";
 
 // Итоговый блок — общий для свободного редактора и калькулятора. Третий
 // итог («Коробка») показывается сам по себе, когда он есть в totals —
@@ -14,7 +15,7 @@ export function QuoteTotalsSummary({
   showImplementationNote?: boolean;
 }) {
   return (
-    <div className="rounded-xl border border-border bg-surface p-4">
+    <div className={cardClasses("card")}>
       <dl className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         {totals.boxIntegrationPayment ? (
           <div className="sm:col-span-2">

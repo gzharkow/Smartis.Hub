@@ -43,7 +43,7 @@ export function Topbar({
         <form action={logout}>
           <button
             type="submit"
-            className="flex items-center gap-2 rounded-lg px-2.5 py-1.5 text-sm text-muted transition hover:bg-border/60 hover:text-foreground"
+            className="flex min-h-8 pointer-coarse:min-h-11 items-center gap-2 rounded-lg px-2.5 py-1.5 text-sm text-muted transition duration-100 hover:bg-border/60 hover:text-foreground active:scale-[0.97]"
           >
             <LogoutIcon />
             Выйти

@@ -18,7 +18,7 @@ export function KpiTile({
     <div
       className={`rounded-xl border px-4 py-3 ${
         flag
-          ? "border-amber-300 bg-amber-500/10 dark:border-amber-700 dark:bg-amber-500/10"
+          ? "border-warn/40 bg-warn/10"
           : "border-border bg-surface"
       }`}
       title={hint}
@@ -26,7 +26,7 @@ export function KpiTile({
       <p className="font-mono text-[11px] tracking-wide text-muted uppercase">{label}</p>
       <p
         className={`mt-1 font-mono text-2xl font-bold tabular-nums ${
-          flag ? "text-amber-700 dark:text-amber-400" : ""
+          flag ? "text-warn" : ""
         }`}
       >
         {value}

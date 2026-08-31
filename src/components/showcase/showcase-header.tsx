@@ -1,5 +1,7 @@
 "use client";
 
+import { brandTextOn, SHOWCASE_BACKDROP, textOnBrand } from "@/lib/brand-color";
+
 // Шапка витрины. Отсюда её берут ДВА места: настоящая витрина клиента
 // и предпросмотр в настройках хаба.
 //
@@ -74,8 +76,14 @@ export function ShowcaseHeader({
                 // Ссылка открывается в новой вкладке, эта остаётся — событие
                 // успеет уйти обычной отправкой очереди.
                 onClick={onDemoClick}
-                className="inline-flex items-center gap-1.5 self-start rounded-xl border-2 px-5 py-2.5 text-sm font-medium transition hover:bg-white/10"
-                style={{ borderColor: brandColor, color: brandColor }}
+                className="inline-flex items-center gap-1.5 self-start rounded-xl border-2 px-5 py-2.5 text-sm font-medium transition duration-100 hover:bg-white/10 active:scale-[0.97] pointer-coarse:min-h-11"
+                // Рамка — всегда фирменного цвета, а надпись только если он
+                // читается на тёмной подложке витрины. Синий по умолчанию давал
+                // здесь 2,48:1 — надпись почти сливалась с фоном.
+                style={{
+                  borderColor: brandColor,
+                  color: brandTextOn(SHOWCASE_BACKDROP, brandColor),
+                }}
               >
                 {demo.label}
                 <span aria-hidden="true">↗</span>
@@ -95,8 +103,10 @@ export function ShowcaseHeader({
             <button
               type="button"
               onClick={onContactsClick}
-              className="cursor-pointer rounded-xl px-5 py-2.5 text-sm font-medium text-white transition hover:opacity-90"
-              style={{ backgroundColor: brandColor }}
+              className="cursor-pointer rounded-xl px-5 py-2.5 text-sm font-medium transition duration-100 hover:opacity-90 active:scale-[0.97] pointer-coarse:min-h-11"
+              // Цвет надписи считается от самой заливки: фирменный цвет задаёт
+              // продавец, и на светлом тоне жёстко заданный белый пропадал.
+              style={{ backgroundColor: brandColor, color: textOnBrand(brandColor) }}
             >
               {cta}
             </button>

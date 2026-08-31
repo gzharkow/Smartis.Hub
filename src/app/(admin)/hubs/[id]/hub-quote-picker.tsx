@@ -4,6 +4,8 @@ import { useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { addQuotePdfToHub } from "@/app/actions/hubs";
 import { backfillThumbnail } from "@/lib/backfill-thumbnail";
+import { fieldClasses } from "@/components/ui/field";
+import { buttonClasses } from "@/components/ui/button";
 
 type QuoteOption = { id: string; clientName: string };
 
@@ -93,7 +95,7 @@ export function HubQuotePicker({ hubId }: { hubId: string }) {
           value={query}
           onChange={onChange}
           placeholder="Название клиента…"
-          className="rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:border-blue-500"
+          className={fieldClasses()}
         />
       </label>
 
@@ -121,7 +123,7 @@ export function HubQuotePicker({ hubId }: { hubId: string }) {
                   type="button"
                   disabled={pending && addingId === quote.id}
                   onClick={() => add(quote)}
-                  className="shrink-0 rounded px-2 py-1 text-xs font-medium text-blue-600 transition hover:bg-blue-500/10 disabled:opacity-50 dark:text-blue-400"
+                  className={buttonClasses("link", "sm", "shrink-0")}
                 >
                   {addingId === quote.id
                     ? "Добавляем…"

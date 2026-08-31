@@ -90,7 +90,7 @@ export function ThemeToggle({ initial }: { initial: Theme | null }) {
       }
       // Размер держим постоянным, чтобы соседние кнопки не дёргались,
       // пока тема ещё не определилась.
-      className="grid size-8 place-items-center rounded-lg text-muted transition hover:bg-border/60 hover:text-foreground"
+      className="grid size-8 pointer-coarse:size-11 place-items-center rounded-lg text-muted transition duration-100 hover:bg-border/60 hover:text-foreground active:scale-[0.92]"
     >
       {theme === null ? null : next === "dark" ? <MoonIcon /> : <SunIcon />}
     </button>

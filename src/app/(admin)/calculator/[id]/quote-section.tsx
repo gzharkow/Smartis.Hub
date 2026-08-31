@@ -12,6 +12,7 @@ import {
 import { calculateQuote, formatMoney } from "@/lib/quote-calc";
 import { QuoteLineRow } from "./quote-line-row";
 import type { QuoteLineData, QuoteSectionData } from "./quote-editor";
+import { buttonClasses } from "@/components/ui/button";
 
 const GRID_COLS = "minmax(0,1fr) 90px 110px 100px 100px 68px";
 
@@ -74,7 +75,7 @@ export function QuoteSectionBlock({
           // basis-full на мобильном — иначе flex-wrap не переносит остальные
           // элементы строки на новую строку, а сжимает поле названия секции
           // до пары букв. С sm и шире снова обычное гибкое поле в общей строке.
-          className="min-w-0 flex-1 basis-full rounded-lg border border-transparent bg-transparent px-2 py-1 text-sm font-semibold tracking-tight outline-none hover:border-border focus:border-blue-500 sm:basis-auto"
+          className="min-w-0 flex-1 basis-full rounded-lg border border-transparent bg-transparent px-2 py-1 text-sm font-semibold tracking-tight hover:border-border focus:border-accent sm:basis-auto"
         />
 
         <label className="flex items-center gap-1.5 text-xs text-muted">
@@ -89,7 +90,7 @@ export function QuoteSectionBlock({
                   : setImplementationSection(quoteId, section.id),
               )
             }
-            className="accent-blue-600"
+            
           />
           скидка на внедрение
         </label>
@@ -122,14 +123,14 @@ export function QuoteSectionBlock({
               type="button"
               disabled={deleting}
               onClick={() => startDelete(() => removeQuoteSection(section.id))}
-              className="rounded-lg px-2 py-1 text-xs font-medium text-red-600 transition hover:bg-red-500/10 disabled:opacity-50 dark:text-red-400"
+              className={buttonClasses("danger", "sm")}
             >
               {deleting ? "…" : "Удалить"}
             </button>
             <button
               type="button"
               onClick={() => setConfirmingDelete(false)}
-              className="rounded-lg px-2 py-1 text-xs text-muted transition hover:bg-border/60"
+              className={buttonClasses("ghost", "sm")}
             >
               Отмена
             </button>
@@ -138,7 +139,7 @@ export function QuoteSectionBlock({
           <button
             type="button"
             onClick={() => setConfirmingDelete(true)}
-            className="rounded-lg px-2 py-1 text-xs text-muted transition hover:bg-red-500/10 hover:text-red-600 dark:hover:text-red-400"
+            className={buttonClasses("ghostDanger", "sm")}
           >
             Удалить секцию
           </button>
@@ -197,7 +198,7 @@ export function QuoteSectionBlock({
           type="button"
           disabled={addingLine}
           onClick={() => startAddLine(() => addQuoteLine(section.id))}
-          className="rounded-lg border border-border px-3 py-1.5 text-xs transition hover:bg-border/60 disabled:opacity-50"
+          className={buttonClasses("secondary", "sm")}
         >
           {addingLine ? "Добавляем…" : "+ Строка"}
         </button>

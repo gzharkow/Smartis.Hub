@@ -11,7 +11,7 @@ import {
 import type { QuoteLineData } from "./quote-editor";
 
 const inputCls =
-  "w-full rounded border border-transparent bg-transparent px-1.5 py-1 text-sm outline-none hover:border-border focus:border-blue-500";
+  "w-full rounded border border-transparent bg-transparent px-1.5 py-1 text-sm hover:border-border focus:border-accent";
 const numCls = `${inputCls} text-right`;
 
 export function QuoteLineRow({
@@ -196,7 +196,7 @@ export function QuoteLineRow({
           disabled={removing}
           onClick={() => startRemove(() => removeQuoteLine(line.id))}
           title="Удалить строку"
-          className="rounded px-1 py-0.5 text-xs text-muted transition hover:bg-red-500/10 hover:text-red-600 dark:hover:text-red-400"
+          className="rounded px-1 py-0.5 text-xs text-muted transition hover:bg-danger/10 hover:text-danger"
         >
           ✕
         </button>
@@ -216,7 +216,7 @@ export function QuoteLineRow({
             type="checkbox"
             checked={infoOnly}
             onChange={toggleInfoOnly}
-            className="size-3.5 accent-blue-600"
+            className="size-3.5"
           />
           строка без цены (только количество)
         </label>

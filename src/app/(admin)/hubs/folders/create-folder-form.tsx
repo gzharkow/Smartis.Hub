@@ -2,6 +2,8 @@
 
 import { useActionState, useEffect, useRef, useState } from "react";
 import { createHubFolder, type FolderState } from "@/app/actions/hub-folders";
+import { buttonClasses } from "@/components/ui/button";
+import { fieldClasses } from "@/components/ui/field";
 
 export function CreateFolderForm() {
   const [open, setOpen] = useState(false);
@@ -22,7 +24,7 @@ export function CreateFolderForm() {
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-blue-700"
+        className={buttonClasses("primary")}
       >
         Создать папку
       </button>
@@ -40,10 +42,10 @@ export function CreateFolderForm() {
           required
           maxLength={60}
           placeholder="Например, фамилия сотрудника"
-          className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:border-blue-500 sm:w-72"
+          className={fieldClasses("w-full sm:w-72")}
         />
         {state?.error ? (
-          <span role="alert" className="text-xs text-red-600 dark:text-red-400">
+          <span role="alert" className="text-xs text-danger">
             {state.error}
           </span>
         ) : (
@@ -56,14 +58,14 @@ export function CreateFolderForm() {
       <button
         type="submit"
         disabled={pending}
-        className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-blue-700 disabled:opacity-60"
+        className={buttonClasses("primary")}
       >
         {pending ? "Создаём…" : "Создать"}
       </button>
       <button
         type="button"
         onClick={() => setOpen(false)}
-        className="rounded-lg px-3 py-2 text-sm text-muted transition hover:bg-border/60"
+        className={buttonClasses("ghost", "md")}
       >
         Готово
       </button>

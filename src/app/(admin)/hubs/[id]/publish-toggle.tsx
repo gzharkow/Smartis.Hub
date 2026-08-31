@@ -31,7 +31,7 @@ export function PublishToggle({
         className={
           published
             ? "rounded-lg border border-border px-3 py-1.5 text-sm transition hover:bg-border/60 disabled:opacity-50"
-            : "rounded-lg bg-green-600 px-3 py-1.5 text-sm font-medium text-white transition hover:bg-green-700 disabled:opacity-40"
+            : "rounded-lg bg-ok-fill px-3 py-1.5 text-sm font-medium text-white transition hover:opacity-90 disabled:opacity-40"
         }
       >
         {pending

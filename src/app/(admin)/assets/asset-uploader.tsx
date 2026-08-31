@@ -10,6 +10,7 @@ import {
   UPLOAD_ACCEPT,
 } from "@/lib/asset-formats";
 import type { AssetSection } from "@/generated/prisma/enums";
+import { buttonClasses } from "@/components/ui/button";
 
 type QueueItem = {
   id: string;
@@ -154,7 +155,7 @@ export function AssetUploader({
         }}
         className={`rounded-xl border-2 border-dashed px-6 py-10 text-center transition ${
           dragging
-            ? "border-blue-500 bg-blue-500/5"
+            ? "border-accent bg-accent/5"
             : "border-border hover:border-muted"
         }`}
       >
@@ -170,7 +171,7 @@ export function AssetUploader({
           <select
             value={section}
             onChange={(e) => setSection(e.target.value as AssetSection)}
-            className="rounded-lg border border-border bg-background px-2.5 py-1.5 text-sm"
+            className="rounded-lg border border-border bg-background px-2.5 py-1.5 text-sm pointer-coarse:min-h-11"
           >
             {SECTIONS.map((s) => (
               <option key={s.value} value={s.value}>
@@ -183,7 +184,7 @@ export function AssetUploader({
         <button
           type="button"
           onClick={() => inputRef.current?.click()}
-          className="mt-4 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-blue-700"
+          className={buttonClasses("primary", "md", "mt-4")}
         >
           Выбрать файлы
         </button>
@@ -215,7 +216,7 @@ export function AssetUploader({
                 <span className="flex items-center gap-2">
                   <span className="h-1.5 w-24 overflow-hidden rounded-full bg-border">
                     <span
-                      className="block h-full bg-blue-600 transition-all"
+                      className="block h-full bg-accent-fill transition-all"
                       style={{ width: `${item.progress}%` }}
                     />
                   </span>
@@ -232,10 +233,10 @@ export function AssetUploader({
                 <span className="text-muted">готовим превью…</span>
               ) : null}
               {item.status === "done" ? (
-                <span className="text-green-600 dark:text-green-400">готово</span>
+                <span className="text-ok">готово</span>
               ) : null}
               {item.status === "error" ? (
-                <span className="text-red-600 dark:text-red-400">{item.error}</span>
+                <span className="text-danger">{item.error}</span>
               ) : null}
             </li>
           ))}

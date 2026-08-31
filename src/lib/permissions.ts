@@ -1,18 +1,19 @@
 import "server-only";
 
-import { redirect } from "next/navigation";
-import { requireUser, type CurrentUser } from "./auth";
+import type { CurrentUser } from "./auth";
 
-// Права доступа теперь ролевые, без матрицы по разделам (см. схему —
-// AccessLevel убран). MEMBER видит и может менять всё наравне с ADMIN, кроме
-// библиотеки материалов: там переименование/удаление/перенос раздела —
-// только ADMIN, а добавление — по отдельному флагу User.canAddAssets
-// (см. canAddMaterials). «Настройки → Администрирование» сюда не входит —
-// она доступна только role = ADMIN, жёстко, см. requireAdmin() в auth.ts.
-
-export function hasView(_user: CurrentUser, _sectionKey: string): boolean {
-  return true;
-}
+// Права доступа ролевые, без матрицы по разделам (модель AccessLevel из схемы
+// убрана). MEMBER видит и может менять всё наравне с ADMIN, кроме библиотеки
+// материалов: там переименование/удаление/перенос раздела — только ADMIN,
+// а добавление — по отдельному флагу User.canAddAssets (см. canAddMaterials).
+// «Настройки → Администрирование» сюда не входит — она доступна только
+// role = ADMIN, жёстко, см. requireAdmin() в auth.ts.
+//
+// Здесь НЕТ проверки «виден ли раздел»: она была бы `return true` для всех.
+// Страницы разделов открываются обычным requireUser(), меню и вкладки
+// показывают все пункты. Если видимость разделов понадобится снова —
+// заводить её вместе с моделью данных, а не оставлять пустую заглушку,
+// которая выглядит как защита, но ничего не проверяет.
 
 export function hasEdit(user: CurrentUser, sectionKey: string): boolean {
   if (sectionKey.startsWith("assets")) return user.role === "ADMIN";
@@ -35,18 +36,4 @@ export function visibleOwnerFilter(user: CurrentUser): { ownerId?: { in: string[
  * действительно могут быть чужие хабы/расчёты. */
 export function showsOtherOwners(user: CurrentUser): boolean {
   return user.role === "ADMIN" || user.visibleOwners.length > 0;
-}
-
-/** Для страниц раздела/подраздела — блокирует и прямой переход по URL, не только пункт меню. */
-export async function requireSectionView(sectionKey: string): Promise<CurrentUser> {
-  const user = await requireUser();
-  if (!hasView(user, sectionKey)) redirect("/hubs");
-  return user;
-}
-
-/** Для мутирующих server actions — защита на случай, если кнопку в UI всё же обошли. */
-export async function requireSectionEdit(sectionKey: string): Promise<CurrentUser> {
-  const user = await requireUser();
-  if (!hasEdit(user, sectionKey)) redirect("/hubs");
-  return user;
 }

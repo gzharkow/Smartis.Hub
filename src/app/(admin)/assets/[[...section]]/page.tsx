@@ -1,7 +1,7 @@
 import { cookies } from "next/headers";
-import { notFound, redirect } from "next/navigation";
+import { notFound } from "next/navigation";
 import { requireUser } from "@/lib/auth";
-import { canAddMaterials, hasEdit, hasView } from "@/lib/permissions";
+import { canAddMaterials, hasEdit } from "@/lib/permissions";
 import { db } from "@/lib/db";
 import { formatFileSize, KIND_LABELS } from "@/lib/assets";
 import { formatHubCreated } from "@/lib/hub-format";
@@ -16,8 +16,9 @@ import {
 import { ViewToggle } from "@/components/view-toggle";
 import { AssetUploader } from "../asset-uploader";
 import { AssetRow, type AssetRowData } from "../asset-row";
-import { SectionTabs, sectionTabVisibleKeys } from "../section-tabs";
+import { SectionTabs } from "../section-tabs";
 import { LinkForm } from "../link-form";
+import { PageHeader } from "@/components/ui/page-header";
 
 export const dynamic = "force-dynamic";
 
@@ -44,10 +45,6 @@ export default async function AssetsPage({
   const section = sectionFromSlug(slug);
   if (slug && !section) notFound();
 
-  // Ключ матрицы доступа: у корня «/assets» — родительский "assets",
-  // у конкретного раздела — "assets.<slug>" (тот же slug, что и в адресе).
-  const permissionKey = slug ? `assets.${slug}` : "assets";
-  if (!hasView(user, permissionKey)) redirect("/hubs");
   const canAdd = canAddMaterials(user);
 
   const info = SECTIONS.find((s) => s.value === section);
@@ -106,20 +103,18 @@ export default async function AssetsPage({
 
   return (
     <div>
-      <div className="mb-4">
-        <h1 className="text-xl font-semibold tracking-tight">
-          {info ? info.label : "Материалы"}
-        </h1>
-        <p className="mt-0.5 text-sm text-muted">
-          {info
+      <PageHeader
+        className="mb-4"
+        title={info ? info.label : "Материалы"}
+        subtitle={
+          info
             ? info.hint
-            : "Вся библиотека. Один материал можно ставить в любое число хабов"}
-        </p>
-      </div>
+            : "Вся библиотека. Один материал можно ставить в любое число хабов"
+        }
+      />
 
       <SectionTabs
         current={slug ?? null}
-        visibleKeys={sectionTabVisibleKeys(user)}
         right={active.length > 0 ? <ViewToggle value={view} /> : null}
       />
 

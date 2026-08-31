@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { archiveHub, restoreHub } from "@/app/actions/hubs";
 import { plural, withPlural, WORDS } from "@/lib/plural";
+import { buttonClasses } from "@/components/ui/button";
 
 // Согласовывать с числом надо не только существительное, но и глагол:
 // «1 ссылка перестанет», «2 ссылки перестанут».
@@ -34,7 +35,7 @@ export function DeleteHubButton({
       <button
         type="button"
         onClick={() => setConfirming(true)}
-        className="rounded-lg px-3 py-1.5 text-sm text-muted transition hover:bg-red-500/10 hover:text-red-600 dark:hover:text-red-400"
+        className={buttonClasses("ghostDanger", "md")}
       >
         Удалить
       </button>
@@ -53,7 +54,7 @@ export function DeleteHubButton({
         type="button"
         disabled={pending}
         onClick={() => startTransition(() => archiveHub(hubId))}
-        className="rounded-lg px-3 py-1.5 text-sm font-medium text-red-600 transition hover:bg-red-500/10 disabled:opacity-50 dark:text-red-400"
+        className={buttonClasses("danger", "md")}
       >
         {pending ? "…" : "Удалить"}
       </button>
@@ -61,7 +62,7 @@ export function DeleteHubButton({
       <button
         type="button"
         onClick={() => setConfirming(false)}
-        className="rounded-lg px-3 py-1.5 text-sm text-muted transition hover:bg-border/60"
+        className={buttonClasses("ghost", "md")}
       >
         Отмена
       </button>
@@ -77,7 +78,7 @@ export function RestoreHubButton({ hubId }: { hubId: string }) {
       type="button"
       disabled={pending}
       onClick={() => startTransition(() => restoreHub(hubId))}
-      className="rounded-lg bg-blue-600 px-3 py-1.5 text-sm font-medium text-white transition hover:bg-blue-700 disabled:opacity-50"
+      className={buttonClasses("primary", "sm")}
     >
       {pending ? "…" : "Вернуть"}
     </button>

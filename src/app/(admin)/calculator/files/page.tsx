@@ -1,11 +1,13 @@
-import { requireSectionView, hasEdit, showsOtherOwners, visibleOwnerFilter } from "@/lib/permissions";
+import { hasEdit, showsOtherOwners, visibleOwnerFilter } from "@/lib/permissions";
+import { requireUser } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { formatFileSize } from "@/lib/assets";
 import { formatHubCreated } from "@/lib/hub-format";
 import { ownerLabel } from "@/lib/owner-color";
 import { withPlural, WORDS } from "@/lib/plural";
 import { QuoteFileRow, type QuoteFileRowData } from "./quote-file-row";
-import { CalculatorTabs, calculatorTabVisibleKeys } from "../calculator-tabs";
+import { CalculatorTabs } from "../calculator-tabs";
+import { PageHeader } from "@/components/ui/page-header";
 
 export const dynamic = "force-dynamic";
 
@@ -18,7 +20,7 @@ export const dynamic = "force-dynamic";
 // без отдельной ветки.
 
 export default async function CalculatorFilesPage() {
-  const user = await requireSectionView("calculator.files");
+  const user = await requireUser();
 
   const files = await db.asset.findMany({
     where: {
@@ -73,15 +75,13 @@ export default async function CalculatorFilesPage() {
 
   return (
     <div>
-      <div className="mb-4">
-        <h1 className="text-xl font-semibold tracking-tight">Файлы</h1>
-        <p className="mt-0.5 text-sm text-muted">
-          Файлы, сгенерированные Генератором КП: PDF коммерческих предложений и
-          Спецификации в .docx — в общей библиотеке материалов не показываются
-        </p>
-      </div>
+      <PageHeader
+        className="mb-4"
+        title="Файлы"
+        subtitle="Файлы, сгенерированные Генератором КП: PDF коммерческих предложений и Спецификации в .docx — в общей библиотеке материалов не показываются"
+      />
 
-      <CalculatorTabs current="files" visibleKeys={calculatorTabVisibleKeys(user)} />
+      <CalculatorTabs current="files" />
 
       {active.length === 0 ? (
         <div className="rounded-xl border border-dashed border-border py-16 text-center">

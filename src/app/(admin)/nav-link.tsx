@@ -42,12 +42,12 @@ export function NavLink({
       // угадать, что означает значок.
       title={collapsed ? label : undefined}
       aria-current={active ? "page" : undefined}
-      className={`flex h-9 items-center gap-2.5 rounded-lg px-2.5 text-sm transition ${
+      className={`flex h-9 pointer-coarse:h-11 items-center gap-2.5 rounded-lg px-2.5 text-sm transition duration-100 ${
         collapsed ? "justify-center" : ""
       } ${
         active
-          ? "bg-border/70 font-medium text-brand"
-          : "text-muted hover:bg-border/40 hover:text-brand"
+          ? "bg-border/70 font-medium text-accent"
+          : "text-muted hover:bg-border/40 hover:text-accent"
       }`}
     >
       <span className="shrink-0">{icon}</span>
@@ -73,7 +73,7 @@ export function SubNavLink({ href, label }: { href: string; label: string }) {
     <Link
       href={href}
       aria-current={active ? "page" : undefined}
-      className={`flex h-8 items-center rounded-lg pr-2.5 pl-3 text-sm transition ${
+      className={`flex h-8 pointer-coarse:h-11 items-center rounded-lg pr-2.5 pl-3 text-sm transition duration-100 ${
         active
           ? "font-medium text-foreground"
           : "text-muted hover:text-foreground"
@@ -140,7 +140,7 @@ export function NavGroup({
           aria-expanded={open}
           title={open ? `Скрыть подразделы: ${label}` : `Показать подразделы: ${label}`}
           aria-label={open ? `Скрыть подразделы: ${label}` : `Показать подразделы: ${label}`}
-          className={`shrink-0 rounded-lg p-1.5 text-muted transition hover:bg-border/60 hover:text-foreground ${
+          className={`shrink-0 rounded-lg p-1.5 pointer-coarse:p-3 text-muted transition duration-100 hover:bg-border/60 hover:text-foreground active:scale-[0.92] ${
             collapsed ? "hidden" : "hidden md:block"
           }`}
         >

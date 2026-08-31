@@ -1,6 +1,7 @@
 import Link from "next/link";
+import { requireUser } from "@/lib/auth";
 import { cookies } from "next/headers";
-import { requireSectionView, visibleOwnerFilter } from "@/lib/permissions";
+import { visibleOwnerFilter } from "@/lib/permissions";
 import { db } from "@/lib/db";
 import { formatDuration, formatWhen, hubStats } from "@/lib/stats";
 import { plural, withPlural, WORDS } from "@/lib/plural";
@@ -13,11 +14,12 @@ import {
 import { ViewToggle } from "@/components/view-toggle";
 import { StatsSortControl } from "@/components/stats-sort-control";
 import { parseStatsSort, STATS_SORT_COOKIE } from "@/lib/stats-sort";
+import { PageHeader } from "@/components/ui/page-header";
 
 export const dynamic = "force-dynamic";
 
 export default async function StatsPage() {
-  const user = await requireSectionView("stats");
+  const user = await requireUser();
   const jar = await cookies();
   const view = parseViewMode(jar.get(VIEW_COOKIE)?.value);
   const grid = view === "grid";
@@ -63,20 +65,19 @@ export default async function StatsPage() {
 
   return (
     <div>
-      <div className="mb-6 flex items-start justify-between gap-3">
-        <div>
-          <h1 className="text-xl font-semibold tracking-tight">Статистика</h1>
-          <p className="mt-0.5 text-sm text-muted">
-            Кто из клиентов что смотрел и сколько времени
-          </p>
-        </div>
-        {hubs.length > 0 ? (
-          <div className="flex flex-wrap items-center gap-2">
-            <StatsSortControl sort={sort} />
-            <ViewToggle value={view} />
-          </div>
-        ) : null}
-      </div>
+      <PageHeader
+        className="mb-6"
+        title="Статистика"
+        subtitle="Кто из клиентов что смотрел и сколько времени"
+        actions={
+          hubs.length > 0 ? (
+            <div className="flex flex-wrap items-center gap-2">
+              <StatsSortControl sort={sort} />
+              <ViewToggle value={view} />
+            </div>
+          ) : null
+        }
+      />
 
       {hubs.length === 0 ? (
         <div className="rounded-xl border border-dashed border-border py-16 text-center">
@@ -89,7 +90,7 @@ export default async function StatsPage() {
       ) : (
         <>
           {touched.length === 0 ? (
-            <p className="mb-4 rounded-lg bg-amber-500/10 px-3 py-2 text-sm text-amber-700 dark:text-amber-400">
+            <p className="mb-4 rounded-lg bg-warn/10 px-3 py-2 text-sm text-warn">
               Ссылки ещё никто не открывал. Данные появятся после первого захода
               клиента.
             </p>

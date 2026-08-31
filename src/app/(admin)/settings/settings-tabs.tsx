@@ -24,7 +24,11 @@ export function SettingsTabs({
   if (tabs.length < 2) return null;
 
   return (
-    <nav className="mb-6 flex gap-1.5">
+    // flex-wrap обязателен: три вкладки, из них «Шаблоны документов» длинная, —
+    // на 375px они не помещаются в строку и раздували страницу вбок на 54px.
+    // (Появилось, когда добавили третью вкладку; поймано численной проверкой
+    // scrollWidth, скриншот такое не показывает.)
+    <nav className="mb-6 flex flex-wrap gap-1.5">
       {tabs.map((tab) => {
         const active = tab.key === current;
         return (
@@ -32,7 +36,7 @@ export function SettingsTabs({
             key={tab.key}
             href={tab.href}
             aria-current={active ? "page" : undefined}
-            className={`rounded-full px-3 py-1.5 text-sm transition ${
+            className={`inline-flex items-center rounded-full px-3 py-1.5 text-sm transition duration-100 pointer-coarse:min-h-11 ${
               active
                 ? "bg-border font-medium"
                 : "text-muted hover:bg-border/50 hover:text-foreground"

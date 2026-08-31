@@ -4,6 +4,8 @@ import { useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { deleteSpecTemplate } from "@/app/actions/spec-templates";
 import type { SpecTemplateKind } from "@/lib/spec-template";
+import { buttonClasses } from "@/components/ui/button";
+import { cardClasses } from "@/components/ui/card";
 
 // Список загруженных шаблонов и форма загрузки.
 //
@@ -82,7 +84,7 @@ export function SpecTemplatesPanel({
 
   return (
     <div className="grid gap-6">
-      <section className="rounded-xl border border-border bg-surface p-5">
+      <section className={cardClasses("panel")}>
         <h2 className="text-sm font-medium">Загрузить шаблон</h2>
         <p className="mt-1 text-xs text-muted">
           Файл .docx до {Math.round(maxBytes / 1024 / 1024)} МБ. Перед сохранением
@@ -95,7 +97,7 @@ export function SpecTemplatesPanel({
             <select
               value={kind}
               onChange={(e) => setKind(e.target.value as SpecTemplateKind)}
-              className="rounded-lg border border-border bg-background px-2 py-1.5 text-sm text-foreground outline-none focus:border-blue-500"
+              className="rounded-lg border border-border bg-background px-2 py-1.5 text-sm text-foreground focus:border-accent"
             >
               {kinds.map((k) => (
                 <option key={k.kind} value={k.kind}>
@@ -111,7 +113,7 @@ export function SpecTemplatesPanel({
               value={vatRatePct}
               onChange={(e) => setVatRatePct(e.target.value)}
               inputMode="decimal"
-              className="w-28 rounded-lg border border-border bg-background px-2 py-1.5 text-sm text-foreground outline-none focus:border-blue-500"
+              className="w-28 rounded-lg border border-border bg-background px-2 py-1.5 text-sm text-foreground focus:border-accent"
             />
           </label>
         </div>
@@ -131,18 +133,18 @@ export function SpecTemplatesPanel({
             const file = e.target.files?.[0];
             if (file) void upload(file);
           }}
-          className="mt-4 block w-full text-sm file:mr-3 file:rounded-lg file:border-0 file:bg-blue-600 file:px-4 file:py-2 file:text-sm file:font-medium file:text-white hover:file:bg-blue-500 disabled:opacity-50"
+          className="mt-4 block w-full text-sm file:mr-3 file:rounded-lg file:border-0 file:bg-accent-fill file:px-4 file:py-2 file:text-sm file:font-medium file:text-on-accent hover:file:bg-accent-fill-hover disabled:opacity-50"
         />
 
         {busy ? <p className="mt-3 text-sm text-muted">Проверяем и сохраняем…</p> : null}
 
         {error ? (
-          <p className="mt-3 whitespace-pre-line rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-sm">
+          <p className="mt-3 whitespace-pre-line rounded-lg border border-warn/40 bg-warn/10 px-3 py-2 text-sm">
             {error}
           </p>
         ) : null}
 
-        {done ? <p className="mt-3 text-sm text-blue-600 dark:text-blue-400">{done}</p> : null}
+        {done ? <p className="mt-3 text-sm text-accent">{done}</p> : null}
       </section>
 
       <section className="rounded-xl border border-border">
@@ -201,7 +203,7 @@ function TemplateRow({ row }: { row: SpecTemplateRow }) {
 
       <a
         href={`/api/settings/spec-templates/${row.id}`}
-        className="shrink-0 rounded px-2 py-1 text-xs text-muted transition hover:bg-border/60 hover:text-foreground"
+        className={buttonClasses("ghost", "sm", "shrink-0")}
       >
         Скачать
       </a>
@@ -218,14 +220,14 @@ function TemplateRow({ row }: { row: SpecTemplateRow }) {
                 router.refresh();
               })
             }
-            className="rounded px-2 py-1 text-xs font-medium text-red-600 transition hover:bg-red-500/10 disabled:opacity-50 dark:text-red-400"
+            className={buttonClasses("danger", "sm")}
           >
             {pending ? "…" : "Точно удалить"}
           </button>
           <button
             type="button"
             onClick={() => setConfirming(false)}
-            className="rounded px-2 py-1 text-xs text-muted transition hover:bg-border/60"
+            className={buttonClasses("ghost", "sm")}
           >
             Отмена
           </button>
@@ -234,7 +236,7 @@ function TemplateRow({ row }: { row: SpecTemplateRow }) {
         <button
           type="button"
           onClick={() => setConfirming(true)}
-          className="shrink-0 rounded px-2 py-1 text-xs text-muted transition hover:bg-red-500/10 hover:text-red-600 dark:hover:text-red-400"
+          className={buttonClasses("ghostDanger", "sm", "shrink-0")}
         >
           Удалить
         </button>

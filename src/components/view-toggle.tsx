@@ -82,7 +82,7 @@ export function ViewToggle({ value }: { value: ViewMode }) {
         aria-pressed={active}
         title={label}
         aria-label={label}
-        className={`grid size-7 place-items-center rounded-md transition ${
+        className={`grid size-7 pointer-coarse:size-11 place-items-center rounded-md transition duration-100 active:scale-[0.92] ${
           active
             ? "bg-border text-foreground"
             : "text-muted hover:text-foreground"

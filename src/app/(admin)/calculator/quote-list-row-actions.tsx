@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { archiveQuote } from "@/app/actions/quotes";
+import { buttonClasses } from "@/components/ui/button";
 
 // Тот же confirm-then-archive приём, что и в quote-actions-bar.tsx на
 // странице самого КП — здесь без router.push, revalidatePath внутри
@@ -26,14 +27,14 @@ export function QuoteListRowActions({
           type="button"
           disabled={deleting}
           onClick={() => startDelete(() => archiveQuote(quoteId))}
-          className="rounded-lg px-2.5 py-1.5 text-xs font-medium text-red-600 transition hover:bg-red-500/10 disabled:opacity-50 dark:text-red-400"
+          className={buttonClasses("danger", "sm")}
         >
           {deleting ? "…" : "Удалить"}
         </button>
         <button
           type="button"
           onClick={() => setConfirming(false)}
-          className="rounded-lg px-2.5 py-1.5 text-xs text-muted transition hover:bg-border/60"
+          className={buttonClasses("ghost", "sm")}
         >
           Отмена
         </button>
@@ -46,7 +47,7 @@ export function QuoteListRowActions({
       type="button"
       onClick={() => setConfirming(true)}
       title="Удалить расчёт"
-      className="shrink-0 rounded-lg px-2.5 py-1.5 text-xs text-muted transition hover:bg-red-500/10 hover:text-red-600 dark:hover:text-red-400"
+      className={buttonClasses("ghostDanger", "sm", "shrink-0")}
     >
       Удалить
     </button>

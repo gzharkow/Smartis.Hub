@@ -23,8 +23,44 @@
   --muted: #667085;
 
   /* Фирменный зелёный — цвет «жучка» в логотипе Smartis (тот же, что в
-     quote-pdf.ts/quote-preview.tsx и theme_color манифеста). */
+     quote-pdf.ts/quote-preview.tsx и theme_color манифеста). Это опорный
+     оттенок бренда, а не готовый цвет для интерфейса: см. --accent ниже. */
   --brand: #7ca82d;
+
+  /* Акцент интерфейса — то, чем раньше был сырой blue-600 из палитры Tailwind.
+     Зелёный «жучка» напрямую сюда не годится: белый текст на #7ca82d даёт
+     2,80:1, а сам он по белому — те же 2,80:1, то есть не проходит ни как
+     заливка, ни как текст, ни даже как кольцо фокуса (1.4.11 требует 3:1).
+     Поэтому в светлой теме берём затемнённый тон того же бренда, в тёмной —
+     осветлённый. Все пары посчитаны:
+       светлая:  #5c7a22 по белому 4,93 · по --surface 4,60 · белый на нём 4,93
+       тёмная:   #9ecb4f по фону 10,47 · #7ca82d заливка, тёмный текст 7,07 */
+  --accent: #5c7a22;
+  --accent-fill: #5c7a22;
+  --accent-fill-hover: #4f6a1e;
+  --on-accent: #ffffff;
+
+  /* Всегда-тёмные поверхности (витрина, подложка входа, превью плитки хаба)
+     не зависят от выбранной темы кабинета — там нужен светлый вариант
+     акцента независимо от того, что стоит в data-theme. 10,17 на #0b0f14. */
+  --accent-bright: #9ecb4f;
+
+  /* Состояния. Заменяют разнобой text-red-600/dark:text-red-400,
+     text-amber-700/dark:text-amber-400 и text-green-700/dark:text-green-400,
+     расставленный вручную примерно в 120 местах. Подложки и рамки берутся
+     от этих же токенов через модификатор прозрачности: bg-danger/10. */
+  --danger: #dc2626;
+  --warn: #b45309;
+  --ok: #15803d;
+
+  /* Заливки состояний НЕ переключаются по теме, в отличие от --danger/--warn/--ok
+     выше. Те в тёмной теме светлеют, чтобы читаться текстом на тёмном фоне, —
+     но белая надпись на светло-красном #f87171 даёт 3,76 и не проходит. Кнопка
+     же остаётся кнопкой в любой теме, поэтому у неё свой постоянный тон:
+     белый текст на #dc2626 — 4,83, на #b45309 — 5,02, на #15803d — 5,02. */
+  --danger-fill: #dc2626;
+  --warn-fill: #b45309;
+  --ok-fill: #15803d;
 
   /* Шкала для дашборда статистики: тёплая = «сколько времени провели»
      (тепловая карта страниц, кольцо «куда ушло время»), холодный акцент =
@@ -51,6 +87,16 @@
   --border: #2a2e37;
   --muted: #98a2b3;
 
+  --accent: #9ecb4f;
+  --accent-fill: var(--brand);
+  --accent-fill-hover: #8dbb35;
+  /* На заливке тёмной темы текст тёмный, а не белый: белый на #7ca82d — 2,80. */
+  --on-accent: #0a0a0a;
+
+  --danger: #f87171;
+  --warn: #fbbf24;
+  --ok: #4ade80;
+
   --heat-0: #2a2e37;
   --heat-1: #6b4a1f;
   --heat-2: #b3791f;
@@ -68,6 +114,17 @@
   --color-border: var(--border);
   --color-muted: var(--muted);
   --color-brand: var(--brand);
+  --color-accent: var(--accent);
+  --color-accent-fill: var(--accent-fill);
+  --color-accent-fill-hover: var(--accent-fill-hover);
+  --color-on-accent: var(--on-accent);
+  --color-accent-bright: var(--accent-bright);
+  --color-danger: var(--danger);
+  --color-warn: var(--warn);
+  --color-ok: var(--ok);
+  --color-danger-fill: var(--danger-fill);
+  --color-warn-fill: var(--warn-fill);
+  --color-ok-fill: var(--ok-fill);
   --color-heat-0: var(--heat-0);
   --color-heat-1: var(--heat-1);
   --color-heat-2: var(--heat-2);
@@ -82,6 +139,80 @@ body {
   background: var(--background);
   color: var(--foreground);
   font-family: var(--font-geist-sans), system-ui, sans-serif;
+}
+
+/* ------------------------------------------------------------------
+   Базовый слой поведения. Всё, что раньше приходилось помнить и
+   дописывать в каждой кнопке по отдельности, — здесь один раз.
+   ------------------------------------------------------------------ */
+@layer base {
+  /* Tailwind v4 убрал из preflight правило button { cursor: pointer },
+     которое было в v3. В проекте cursor-pointer проставлен вручную
+     примерно в каждой седьмой кнопке — у остальных курсор был стрелкой.
+     Возвращаем правило целиком, вместо того чтобы дописывать класс. */
+  button,
+  [role="button"],
+  summary,
+  select,
+  label:has(input[type="checkbox"]),
+  label:has(input[type="radio"]) {
+    cursor: pointer;
+  }
+
+  button:disabled,
+  [aria-disabled="true"] {
+    cursor: not-allowed;
+  }
+
+  /* Единое кольцо фокуса. :where() держит нулевую специфичность — любая
+     точечная настройка в компоненте перебивает его без !important.
+     focus-visible, а не focus: на мышь кольцо не вспыхивает.
+     Цвет — --accent, он посчитан под 3:1 и на светлом, и на тёмном фоне. */
+  :where(a, button, input, select, textarea, summary, [tabindex]):focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+    border-radius: inherit;
+  }
+
+  /* Галочки и радиокнопки красит браузер. Раньше в каждую из четырнадцати
+     штук вручную дописывали accent-blue-600 — теперь это одно правило,
+     и цвет автоматически едет за темой вместе с остальным акцентом. */
+  input[type="checkbox"],
+  input[type="radio"],
+  progress,
+  input[type="range"] {
+    accent-color: var(--accent-fill);
+  }
+
+  /* Приложение стоит у продавцов на телефоне как PWA. Без этого браузер
+     держит ~300 мс перед реакцией на тап, ожидая двойное нажатие, —
+     и весь интерфейс кажется «залипающим». Своя подсветка нажатия у нас
+     есть (active: в примитивах), серый прямоугольник Safari поверх неё
+     только мешает. */
+  a,
+  button,
+  [role="button"],
+  input,
+  select,
+  textarea,
+  summary {
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+  }
+}
+
+/* Уважение к системной настройке «уменьшить движение». Не «выключить
+   отклик»: цвет и прозрачность продолжают меняться, исчезает только
+   само перемещение и его длительность. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }
 
 /* iOS Safari сам зумит страницу при фокусе на поле с font-size меньше 16px —

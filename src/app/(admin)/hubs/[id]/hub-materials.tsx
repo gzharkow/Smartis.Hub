@@ -5,6 +5,8 @@ import { addItemToHub, removeItemFromHub } from "@/app/actions/hubs";
 import { SECTION_LABELS, SECTIONS } from "@/lib/asset-sections";
 import { AssetPreviewModal, type PreviewAsset } from "@/components/asset-preview-modal";
 import type { AssetKind, AssetSection } from "@/generated/prisma/enums";
+import { fieldClasses } from "@/components/ui/field";
+import { buttonClasses } from "@/components/ui/button";
 
 type Item = {
   id: string;
@@ -89,7 +91,7 @@ function PickRow({
         type="button"
         disabled={disabled}
         onClick={onAdd}
-        className="shrink-0 rounded px-2 py-1 text-xs font-medium text-blue-600 transition hover:bg-blue-500/10 disabled:opacity-50 dark:text-blue-400"
+        className={buttonClasses("link", "sm", "shrink-0")}
       >
         Добавить
       </button>
@@ -231,7 +233,7 @@ export function HubMaterials({
                     и на телефоне — это не декоративные метаданные. */}
                 {item.archived ? (
                   <span
-                    className="shrink-0 rounded bg-amber-500/15 px-1.5 py-0.5 text-xs text-amber-700 dark:text-amber-400"
+                    className="shrink-0 rounded bg-warn/15 px-1.5 py-0.5 text-xs text-warn"
                     title="Материал удалён из библиотеки — клиенты его не видят"
                   >
                     удалён
@@ -250,7 +252,7 @@ export function HubMaterials({
                     onClick={() =>
                       startTransition(() => removeItemFromHub(hubId, item.id))
                     }
-                    className="rounded px-2 py-1 text-xs text-muted transition hover:bg-red-500/10 hover:text-red-600 disabled:opacity-50 dark:hover:text-red-400"
+                    className={buttonClasses("ghostDanger", "sm")}
                   >
                     Убрать
                   </button>
@@ -301,7 +303,7 @@ export function HubMaterials({
             value={query}
             onChange={onQueryChange}
             placeholder="Название материала…"
-            className="rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:border-blue-500"
+            className={fieldClasses()}
           />
         </label>
 

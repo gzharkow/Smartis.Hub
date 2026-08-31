@@ -63,7 +63,7 @@ export function StatsSortControl({ sort }: { sort: StatsSort }) {
         onChange={(e) =>
           apply({ ...sort, field: e.target.value as StatsSortField })
         }
-        className="rounded-lg border border-border bg-background px-2 py-1 text-sm disabled:opacity-50"
+        className="rounded-lg border border-border bg-background px-2 py-1 text-sm pointer-coarse:min-h-11 disabled:opacity-50"
       >
         {STATS_SORT_FIELDS.map((f) => (
           <option key={f.value} value={f.value}>
@@ -80,7 +80,7 @@ export function StatsSortControl({ sort }: { sort: StatsSort }) {
         }
         title={dirLabel}
         aria-label={dirLabel}
-        className="grid size-7 shrink-0 place-items-center rounded-lg border border-border text-muted transition hover:text-foreground disabled:opacity-50"
+        className="grid size-7 pointer-coarse:size-11 shrink-0 place-items-center rounded-lg border border-border text-muted transition duration-100 hover:text-foreground active:scale-[0.92] disabled:opacity-50"
       >
         <ArrowIcon dir={sort.dir} />
       </button>

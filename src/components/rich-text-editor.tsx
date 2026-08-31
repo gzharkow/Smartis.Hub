@@ -47,7 +47,7 @@ function ToolbarButton({
       onClick={onClick}
       className={`grid size-8 place-items-center rounded-md transition ${
         active
-          ? "bg-blue-600 text-white"
+          ? "bg-accent-fill text-on-accent"
           : "text-muted hover:bg-border/60 hover:text-foreground"
       }`}
     >
@@ -103,12 +103,12 @@ function LinkControl({ editor }: { editor: Editor }) {
               if (e.key === "Escape") setOpen(false);
             }}
             placeholder="https://…"
-            className="w-56 rounded-md border border-border bg-background px-2 py-1 text-sm outline-none focus:border-blue-500"
+            className="w-56 rounded-md border border-border bg-background px-2 py-1 text-sm focus:border-accent"
           />
           <button
             type="button"
             onClick={apply}
-            className="rounded-md bg-blue-600 px-2.5 text-sm text-white"
+            className="rounded-md bg-accent-fill px-2.5 text-sm text-on-accent"
           >
             ОК
           </button>
@@ -147,7 +147,7 @@ export function RichTextEditor({ name, defaultValue = "", onChange }: Props) {
     },
     editorProps: {
       attributes: {
-        class: "rich-text min-h-40 px-3 py-2.5 outline-none",
+        class: "rich-text min-h-40 px-3 py-2.5",
       },
     },
   });
@@ -159,7 +159,7 @@ export function RichTextEditor({ name, defaultValue = "", onChange }: Props) {
   }
 
   return (
-    <div className="rounded-lg border border-border bg-background focus-within:border-blue-500">
+    <div className="rounded-lg border border-border bg-background focus-within:border-accent">
       <div className="flex flex-wrap items-center gap-0.5 border-b border-border px-1.5 py-1.5">
         <ToolbarButton
           title="Жирный"

@@ -1,6 +1,7 @@
 import Link from "next/link";
+import { requireUser } from "@/lib/auth";
 import { notFound } from "next/navigation";
-import { requireSectionView, hasEdit } from "@/lib/permissions";
+import { hasEdit } from "@/lib/permissions";
 import { db } from "@/lib/db";
 import { formatFileSize, KIND_LABELS } from "@/lib/assets";
 import { parseContactMethods } from "@/lib/contact-methods";
@@ -12,6 +13,8 @@ import { PublishToggle } from "./publish-toggle";
 import { DuplicateHubButton } from "./duplicate-hub-button";
 import { DeleteHubButton, RestoreHubButton } from "./hub-danger-buttons";
 import { HubFolderPicker } from "./hub-folder-picker";
+import { DEFAULT_BRAND_COLOR } from "@/lib/brand-color";
+import { PageHeader } from "@/components/ui/page-header";
 
 const dateFmt = new Intl.DateTimeFormat("ru-RU", {
   day: "numeric",
@@ -63,7 +66,7 @@ export default async function HubPage({
 }) {
   const { id } = await params;
   const { from } = await searchParams;
-  const user = await requireSectionView("hubs");
+  const user = await requireUser();
 
   const hub = await db.hub.findUnique({
     where: { id },
@@ -130,31 +133,33 @@ export default async function HubPage({
           ← {backLabel}
         </Link>
 
-        <div className="mt-2 flex flex-wrap items-start justify-between gap-4">
-          <h1 className="text-xl font-semibold tracking-tight">{hub.title}</h1>
-
-          {/* У удалённого хаба публиковать и копировать нечего — сначала
-              вернуть. Иначе «Опубликовать» тихо воскресило бы его в обход
-              восстановления. Без права «Изменение» ни одной из этих кнопок
-              нет вовсе — действие всё равно отбилось бы на сервере. */}
-          {canEdit ? (
-            <div className="flex flex-wrap items-center gap-2">
-              {archived ? (
-                <RestoreHubButton hubId={hub.id} />
-              ) : (
-                <>
-                  <DuplicateHubButton hubId={hub.id} />
-                  <DeleteHubButton hubId={hub.id} liveLinks={liveLinks} />
-                  <PublishToggle
-                    hubId={hub.id}
-                    published={hub.status === "PUBLISHED"}
-                    itemCount={hub.items.length}
-                  />
-                </>
-              )}
-            </div>
-          ) : null}
-        </div>
+        {/* У удалённого хаба публиковать и копировать нечего — сначала
+            вернуть. Иначе «Опубликовать» тихо воскресило бы его в обход
+            восстановления. Без права «Изменение» ни одной из этих кнопок
+            нет вовсе — действие всё равно отбилось бы на сервере. */}
+        <PageHeader
+          className="mt-2"
+          title={hub.title}
+          actions={
+            canEdit ? (
+              <div className="flex flex-wrap items-center gap-2">
+                {archived ? (
+                  <RestoreHubButton hubId={hub.id} />
+                ) : (
+                  <>
+                    <DuplicateHubButton hubId={hub.id} />
+                    <DeleteHubButton hubId={hub.id} liveLinks={liveLinks} />
+                    <PublishToggle
+                      hubId={hub.id}
+                      published={hub.status === "PUBLISHED"}
+                      itemCount={hub.items.length}
+                    />
+                  </>
+                )}
+              </div>
+            ) : null
+          }
+        />
 
         {/* У удалённого хаба папку не показываем: он лежит в корзине,
             а не на полке. */}
@@ -169,7 +174,7 @@ export default async function HubPage({
         )}
 
         {archived ? (
-          <p className="mt-3 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-sm text-amber-800 dark:text-amber-300">
+          <p className="mt-3 rounded-lg border border-warn/30 bg-warn/10 px-3 py-2 text-sm text-warn">
             Хаб удалён: ссылки у клиентов не открываются. Материалы, ссылки и
             статистика сохранены — «Вернуть» восстановит хаб черновиком.
           </p>
@@ -184,7 +189,7 @@ export default async function HubPage({
           hub={hub}
           // Те же значения по умолчанию, что подставит витрина, —
           // иначе предпросмотр показал бы не тот бренд.
-          brandColor={hub.brandColor ?? hub.organization.brandColor ?? "#2563eb"}
+          brandColor={hub.brandColor ?? hub.organization.brandColor ?? DEFAULT_BRAND_COLOR}
           logoUrl={hub.logoUrl ?? hub.organization.logoUrl ?? "/logo.png"}
           orgName={hub.organization.name}
           contacts={parseContactMethods(hub.contactMethods)}

@@ -5,6 +5,7 @@ import { updateAccountAccess, type UpdateAccountState } from "@/app/actions/user
 import { AccountVisibilityPicker, type AccountOption } from "./account-visibility-picker";
 import { copyText } from "./copy-text";
 import type { AccountRow } from "./accounts-table";
+import { buttonClasses } from "@/components/ui/button";
 
 export function EditAccountPanel({
   account,
@@ -41,7 +42,7 @@ export function EditAccountPanel({
               value="MEMBER"
               checked={role === "MEMBER"}
               onChange={() => setRole("MEMBER")}
-              className="size-4 accent-blue-600"
+              className="size-4"
             />
             Обычный пользователь — доступ как у администратора, кроме материалов
           </label>
@@ -52,7 +53,7 @@ export function EditAccountPanel({
               value="ADMIN"
               checked={role === "ADMIN"}
               onChange={() => setRole("ADMIN")}
-              className="size-4 accent-blue-600"
+              className="size-4"
             />
             Администратор — полный доступ
           </label>
@@ -64,7 +65,7 @@ export function EditAccountPanel({
           <label className="flex items-center gap-2 text-sm">
             <input
               type="checkbox"
-              className="size-4 accent-blue-600"
+              className="size-4"
               checked={canAddAssets}
               onChange={(e) => setCanAddAssets(e.target.checked)}
             />
@@ -89,20 +90,20 @@ export function EditAccountPanel({
           type="checkbox"
           checked={resetPassword}
           onChange={(e) => setResetPassword(e.target.checked)}
-          className="size-4 accent-blue-600"
+          className="size-4"
         />
         Сбросить пароль (сгенерировать новый)
       </label>
       <input type="hidden" name="newPassword" value={resetPassword ? "1" : "0"} />
 
       {state && "error" in state ? (
-        <p role="alert" className="text-sm text-red-600 dark:text-red-400">
+        <p role="alert" className="text-sm text-danger">
           {state.error}
         </p>
       ) : null}
 
       {state && "success" in state && state.password ? (
-        <div className="rounded-lg border border-green-600/30 bg-green-600/5 p-3">
+        <div className="rounded-lg border border-ok/30 bg-ok/5 p-3">
           <p className="text-sm text-muted">Новый пароль (больше нигде не сохранён):</p>
           <div className="mt-1 flex flex-wrap items-center gap-2">
             <code className="rounded-lg border border-border bg-background px-3 py-2 text-sm">
@@ -119,7 +120,7 @@ export function EditAccountPanel({
                   setTimeout(() => setCopied(false), 1500);
                 }
               }}
-              className="rounded-lg px-3 py-2 text-sm font-medium text-blue-600 transition hover:bg-blue-500/10 dark:text-blue-400"
+              className="rounded-lg px-3 py-2 text-sm font-medium text-accent transition hover:bg-accent/10"
             >
               {copied ? "Скопировано" : "Копировать"}
             </button>
@@ -127,14 +128,14 @@ export function EditAccountPanel({
         </div>
       ) : null}
       {state && "success" in state && !state.password ? (
-        <p className="text-sm text-green-700 dark:text-green-400">Сохранено</p>
+        <p className="text-sm text-ok">Сохранено</p>
       ) : null}
 
       <div>
         <button
           type="submit"
           disabled={pending}
-          className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-blue-700 disabled:opacity-60"
+          className={buttonClasses("primary")}
         >
           {pending ? "Сохраняем…" : "Сохранить"}
         </button>

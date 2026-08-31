@@ -6,6 +6,7 @@ import { deleteHubFolder, renameHubFolder } from "@/app/actions/hub-folders";
 import { withPlural, WORDS } from "@/lib/plural";
 import type { ViewMode } from "@/lib/view-mode";
 import { FolderColorPicker } from "./folder-color-picker";
+import { buttonClasses } from "@/components/ui/button";
 
 export type FolderRowData = {
   id: string;
@@ -68,7 +69,7 @@ export function FolderRow({
             setMode("view");
           }
         }}
-        className={`relative z-20 rounded-lg border border-border bg-background px-2 py-1 text-sm outline-none focus:border-blue-500 ${
+        className={`relative z-20 rounded-lg border border-border bg-background px-2 py-1 text-sm focus:border-accent ${
           grid ? "w-full" : "min-w-0 flex-1 basis-full sm:basis-auto"
         }`}
       />
@@ -77,7 +78,7 @@ export function FolderRow({
         // basis-full — на телефоне название занимает свою строку целиком,
         // счётчик и кнопки уходят вниз, иначе имя обрезалось бы почти
         // сразу же, даже у коротких названий.
-        className={`truncate font-medium transition group-hover:text-blue-600 dark:group-hover:text-blue-400 ${
+        className={`truncate font-medium transition group-hover:text-accent ${
           grid ? "" : "min-w-0 flex-1 basis-full sm:basis-auto"
         }`}
       >
@@ -101,7 +102,7 @@ export function FolderRow({
     ) : null;
 
   const errorEl = error ? (
-    <span className="relative text-xs text-red-600 dark:text-red-400">{error}</span>
+    <span className="relative text-xs text-danger">{error}</span>
   ) : null;
 
   const countEl = (
@@ -117,7 +118,7 @@ export function FolderRow({
             type="button"
             disabled={pending}
             onClick={save}
-            className="shrink-0 rounded px-2 py-1 text-xs font-medium text-blue-600 transition hover:bg-blue-500/10 disabled:opacity-50 dark:text-blue-400"
+            className={buttonClasses("link", "sm", "shrink-0")}
           >
             {pending ? "…" : "Сохранить"}
           </button>
@@ -128,7 +129,7 @@ export function FolderRow({
               setError(null);
               setMode("view");
             }}
-            className="shrink-0 rounded px-2 py-1 text-xs text-muted transition hover:bg-border/60"
+            className={buttonClasses("ghost", "sm", "shrink-0")}
           >
             Отмена
           </button>
@@ -146,14 +147,14 @@ export function FolderRow({
             type="button"
             disabled={pending}
             onClick={() => startTransition(() => deleteHubFolder(folder.id))}
-            className="shrink-0 rounded px-2 py-1 text-xs font-medium text-red-600 transition hover:bg-red-500/10 disabled:opacity-50 dark:text-red-400"
+            className={buttonClasses("danger", "sm", "shrink-0")}
           >
             {pending ? "…" : "Удалить"}
           </button>
           <button
             type="button"
             onClick={() => setMode("view")}
-            className="shrink-0 rounded px-2 py-1 text-xs text-muted transition hover:bg-border/60"
+            className={buttonClasses("ghost", "sm", "shrink-0")}
           >
             Отмена
           </button>
@@ -163,14 +164,14 @@ export function FolderRow({
           <button
             type="button"
             onClick={() => setMode("rename")}
-            className="shrink-0 rounded px-2 py-1 text-xs text-muted transition hover:bg-border/60 hover:text-foreground"
+            className={buttonClasses("ghost", "sm", "shrink-0")}
           >
             Переименовать
           </button>
           <button
             type="button"
             onClick={() => setMode("confirm")}
-            className="shrink-0 rounded px-2 py-1 text-xs text-muted transition hover:bg-red-500/10 hover:text-red-600 dark:hover:text-red-400"
+            className={buttonClasses("ghostDanger", "sm", "shrink-0")}
           >
             Удалить
           </button>

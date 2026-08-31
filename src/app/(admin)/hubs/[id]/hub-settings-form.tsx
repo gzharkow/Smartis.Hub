@@ -5,6 +5,7 @@ import { RichTextEditor } from "@/components/rich-text-editor";
 import { ShowcaseBackdrop } from "@/components/showcase/showcase-backdrop";
 import { ShowcaseHeader } from "@/components/showcase/showcase-header";
 import { updateHub, type UpdateHubState } from "@/app/actions/hubs";
+import { buttonClasses } from "@/components/ui/button";
 import {
   CONTACT_KINDS,
   CONTACT_KIND_LABELS,
@@ -96,7 +97,7 @@ export function HubSettingsForm({
   const hasContacts = contacts.some((c) => c.value.trim().length > 0);
 
   const input =
-    "rounded-lg border border-border bg-background px-3 py-2 outline-none focus:border-blue-500";
+    "rounded-lg border border-border bg-background px-3 py-2 focus:border-accent";
 
   return (
     // lg:grid-cols-2 — на широком экране форма и предпросмотр рядом.
@@ -157,7 +158,7 @@ export function HubSettingsForm({
               name="ctaEnabled"
               checked={ctaEnabled}
               onChange={(e) => setCtaEnabled(e.target.checked)}
-              className="size-4 accent-blue-600"
+              className="size-4"
             />
             <span className="text-sm">Показывать кнопку на витрине</span>
           </label>
@@ -184,19 +185,19 @@ export function HubSettingsForm({
             </div>
 
             {showTemplatePrompt ? (
-              <div className="flex flex-wrap items-center gap-2 rounded-lg border border-blue-500/30 bg-blue-500/10 px-3 py-2 text-sm">
+              <div className="flex flex-wrap items-center gap-2 rounded-lg border border-accent/30 bg-accent/10 px-3 py-2 text-sm">
                 <span>У вас есть сохранённый шаблон контактов.</span>
                 <button
                   type="button"
                   onClick={applyTemplate}
-                  className="rounded-lg bg-blue-600 px-2.5 py-1 text-xs font-medium text-white transition hover:bg-blue-700"
+                  className={buttonClasses("primary", "sm")}
                 >
                   Заполнить из шаблона
                 </button>
                 <button
                   type="button"
                   onClick={fillManually}
-                  className="rounded-lg border border-border px-2.5 py-1 text-xs font-medium transition hover:bg-border/60"
+                  className={buttonClasses("secondary", "sm")}
                 >
                   Заполнить вручную
                 </button>
@@ -252,7 +253,7 @@ export function HubSettingsForm({
                       type="button"
                       onClick={() => removeContact(i)}
                       aria-label="Удалить контакт"
-                      className="order-2 rounded-lg px-2 py-2 text-sm text-muted transition hover:bg-red-500/10 hover:text-red-600 sm:order-4 dark:hover:text-red-400"
+                      className="order-2 rounded-lg px-2 py-2 text-sm text-muted transition hover:bg-danger/10 hover:text-danger sm:order-4"
                     >
                       ✕
                     </button>
@@ -265,7 +266,7 @@ export function HubSettingsForm({
               <button
                 type="button"
                 onClick={addContact}
-                className="justify-self-start rounded-lg border border-border px-3 py-1.5 text-xs font-medium transition hover:bg-border/60"
+                className={buttonClasses("secondary", "sm", "justify-self-start")}
               >
                 Добавить контакт
               </button>
@@ -277,7 +278,7 @@ export function HubSettingsForm({
                 name="saveAsTemplate"
                 checked={saveAsTemplate}
                 onChange={(e) => setSaveAsTemplate(e.target.checked)}
-                className="size-4 accent-blue-600"
+                className="size-4"
               />
               <span className="text-sm">Сохранить как шаблон</span>
             </label>
@@ -346,18 +347,18 @@ export function HubSettingsForm({
           <button
             type="submit"
             disabled={pending}
-            className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-blue-700 disabled:opacity-60"
+            className={buttonClasses("primary")}
           >
             {pending ? "Сохраняем…" : "Сохранить"}
           </button>
 
           {state?.saved ? (
-            <span className="text-sm text-green-600 dark:text-green-400">
+            <span className="text-sm text-ok">
               Сохранено
             </span>
           ) : null}
           {state?.error ? (
-            <span role="alert" className="text-sm text-red-600 dark:text-red-400">
+            <span role="alert" className="text-sm text-danger">
               {state.error}
             </span>
           ) : null}

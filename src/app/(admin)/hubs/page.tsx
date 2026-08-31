@@ -1,5 +1,5 @@
 import { cookies } from "next/headers";
-import { requireSectionView } from "@/lib/permissions";
+import { requireUser } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { parseViewMode, VIEW_COOKIE } from "@/lib/view-mode";
 import {
@@ -15,10 +15,12 @@ import { ViewToggle } from "@/components/view-toggle";
 import { HubSortControl } from "@/components/hub-sort-control";
 import { CreateHubForm } from "./create-hub-form";
 import { HubList, type HubRow } from "./hub-list";
-import { HubTabs, hubTabVisibleKeys } from "./hub-tabs";
+import { HubTabs } from "./hub-tabs";
+import { DEFAULT_BRAND_COLOR } from "@/lib/brand-color";
+import { PageHeader } from "@/components/ui/page-header";
 
 export default async function HubsPage() {
-  const user = await requireSectionView("hubs");
+  const user = await requireUser();
   const isAdmin = user.role === "ADMIN";
   const jar = await cookies();
   const view = parseViewMode(jar.get(VIEW_COOKIE)?.value);
@@ -62,26 +64,22 @@ export default async function HubsPage() {
       "owner" in h && h.owner
         ? { id: h.owner.id, label: ownerLabel(h.owner) }
         : null,
-    brandColor: h.brandColor ?? h.organization.brandColor ?? "#2563eb",
+    brandColor: h.brandColor ?? h.organization.brandColor ?? DEFAULT_BRAND_COLOR,
     logoUrl: h.logoUrl ?? h.organization.logoUrl ?? "/logo.png",
     canManage: isAdmin || h.ownerId === user.id,
   }));
 
   return (
     <div>
-      <div className="mb-4 flex flex-wrap items-start justify-between gap-4">
-        <div>
-          <h1 className="text-xl font-semibold tracking-tight">Хабы</h1>
-          <p className="mt-0.5 text-sm text-muted">
-            Подборки материалов, которые вы отправляете клиентам
-          </p>
-        </div>
-        {hasEdit(user, "hubs") ? <CreateHubForm /> : null}
-      </div>
+      <PageHeader
+        className="mb-4"
+        title="Хабы"
+        subtitle="Подборки материалов, которые вы отправляете клиентам"
+        actions={hasEdit(user, "hubs") ? <CreateHubForm /> : null}
+      />
 
       <HubTabs
         current="all"
-        visibleKeys={hubTabVisibleKeys(user)}
         right={
           rows.length > 0 ? (
             <div className="flex flex-wrap items-center gap-2">

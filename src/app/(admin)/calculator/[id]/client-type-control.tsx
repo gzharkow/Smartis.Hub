@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { setQuoteClientType } from "@/app/actions/quote-calculator";
+import { buttonClasses } from "@/components/ui/button";
 
 const LABELS = { BUILDER: "Застройщик", AUTO_DEALER: "Автодилер" } as const;
 
@@ -33,7 +34,7 @@ export function ClientTypeControl({
 
   if (confirmType) {
     return (
-      <div className="flex flex-wrap items-center gap-3 rounded-xl border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-sm">
+      <div className="flex flex-wrap items-center gap-3 rounded-xl border border-warn/40 bg-warn/10 px-4 py-3 text-sm">
         <span>
           {currentType
             ? `Сменить тип клиента на «${LABELS[confirmType]}»? Все выбранные параметры калькулятора сбросятся.`
@@ -44,14 +45,14 @@ export function ClientTypeControl({
             type="button"
             disabled={pending}
             onClick={commit}
-            className="rounded-lg bg-amber-600 px-3 py-1.5 text-xs font-medium text-white transition hover:bg-amber-700 disabled:opacity-50"
+            className="rounded-lg bg-warn-fill px-3 py-1.5 text-xs font-medium text-white transition hover:opacity-90 disabled:opacity-50"
           >
             {pending ? "Применяем…" : "Подтвердить"}
           </button>
           <button
             type="button"
             onClick={() => setConfirmType(null)}
-            className="rounded-lg px-3 py-1.5 text-xs text-muted transition hover:bg-border/60"
+            className={buttonClasses("ghost", "sm")}
           >
             Отмена
           </button>
@@ -76,7 +77,7 @@ export function ClientTypeControl({
             onClick={() => setConfirmType(type)}
             className={
               type === currentType
-                ? "rounded-lg bg-blue-600 px-3 py-1.5 text-sm font-medium text-white disabled:opacity-100"
+                ? "rounded-lg bg-accent-fill px-3 py-1.5 text-sm font-medium text-on-accent disabled:opacity-100"
                 : "rounded-lg border border-border px-3 py-1.5 text-sm transition hover:bg-border/60 disabled:opacity-50"
             }
           >

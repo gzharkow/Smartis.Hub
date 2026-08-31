@@ -70,28 +70,15 @@ function remember(name: string, value: string) {
  * Cookie служебные — это лишь настройки вида, ничего личного в них нет.
  */
 export function Sidebar({
-  visibleSections,
   initialCollapsed,
   initialShut,
 }: {
-  /** Ключи разделов/подразделов из permission-sections.ts, доступные этому пользователю. */
-  visibleSections: string[];
   initialCollapsed: boolean;
   /** Разделы, у которых подразделы свёрнуты. */
   initialShut: string[];
 }) {
   const [collapsed, setCollapsed] = useState(initialCollapsed);
   const [shut, setShut] = useState<string[]>(initialShut);
-
-  const visible = new Set(visibleSections);
-  // Родитель и подразделы проверяются независимо (без наследования): пункт
-  // меню остаётся в списке, если виден он сам ИЛИ хотя бы один подраздел —
-  // иначе доступный, но не входящий в родителя подраздел стал бы
-  // недостижим через меню (хоть страница и открылась бы по прямой ссылке).
-  const groups = GROUPS.map((group) => ({
-    ...group,
-    children: group.children.filter((c) => visible.has(c.key)),
-  })).filter((group) => visible.has(group.key) || group.children.length > 0);
 
   function toggleSidebar() {
     const next = !collapsed;
@@ -138,7 +125,7 @@ export function Sidebar({
           onClick={toggleSidebar}
           title="Свернуть меню"
           aria-label="Свернуть меню"
-          className={`rounded-lg p-1.5 text-muted transition hover:bg-border/60 hover:text-foreground ${
+          className={`rounded-lg p-1.5 pointer-coarse:p-3 text-muted transition duration-100 hover:bg-border/60 hover:text-foreground active:scale-[0.92] ${
             collapsed ? "hidden" : "hidden md:block"
           }`}
         >
@@ -147,7 +134,7 @@ export function Sidebar({
       </div>
 
       <nav className="flex flex-1 flex-col gap-0.5 overflow-y-auto p-2">
-        {groups.map((group) => (
+        {GROUPS.map((group) => (
           <NavGroup
             key={group.key}
             href={group.href}
@@ -160,17 +147,13 @@ export function Sidebar({
           />
         ))}
 
-        {/* У статистики подразделов нет — стрелка ей не нужна. Раньше было
-            жёстко isAdmin, теперь — по матрице доступа (у ADMIN она всегда
-            даёт true, так что для него ничего не изменилось). */}
-        {visible.has("stats") ? (
-          <NavLink
-            href="/stats"
-            label="Статистика"
-            icon={<StatsIcon />}
-            collapsed={collapsed}
-          />
-        ) : null}
+        {/* У статистики подразделов нет — стрелка ей не нужна. */}
+        <NavLink
+          href="/stats"
+          label="Статистика"
+          icon={<StatsIcon />}
+          collapsed={collapsed}
+        />
 
         {/* Раздел /settings открыт любому вошедшему (подраздел «Общие» —
             тема/аккаунт/смена пароля); «Администрирование» внутри него

@@ -3,6 +3,7 @@
 import { useState } from "react";
 import type { UnavailableContact } from "@/lib/showcase";
 import { ContactDialog } from "@/components/showcase/contact-dialog";
+import { textOnBrand } from "@/lib/brand-color";
 
 const MESSAGES: Record<string, { title: string; text: string }> = {
   not_found: {
@@ -51,8 +52,11 @@ export function ShowcaseUnavailable({
           <button
             type="button"
             onClick={() => setOpen(true)}
-            className="mt-5 cursor-pointer rounded-xl px-5 py-2.5 text-sm font-medium text-white transition hover:opacity-90"
-            style={{ backgroundColor: contact.brandColor }}
+            className="mt-5 cursor-pointer rounded-xl px-5 py-2.5 text-sm font-medium transition duration-100 hover:opacity-90 active:scale-[0.97] pointer-coarse:min-h-11"
+            style={{
+              backgroundColor: contact.brandColor,
+              color: textOnBrand(contact.brandColor),
+            }}
           >
             Связаться с нами
           </button>

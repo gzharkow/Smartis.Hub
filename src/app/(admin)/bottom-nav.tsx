@@ -47,7 +47,7 @@ function BottomTabLink({
       aria-label={label}
       aria-current={active ? "page" : undefined}
       className={`flex h-full flex-1 flex-col items-center justify-center gap-0.5 text-xs transition ${
-        active ? "text-brand" : "text-muted"
+        active ? "text-accent" : "text-muted"
       }`}
     >
       <span className={active ? "" : "opacity-80"}>{icon}</span>
@@ -74,7 +74,7 @@ function BottomTabButton({
       aria-label={label}
       aria-pressed={active}
       className={`flex h-full flex-1 flex-col items-center justify-center gap-0.5 text-xs transition ${
-        active ? "text-brand" : "text-muted"
+        active ? "text-accent" : "text-muted"
       }`}
     >
       <span className={active ? "" : "opacity-80"}>{icon}</span>
@@ -90,15 +90,8 @@ function BottomTabButton({
  * дублировать её здесь незачем. У Генератора КП такая же навигация
  * (CalculatorTabs) заведена отдельно вместе с этой задачей.
  */
-export function BottomNav({
-  visibleSections,
-}: {
-  /** Ключи разделов/подразделов из permission-sections.ts, доступные этому пользователю. */
-  visibleSections: string[];
-}) {
+export function BottomNav() {
   const [panel, setPanel] = useState<"search" | null>(null);
-  const visible = new Set(visibleSections);
-  const routeTabs = ROUTE_TABS.filter((tab) => visible.has(tab.key));
 
   return (
     <>
@@ -129,15 +122,13 @@ export function BottomNav({
           onClick={() => setPanel("search")}
         />
 
-        {visible.has("stats") ? (
-          <BottomTabLink
-            href="/stats"
-            label="Статистика"
-            icon={<StatsIcon size="lg" />}
-          />
-        ) : null}
+        <BottomTabLink
+          href="/stats"
+          label="Статистика"
+          icon={<StatsIcon size="lg" />}
+        />
 
-        {routeTabs.map(({ key, ...tab }) => (
+        {ROUTE_TABS.map(({ key, ...tab }) => (
           <BottomTabLink key={key} {...tab} />
         ))}
       </nav>

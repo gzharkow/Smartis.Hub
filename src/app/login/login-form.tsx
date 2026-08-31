@@ -2,6 +2,7 @@
 
 import { useActionState } from "react";
 import { login, type LoginState } from "@/app/actions/auth";
+import { buttonClasses } from "@/components/ui/button";
 
 // Значки в правом крае полей. Нарисованы здесь, как остальные значки проекта
 // (nav-icons, editor-icons), — ради двух штук лишняя зависимость не нужна.
@@ -53,7 +54,7 @@ export function LoginForm({ next }: { next?: string }) {
   // гасим на фокусе. Видимой подписи над полем нет, поэтому обязателен
   // aria-label: без него поле немо для программ чтения с экрана.
   const fieldClass =
-    "w-full rounded-lg border border-border bg-background py-2 pr-10 pl-3 outline-none placeholder:text-muted focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20";
+    "w-full rounded-lg border border-border bg-background py-2 pr-10 pl-3 placeholder:text-muted focus:border-accent focus:ring-2 focus:ring-accent/20";
 
   return (
     <form action={action} className="flex flex-col gap-2.5">
@@ -96,7 +97,7 @@ export function LoginForm({ next }: { next?: string }) {
       {state?.error ? (
         <p
           role="alert"
-          className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700 dark:bg-red-950/40 dark:text-red-300"
+          className="rounded-lg bg-danger/10 px-3 py-2 text-sm text-danger"
         >
           {state.error}
         </p>
@@ -105,7 +106,7 @@ export function LoginForm({ next }: { next?: string }) {
       <button
         type="submit"
         disabled={pending}
-        className="mt-1.5 rounded-lg bg-blue-600 px-4 py-2 font-medium text-white transition hover:bg-blue-700 disabled:opacity-60"
+        className={buttonClasses("primary", "md", "mt-1.5 w-full")}
       >
         {pending ? "Проверяем…" : "Войти"}
       </button>

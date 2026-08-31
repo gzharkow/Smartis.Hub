@@ -69,7 +69,7 @@ export function GlobalSearch() {
         type="button"
         onClick={openMobile}
         aria-label="Поиск по хабам, папкам, материалам"
-        className={`grid size-8 place-items-center rounded-full text-muted transition hover:bg-border/60 hover:text-foreground sm:hidden ${
+        className={`grid size-8 pointer-coarse:size-11 place-items-center rounded-full text-muted transition duration-100 hover:bg-border/60 hover:text-foreground active:scale-[0.92] sm:hidden ${
           mobileOpen ? "hidden" : "grid"
         }`}
       >
@@ -95,7 +95,7 @@ export function GlobalSearch() {
             if (e.key === "Escape") closeAndCleanup();
           }}
           placeholder="Поиск по хабам, папкам, материалам"
-          className="w-full rounded-full border border-border bg-background py-1.5 pr-3 pl-8 text-sm outline-none transition focus:border-blue-500 sm:w-72"
+          className="w-full rounded-full border border-border bg-background py-1.5 pr-3 pl-8 text-sm transition focus:border-accent sm:w-72"
         />
       </div>
 

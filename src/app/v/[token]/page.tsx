@@ -5,6 +5,7 @@ import { parseContactMethods } from "@/lib/contact-methods";
 import { formatFileSize, KIND_LABELS } from "@/lib/assets";
 import { ShowcaseUnavailable } from "./unavailable";
 import { ShowcaseBody } from "./showcase-body";
+import { DEFAULT_BRAND_COLOR } from "@/lib/brand-color";
 
 // Витрина ВСЕГДА читается заново. Это прямое требование к живым коллекциям:
 // закэшированная страница показала бы клиенту вчерашний состав материалов
@@ -41,7 +42,7 @@ export default async function ShowcasePage({
   const { hub, greeting } = access.data;
   const org = hub.organization;
 
-  const brandColor = hub.brandColor ?? org.brandColor ?? "#2563eb";
+  const brandColor = hub.brandColor ?? org.brandColor ?? DEFAULT_BRAND_COLOR;
   const logoUrl = hub.logoUrl ?? org.logoUrl ?? "/logo.png";
   const contacts = parseContactMethods(hub.contactMethods);
 

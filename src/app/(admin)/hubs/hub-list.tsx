@@ -54,7 +54,7 @@ function StatusCaption({ status, grid = false }: { status: string; grid?: boolea
         status === "PUBLISHED"
           ? grid
             ? "text-green-300"
-            : "text-green-700 dark:text-green-400"
+            : "text-ok"
           : grid
             ? "text-white/70"
             : "text-muted"

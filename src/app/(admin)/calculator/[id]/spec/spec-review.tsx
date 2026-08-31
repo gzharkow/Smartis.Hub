@@ -15,6 +15,7 @@ import {
   type SpecValues,
 } from "@/lib/spec-values";
 import { NumberField } from "../calculator-panel-controls";
+import { buttonClasses } from "@/components/ui/button";
 
 // Экран проверки Спецификации перед выпуском.
 //
@@ -28,9 +29,9 @@ import { NumberField } from "../calculator-panel-controls";
 const MONEY_RE = /^\d{1,12}([.,]\d{1,2})?$/;
 
 const inputCls =
-  "w-32 rounded-lg border border-border bg-background px-2 py-1.5 text-sm text-right outline-none focus:border-blue-500";
+  "w-32 rounded-lg border border-border bg-background px-2 py-1.5 text-sm text-right focus:border-accent";
 const badInputCls =
-  "w-32 rounded-lg border border-red-500 bg-background px-2 py-1.5 text-sm text-right outline-none";
+  "w-32 rounded-lg border border-danger bg-background px-2 py-1.5 text-sm text-right";
 
 export type ReleasedSpec = { id: string; meta: string };
 
@@ -208,7 +209,7 @@ export function SpecReview({
                 }
               })
             }
-            className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-blue-500 disabled:opacity-50"
+            className={buttonClasses("primary")}
           >
             {accepting ? "Выпускаем…" : "Принять"}
           </button>
@@ -242,7 +243,7 @@ export function SpecReview({
                   <span className="text-muted">{file.meta}</span>
                   <a
                     href={`/api/assets/${file.id}/file?download=1`}
-                    className="shrink-0 transition hover:text-blue-600"
+                    className="shrink-0 transition hover:text-accent"
                   >
                     Скачать
                   </a>
@@ -428,7 +429,7 @@ function Card({ title, children }: { title: string; children: React.ReactNode })
 
 function Warning({ children }: { children: React.ReactNode }) {
   return (
-    <p className="rounded-xl border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-sm">
+    <p className="rounded-xl border border-warn/40 bg-warn/10 px-4 py-3 text-sm">
       {children}
     </p>
   );
@@ -471,7 +472,7 @@ function MoneyRow({
       </div>
       <div className="mt-1 flex flex-wrap items-center justify-between gap-2">
         {issue ? (
-          <span className="text-xs text-amber-600 dark:text-amber-400">{issue}</span>
+          <span className="text-xs text-warn">{issue}</span>
         ) : (
           <span />
         )}
@@ -512,7 +513,7 @@ function ToggledMoneyRow({
         <label className="flex items-center gap-2 text-sm">
           <input
             type="checkbox"
-            className="size-4 accent-blue-600"
+            className="size-4"
             checked={included}
             onChange={(e) => onToggle(e.target.checked)}
           />
@@ -536,7 +537,7 @@ function ToggledMoneyRow({
 
       <div className="mt-1 flex flex-wrap items-center justify-between gap-2">
         {issue ? (
-          <span className="text-xs text-amber-600 dark:text-amber-400">{issue}</span>
+          <span className="text-xs text-warn">{issue}</span>
         ) : (
           <span />
         )}
