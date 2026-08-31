@@ -38,6 +38,7 @@ export type ReleasedSpec = { id: string; meta: string };
 export function SpecReview({
   quoteId,
   vatRatePct,
+  clientType,
   initial,
   issues,
   kindTitle,
@@ -46,6 +47,9 @@ export function SpecReview({
 }: {
   quoteId: string;
   vatRatePct: number;
+  /** Определяет, как называется счётная строка таблицы 2.2: «объект
+   * недвижимости» у застройщика или «дилерский центр» у автодилера. */
+  clientType: "BUILDER" | "AUTO_DEALER" | null;
   initial: SpecEditableValues;
   issues: SpecIssue[];
   kindTitle: string;
@@ -72,8 +76,8 @@ export function SpecReview({
   }, [values]);
 
   const computed: SpecValues | null = useMemo(
-    () => (invalid.size > 0 ? null : computeSpecValues(values, vatRatePct)),
-    [values, vatRatePct, invalid],
+    () => (invalid.size > 0 ? null : computeSpecValues(values, vatRatePct, clientType)),
+    [values, vatRatePct, clientType, invalid],
   );
 
   const badKopecks = computed ? unsupportedKopecks(computed) : [];
@@ -105,12 +109,12 @@ export function SpecReview({
           />
 
           <ToggledMoneyRow
-            label="Объекты недвижимости"
+            label={clientType === "AUTO_DEALER" ? "Дилерские центры" : "Объекты недвижимости"}
             included={values.includeObjects}
             onToggle={(v) => set("includeObjects", v)}
             count={values.objectsCount}
             onCount={(v) => set("objectsCount", v)}
-            caption={objectsLabel(values.objectsCount)}
+            caption={objectsLabel(values.objectsCount, clientType)}
             value={values.objectsNet}
             invalid={invalid.has("objectsNet")}
             onChange={(v) => set("objectsNet", v)}
@@ -150,7 +154,11 @@ export function SpecReview({
             добавление, а не факт покупки.
           </p>
           <MoneyRow
-            label="За каждый дополнительный объект"
+            label={
+              clientType === "AUTO_DEALER"
+                ? "За каждый дополнительный дилерский центр"
+                : "За каждый дополнительный объект"
+            }
             value={values.unitObjectNet}
             invalid={invalid.has("unitObjectNet")}
             onChange={(v) => set("unitObjectNet", v)}

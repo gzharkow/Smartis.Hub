@@ -72,6 +72,7 @@ async function Available({
     <SpecReview
       quoteId={quote.id}
       vatRatePct={quote.vatRatePct.toNumber()}
+      clientType={quote.clientType}
       initial={editable}
       issues={issues}
       kindTitle={kindTitle}

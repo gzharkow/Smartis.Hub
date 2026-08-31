@@ -109,8 +109,12 @@ export async function fillDocxStrict(
 }
 
 export type TextRule = {
-  /** Что искать в видимом тексте абзаца, как его видит человек в Word. */
-  find: string;
+  /** Что искать в видимом тексте абзаца, как его видит человек в Word.
+   * Регулярка нужна там, где точный текст между версиями документа гуляет —
+   * разное число прочерков, случайный лишний символ у одного из юристов,
+   * «пользователя» вместо «пользователей». Всегда ищет globally, флаг `g`
+   * можно не ставить — добавляется сам. */
+  find: string | RegExp;
   /** Строка — или функция от порядкового номера вхождения в документе, если
    * одинаковые с виду места надо разметить разными метками (денежные ячейки
    * таблиц Спецификации отличаются только положением). */
@@ -118,6 +122,28 @@ export type TextRule = {
   /** Сколько раз правило обязано сработать; иначе подготовка шаблона падает. */
   expect?: number;
 };
+
+/** Все вхождения `find` в плоском тексте абзаца — независимо от того,
+ * строка это или регулярка. Возвращает пары [начало, длина]: для регулярки
+ * длина совпадения не постоянна (прочерков может быть то пять, то шесть). */
+function findAll(flat: string, find: string | RegExp): [number, number][] {
+  if (typeof find === "string") {
+    const hits: [number, number][] = [];
+    let from = flat.indexOf(find);
+    while (from !== -1) {
+      hits.push([from, find.length]);
+      from = flat.indexOf(find, from + find.length);
+    }
+    return hits;
+  }
+
+  const flags = find.flags.includes("g") ? find.flags : find.flags + "g";
+  const hits: [number, number][] = [];
+  for (const m of flat.matchAll(new RegExp(find.source, flags))) {
+    hits.push([m.index, m[0].length]);
+  }
+  return hits;
+}
 
 /**
  * Замена произвольного текста — **только для подготовки шаблонов**
@@ -136,12 +162,7 @@ export async function replaceTextInDocx(
   const bytes = await editDocx(templateBytes, (xml) =>
     editParagraphs(xml, (paragraph) => {
       rules.forEach((rule, ruleIndex) => {
-        const hits: number[] = [];
-        let from = paragraph.flat.indexOf(rule.find);
-        while (from !== -1) {
-          hits.push(from);
-          from = paragraph.flat.indexOf(rule.find, from + rule.find.length);
-        }
+        const hits = findAll(paragraph.flat, rule.find);
 
         // Номера вхождений считаем по документу слева направо — от них
         // зависит, какая метка встанет в какую строку таблицы. А сами правки
@@ -151,9 +172,10 @@ export async function replaceTextInDocx(
         applied[ruleIndex] += hits.length;
 
         for (let k = hits.length - 1; k >= 0; k--) {
+          const [start, length] = hits[k];
           const text =
             typeof rule.replace === "string" ? rule.replace : rule.replace(before + k);
-          paragraph.replace(hits[k], hits[k] + rule.find.length, text);
+          paragraph.replace(start, start + length, text);
         }
       });
     }).xml,

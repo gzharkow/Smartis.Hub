@@ -105,6 +105,11 @@ export const SpecEditableValuesSchema = z.object({
 
 export type SpecValues = {
   vatRatePct: Decimal;
+  /** Чем застройщик отличается от автодилера в тексте документа — счётная
+   * строка таблицы 2.2 называется «объект недвижимости» у одного и
+   * «дилерский центр» у другого (см. objectsLabel). Свободный КП (null)
+   * считаем застройщиком: это база, автодилерские формулировки — отличие. */
+  clientType: "BUILDER" | "AUTO_DEALER" | null;
   t22: {
     platform: SpecMoney;
     /** null — строка удаляется из таблицы целиком. */
@@ -353,6 +358,7 @@ function money(net: DecimalLike, vatRatePct: Decimal): SpecMoney {
 export function computeSpecValues(
   editable: SpecEditableValues,
   vatRatePct: DecimalLike,
+  clientType: "BUILDER" | "AUTO_DEALER" | null = null,
 ): SpecValues {
   const rate = new Decimal(vatRatePct);
 
@@ -380,6 +386,7 @@ export function computeSpecValues(
 
   return {
     vatRatePct: rate,
+    clientType,
     t22: { platform, objects, users, mediaPlan },
     objectsCount: editable.objectsCount,
     usersCount: editable.usersCount,
@@ -412,9 +419,16 @@ export function unsupportedKopecks(values: SpecValues): number[] {
 
 // ─────────────────────────────  Шаг 3: набор → метки  ─────────────────────────────
 
-/** «1 объект недвижимости», «3 объекта недвижимости». */
-export function objectsLabel(count: number): string {
-  return `${count} ${plural(count, WORDS.objectAcc)} недвижимости`;
+/** «1 объект недвижимости» / «3 объекта недвижимости» у застройщика,
+ * «1 дилерский центр» / «3 дилерских центра» у автодилера — та же строка
+ * таблицы 2.2 в двух версиях документа названа по-разному, и подстановка
+ * должна попасть в ту фразу, что реально напечатана в шаблоне клиента. */
+export function objectsLabel(
+  count: number,
+  clientType: "BUILDER" | "AUTO_DEALER" | null,
+): string {
+  const words = clientType === "AUTO_DEALER" ? WORDS.dealerCenterAcc : WORDS.realtyObjectAcc;
+  return `${count} ${plural(count, words)}`;
 }
 
 /** «1 авторизованного пользователя Заказчика». */
@@ -457,7 +471,8 @@ export function specValuesToTags(values: SpecValues): Record<string, string | nu
 
     ...moneyTags("T22_PLATFORM", values.t22.platform),
 
-    T22_OBJECTS_LABEL: values.t22.objects === null ? null : objectsLabel(values.objectsCount),
+    T22_OBJECTS_LABEL:
+      values.t22.objects === null ? null : objectsLabel(values.objectsCount, values.clientType),
     ...moneyTags("T22_OBJECTS", values.t22.objects),
 
     T22_USERS_LABEL: values.t22.users === null ? null : usersLabel(values.usersCount),

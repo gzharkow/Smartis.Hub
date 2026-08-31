@@ -1,5 +1,9 @@
 import Decimal from "decimal.js";
-import { deriveQuoteDocument, type BuilderCalculatorConfig } from "../src/lib/quote-calculator";
+import {
+  deriveQuoteDocument,
+  type AutoDealerCalculatorConfig,
+  type BuilderCalculatorConfig,
+} from "../src/lib/quote-calculator";
 import {
   computeSpecValues,
   deriveSpecValues,
@@ -38,7 +42,10 @@ function plainSpaces(value: string): string {
   return value.replace(/ /g, " ");
 }
 
-function quoteFrom(config: BuilderCalculatorConfig, vatRatePct = 5): SpecQuoteInput {
+function quoteFrom(
+  config: BuilderCalculatorConfig | AutoDealerCalculatorConfig,
+  vatRatePct = 5,
+): SpecQuoteInput {
   return {
     vatRatePct,
     calculatorConfig: config,
@@ -70,7 +77,7 @@ function money(label: string, actual: { net: Decimal; gross: Decimal; vat: Decim
 console.log("\nЭталон «Тест КП» — застройщик, enterprise + нестандартная CRM, 1 объект, 1 пользователь, медиапланы, НДС 5%:");
 {
   const { editable, issues } = deriveSpecValues(quoteFrom(REFERENCE));
-  const values = computeSpecValues(editable, 5);
+  const values = computeSpecValues(editable, 5, "BUILDER");
 
   check("жалоб при сопоставлении нет", issues.map((i) => i.code).join(",") || "—", "—");
 
@@ -96,7 +103,7 @@ console.log("\nЭталон «Тест КП» — застройщик, enterpri
   check("п.2.1 сумма цифрами", plainSpaces(month.sum), "203 700");
   check("п.2.1 прописью", month.words, "двести три тысячи семьсот");
 
-  check("подпись объектов", objectsLabel(values.objectsCount), "1 объект недвижимости");
+  check("подпись объектов", objectsLabel(values.objectsCount, "BUILDER"), "1 объект недвижимости");
   check("подпись пользователей", usersLabel(values.usersCount), "1 авторизованного пользователя Заказчика");
   check("копейки допустимы", unsupportedKopecks(values).join(",") || "—", "—");
 }
@@ -106,13 +113,13 @@ console.log("\nЭталон «Тест КП» — застройщик, enterpri
 console.log("\nТри объекта — таблица 2.2 держит итог, таблица 2.3 остаётся ценой за единицу:");
 {
   const { editable } = deriveSpecValues(quoteFrom({ ...REFERENCE, objectsCount: 3 }));
-  const values = computeSpecValues(editable, 5);
+  const values = computeSpecValues(editable, 5, "BUILDER");
 
   check("табл. 2.2 объекты (3 × 15 000)", values.t22.objects!.net.toFixed(2), "45000.00");
   check("табл. 2.3 объект (за единицу)", values.t23.object.net.toFixed(2), "15000.00");
   // Медиапланы в калькуляторе считаются по числу объектов — 3 × 5 000.
   check("табл. 2.2 медиапланы (3 × 5 000)", values.t22.mediaPlan!.net.toFixed(2), "15000.00");
-  check("подпись объектов", objectsLabel(values.objectsCount), "3 объекта недвижимости");
+  check("подпись объектов", objectsLabel(values.objectsCount, "BUILDER"), "3 объекта недвижимости");
   check("подпись пользователей при 5", usersLabel(5), "5 авторизованных пользователей Заказчика");
 }
 
@@ -138,6 +145,45 @@ console.log("\nБез enterprise — тариф таблицы 2.3 другой:
   check("цена 2.3 медиаплан", values.t23.mediaPlan.net.toFixed(2), "4500.00");
   check("цена 2.3 объект", values.t23.object.net.toFixed(2), "12000.00");
   check("цена 2.3 пользователь", values.t23.user.net.toFixed(2), "3500.00");
+}
+
+// ─────────────────────────────  Автодилер  ─────────────────────────────
+
+const AUTO_REFERENCE: AutoDealerCalculatorConfig = {
+  clientType: "AUTO_DEALER",
+  customCrmIntegration: false,
+  objectsCount: 2,
+  supportUsersCount: 3,
+  mediaPlanUpload: true,
+  postViewAvitoTier: "NONE",
+  postViewAutoRuTier: "NONE",
+  postViewOtherEventsTier: "NONE",
+  mindbox: false,
+  cdpSegments: false,
+  box: false,
+};
+
+console.log("\nАвтодилер — счётная строка называется «дилерский центр», а не «объект недвижимости»:");
+{
+  const { editable, issues } = deriveSpecValues(quoteFrom(AUTO_REFERENCE));
+  const values = computeSpecValues(editable, 5, "AUTO_DEALER");
+
+  check("жалоб при сопоставлении нет", issues.map((i) => i.code).join(",") || "—", "—");
+  money("табл. 2.2 объекты (2 × 6 000)", values.t22.objects!, "12000.00", "12600.00", "600.00");
+  check("табл. 2.3 объект — тариф автодилера", values.t23.object.net.toFixed(2), "6000.00");
+
+  check("подпись при 1", objectsLabel(1, "AUTO_DEALER"), "1 дилерский центр");
+  check("подпись при 2", objectsLabel(values.objectsCount, "AUTO_DEALER"), "2 дилерских центра");
+  check("подпись при 5", objectsLabel(5, "AUTO_DEALER"), "5 дилерских центров");
+  check("подпись при 11 (исключение)", objectsLabel(11, "AUTO_DEALER"), "11 дилерских центров");
+
+  // Тот же расчёт под меткой застройщика обязан звучать иначе — застройщик
+  // не выбирается волей вызывающего кода, а определяется clientType.
+  check(
+    "тот же счёт под флагом застройщика — другая фраза",
+    objectsLabel(values.objectsCount, "BUILDER"),
+    "2 объекта недвижимости",
+  );
 }
 
 // ─────────────────────────────  Копейки  ─────────────────────────────

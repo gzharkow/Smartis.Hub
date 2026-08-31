@@ -180,7 +180,7 @@ export async function renderSpecDocx(
 
   // Пересчитываем производные суммы здесь, а не принимаем их из браузера:
   // из клиента приходят только базовые числа.
-  const values = computeSpecValues(editable, quote.vatRatePct);
+  const values = computeSpecValues(editable, quote.vatRatePct, quote.clientType);
 
   const badKopecks = unsupportedKopecks(values);
   if (badKopecks.length > 0) {
