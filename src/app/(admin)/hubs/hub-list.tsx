@@ -179,7 +179,7 @@ export function HubList({
               {grid ? (
                 <HubTilePreview brandColor={hub.brandColor} logoUrl={hub.logoUrl} />
               ) : null}
-              {hub.canManage ? <HubTileActions hubId={hub.id} grid={grid} /> : null}
+              {hub.canManage && grid ? <HubTileActions hubId={hub.id} /> : null}
               <span
                 // flex-wrap (не влияет на кнопки) — на узкой 2-колоночной
                 // плитке телефона статус и бейдж автора иначе не помещаются

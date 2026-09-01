@@ -137,20 +137,31 @@ export default async function StatsPage() {
                       className={`flex items-center gap-4 text-sm ${
                         grid
                           ? "sm:mt-auto sm:flex-wrap sm:pt-1"
-                          : "shrink-0 sm:justify-end"
+                          : // На телефоне (без sm:) дату раньше ничего не
+                            // прижимало к краю — она просто шла третьим
+                            // элементом в общем потоке. justify-between
+                            // между этой группой и датой кладёт её в правый
+                            // нижний угол карточки; на sm: и шире всё как
+                            // раньше — весь блок единым целым у правого
+                            // края (расстояния те же, гарантирует
+                            // одинаковый gap-4 что внутри группы, что между
+                            // группой и датой).
+                            "justify-between shrink-0 sm:justify-end"
                       }`}
                     >
-                      <span>
-                        <b className="font-semibold">{stat.visits}</b>
-                        <span className="text-muted">
-                          {" "}
-                          {plural(stat.visits, WORDS.visit)}
+                      <span className="flex items-center gap-4">
+                        <span>
+                          <b className="font-semibold">{stat.visits}</b>
+                          <span className="text-muted">
+                            {" "}
+                            {plural(stat.visits, WORDS.visit)}
+                          </span>
                         </span>
-                      </span>
-                      <span title="Суммарное время просмотра">
-                        <b className="font-semibold">
-                          {formatDuration(stat.totalMs)}
-                        </b>
+                        <span title="Суммарное время просмотра">
+                          <b className="font-semibold">
+                            {formatDuration(stat.totalMs)}
+                          </b>
+                        </span>
                       </span>
                       <span
                         className={
