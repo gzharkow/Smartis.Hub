@@ -14,34 +14,41 @@ type Group = { key: SpecTagGroup; title: string; hint: string };
 
 export function TagReference({ groups, tags }: { groups: Group[]; tags: SpecTag[] }) {
   return (
-    <section className="grid gap-4">
-      <div>
-        <h2 className="text-sm font-medium">Метки для шаблона</h2>
-        <p className="mt-0.5 max-w-2xl text-xs text-muted">
+    // Свёрнуто по умолчанию — 4 группы и 30 меток растягивали страницу,
+    // а нужны только при заведении нового шаблона. <details>/<summary>,
+    // а не самодельный аккордеон — тот же приём, что и в quote-editor.tsx,
+    // assets/page.tsx и др.: клавиатура и фокус работают из коробки.
+    <details className="grid gap-4 rounded-xl border border-border">
+      <summary className="cursor-pointer px-4 py-3 text-sm font-medium">
+        Метки для шаблона
+      </summary>
+
+      <div className="grid gap-4 px-4 pb-4">
+        <p className="max-w-2xl text-xs text-muted">
           Вставьте их в .docx на месте прочерков. Всё остальное — реквизиты,
           номер договора, даты, подписи — остаётся как есть: мы заполняем только
           деньги. Строки таблицы 2.2 с объектами, пользователями и медиапланами
           удаляются целиком, если позиции нет в расчёте.
         </p>
-      </div>
 
-      {groups.map((group) => (
-        <div key={group.key} className="rounded-xl border border-border">
-          <div className="border-b border-border px-4 py-2.5">
-            <h3 className="text-sm font-medium">{group.title}</h3>
-            <p className="mt-0.5 text-xs text-muted">{group.hint}</p>
+        {groups.map((group) => (
+          <div key={group.key} className="rounded-xl border border-border">
+            <div className="border-b border-border px-4 py-2.5">
+              <h3 className="text-sm font-medium">{group.title}</h3>
+              <p className="mt-0.5 text-xs text-muted">{group.hint}</p>
+            </div>
+
+            <ul className="grid grid-cols-1">
+              {tags
+                .filter((tag) => tag.group === group.key)
+                .map((tag) => (
+                  <TagRow key={tag.tag} tag={tag} />
+                ))}
+            </ul>
           </div>
-
-          <ul className="grid grid-cols-1">
-            {tags
-              .filter((tag) => tag.group === group.key)
-              .map((tag) => (
-                <TagRow key={tag.tag} tag={tag} />
-              ))}
-          </ul>
-        </div>
-      ))}
-    </section>
+        ))}
+      </div>
+    </details>
   );
 }
 

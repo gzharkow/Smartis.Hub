@@ -106,17 +106,19 @@ export default async function CalculatorPage() {
                   className="group relative grid min-w-0 grid-cols-1 gap-2 rounded-xl border border-border bg-surface px-4 py-3 transition hover:border-muted sm:grid-cols-[1fr_auto] sm:items-center"
                 >
                   <div className="min-w-0">
-                    <div className="flex items-center gap-2">
-                      <p className="truncate font-medium">{quote.clientName}</p>
-                      {"owner" in quote && quote.owner ? (
-                        <OwnerBadge id={quote.owner.id} label={ownerLabel(quote.owner)} />
-                      ) : null}
-                    </div>
+                    <p className="truncate font-medium">{quote.clientName}</p>
                     <p className="mt-0.5 text-sm text-muted">
                       Изменён {formatHubCreated(quote.updatedAt)}
                     </p>
                   </div>
                   <div className="grid grid-cols-1 gap-0.5 text-sm sm:justify-items-end sm:text-right">
+                    {/* Бейдж — первым в правой колонке, а не приклеен к
+                        имени клиента: имя разной длины сдвигало бы бейдж
+                        по X на каждой карточке, тут он всегда на одном
+                        месте у правого края. */}
+                    {"owner" in quote && quote.owner ? (
+                      <OwnerBadge id={quote.owner.id} label={ownerLabel(quote.owner)} />
+                    ) : null}
                     <span>
                       <span className="text-muted">СА: </span>
                       <b className="font-semibold">{formatMoney(saTotal)}</b>
