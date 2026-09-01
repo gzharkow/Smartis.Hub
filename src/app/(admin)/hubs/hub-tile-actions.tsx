@@ -57,8 +57,13 @@ export function HubTileActions({ hubId, grid }: { hubId: string; grid: boolean }
       // pointer-coarse:opacity-100 — не косметика: на телефоне hover не бывает,
       // и «Копировать»/«Удалить» были не просто незаметны, а недостижимы —
       // тап по плитке сразу уходил на страницу хаба. На мыши поведение прежнее.
-      className={`absolute z-20 flex items-center gap-1 opacity-0 transition group-hover:opacity-100 pointer-coarse:opacity-100 ${
-        grid ? "top-2 right-2" : "inset-y-0 right-3"
+      //
+      // Якорь всегда top-right (а не inset-y-0 по центру строки в списке) —
+      // единое предсказуемое место, под которое верхний ряд карточки
+      // (см. hub-list.tsx) резервирует отступ, поэтому кнопки больше не
+      // наезжают на название хаба ни в плитке, ни в списке.
+      className={`absolute top-2 z-20 flex items-center gap-1 opacity-0 transition group-hover:opacity-100 pointer-coarse:opacity-100 ${
+        grid ? "right-2" : "right-3"
       }`}
       onMouseLeave={() => setConfirming(false)}
     >

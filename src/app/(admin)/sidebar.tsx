@@ -51,7 +51,10 @@ const GROUPS: Group[] = [
     href: "/calculator",
     label: "Генератор КП",
     icon: <CalculatorIcon />,
-    children: [{ key: "calculator.files", href: "/calculator/files", label: "Файлы" }],
+    children: [
+      { key: "calculator.files", href: "/calculator/files", label: "Файлы" },
+      { key: "calculator.spec", href: "/calculator/spec", label: "Спецификации" },
+    ],
   },
 ];
 

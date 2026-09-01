@@ -7,10 +7,12 @@ import {
   type ViewMode,
 } from "@/lib/view-mode";
 
-// Плитка фиксированного размера: колонки авто-заполняются (auto-fill) под
-// доступную ширину — окно шире → плиток в ряду больше, но сама плитка
-// не растягивается ни при какой ширине/масштабе.
-const HUB_TILE_GRID_CLASS = "grid grid-cols-[repeat(auto-fill,220px)] gap-4";
+// На телефоне — 2 гибкие колонки (плитка тянется под ½ ширины экрана), с
+// sm: и выше — прежняя раскладка: колонки авто-заполняются (auto-fill) под
+// доступную ширину фиксированной плиткой 220px, окно шире → плиток больше,
+// но сама плитка не растягивается ни при какой ширине/масштабе.
+const HUB_TILE_GRID_CLASS =
+  "grid grid-cols-2 gap-3 sm:grid-cols-[repeat(auto-fill,220px)] sm:gap-4";
 
 export type HubRow = {
   id: string;
@@ -178,7 +180,19 @@ export function HubList({
                 <HubTilePreview brandColor={hub.brandColor} logoUrl={hub.logoUrl} />
               ) : null}
               {hub.canManage ? <HubTileActions hubId={hub.id} grid={grid} /> : null}
-              <span className="relative z-10 flex items-center justify-between gap-2">
+              <span
+                className={`relative z-10 flex flex-wrap items-center justify-between gap-x-2 gap-y-1 ${
+                  // Резерв места под кнопки копировать/удалить (top-right,
+                  // см. hub-tile-actions.tsx) — отступом СВЕРХУ, а не
+                  // отступом справа: плитка на телефоне узкая (2 колонки,
+                  // ~130px), и горизонтальный резерв под кластер из двух
+                  // кнопок съедал почти всю ширину строки. Вертикальный
+                  // отступ не конкурирует за ширину ни при каком размере
+                  // плитки — статус/автор просто начинаются ниже кнопок.
+                  // Только когда кнопки вообще рендерятся.
+                  hub.canManage ? "pt-9 pointer-coarse:pt-12" : ""
+                }`}
+              >
                 <StatusCaption status={hub.status} grid={grid} />
                 {hub.owner ? (
                   grid ? (
