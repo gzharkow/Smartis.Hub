@@ -179,7 +179,6 @@ export function HubList({
               {grid ? (
                 <HubTilePreview brandColor={hub.brandColor} logoUrl={hub.logoUrl} />
               ) : null}
-              {hub.canManage ? <HubTileActions hubId={hub.id} grid={grid} /> : null}
               <span
                 // flex-wrap (не влияет на кнопки) — на узкой 2-колоночной
                 // плитке телефона статус и бейдж автора иначе не помещаются
@@ -200,6 +199,11 @@ export function HubList({
               >
                 {hub.title}
               </span>
+              {/* Оверлей (угол карточки, см. hub-tile-actions.tsx) не зависит
+                  от места в DOM — position: absolute считает от <Link>. Для
+                  инлайн-варианта в плитке на тач-экране место в DOM как раз
+                  важно: он должен оказаться строкой прямо перед метаданными. */}
+              {hub.canManage ? <HubTileActions hubId={hub.id} grid={grid} /> : null}
               {metaRow}
             </Link>
           </li>
