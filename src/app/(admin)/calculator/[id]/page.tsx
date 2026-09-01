@@ -33,18 +33,12 @@ export default async function QuotePage({
 
   const canEdit = hasEdit(user, "calculator");
 
-  // Спецификацию пока выпускает только администратор (см. loadQuoteForSpec).
-  // Остальным кнопку не показываем вовсе, а не блокируем: неактивная кнопка
-  // без внятной причины читается как поломка.
-  const availability =
-    user.role === "ADMIN"
-      ? await specAvailability({
-          organizationId: quote.organizationId,
-          clientType: quote.clientType,
-          boxIntegrationSelected: quote.boxIntegrationSelected,
-          vatRatePct: quote.vatRatePct.toString(),
-        })
-      : null;
+  const availability = await specAvailability({
+    organizationId: quote.organizationId,
+    clientType: quote.clientType,
+    boxIntegrationSelected: quote.boxIntegrationSelected,
+    vatRatePct: quote.vatRatePct.toString(),
+  });
 
   return (
     <div className="mx-auto w-full max-w-7xl grid grid-cols-1 gap-6">
@@ -64,11 +58,9 @@ export default async function QuotePage({
               quoteId={quote.id}
               canEdit={canEdit}
               spec={
-                availability === null
-                  ? undefined
-                  : availability.ok
-                    ? { ok: true }
-                    : { ok: false, reason: availability.reason }
+                availability.ok
+                  ? { ok: true }
+                  : { ok: false, reason: availability.reason }
               }
             />
           }
