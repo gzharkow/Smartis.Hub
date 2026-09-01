@@ -25,12 +25,16 @@ function TrashIcon() {
  * расчёта, поэтому клик по кнопке гасит всплытие (иначе он же открыл бы
  * страницу).
  *
- * На мыши кнопка притушена до наведения на карточку (group-hover) и лежит
- * в правом верхнем углу — карточка резервирует под неё отступ (см.
- * page.tsx), поэтому наложения на текст нет ни в одном состоянии. На
- * тач-экране (pointer-coarse) hover не бывает: кнопка всегда видна и
- * переезжает в правый нижний угол — просто маленькая кнопка, без ряда
- * текстового подтверждения (второй тап включает то же кольцо-подсветку).
+ * Чистый оверлей: `position: absolute`, не резервирует место в карточке —
+ * пробовали резервировать отступом на контейнере, но это реально увеличивало
+ * высоту карточки. Позади кнопки — растушёвка фона в цвет карточки
+ * (`bg-surface`, см. hub-tile-actions.tsx — тот же приём для хабов): там, где
+ * кнопка перекрывает денежную колонку, текст уходит в градиент, а не
+ * обрывается жёстко.
+ *
+ * На мыши кнопка с подложкой притушены до наведения на карточку (group-hover)
+ * и лежат в правом верхнем углу. На тач-экране (pointer-coarse) hover не
+ * бывает: подложка с кнопкой всегда видны и переезжают в правый нижний угол.
  */
 export function QuoteListRowActions({
   quoteId,
@@ -46,26 +50,41 @@ export function QuoteListRowActions({
   if (!canEdit) return null;
 
   return (
-    <button
-      type="button"
-      disabled={deleting}
-      onClick={(e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        if (!confirming) {
-          setConfirming(true);
-          return;
-        }
-        startDelete(() => purgeQuote(quoteId));
-      }}
-      onMouseLeave={() => setConfirming(false)}
-      aria-label={confirming ? "Точно удалить? Нажмите ещё раз" : "Удалить расчёт"}
-      title={confirming ? "Точно удалить? Нажмите ещё раз" : "Удалить расчёт"}
-      className={`absolute right-2 top-2 z-10 opacity-0 transition group-hover:opacity-100 pointer-coarse:top-auto pointer-coarse:bottom-2 pointer-coarse:opacity-100 ${iconButtonClasses(
-        "danger",
-      )} ${confirming ? "!bg-danger/15 !text-danger ring-2 ring-danger/40" : ""}`}
+    <span
+      className={
+        "absolute right-0 z-10 flex items-start justify-end bg-gradient-to-bl " +
+        "from-surface via-surface/90 to-transparent p-2 opacity-0 transition " +
+        "group-hover:opacity-100 pointer-coarse:opacity-100 " +
+        // Мышь: верхний правый угол, растушёвка сверху. Тач-экран: нижний
+        // правый — угол карточки на тач-экране совпадает с формой лишь
+        // отчасти, поэтому скругление тоже переключается вместе с углом.
+        "top-0 h-12 w-28 rounded-tr-xl " +
+        "pointer-coarse:top-auto pointer-coarse:bottom-0 pointer-coarse:h-14 " +
+        "pointer-coarse:w-24 pointer-coarse:items-end pointer-coarse:rounded-tr-none " +
+        "pointer-coarse:rounded-br-xl pointer-coarse:bg-gradient-to-tl"
+      }
     >
-      <TrashIcon />
-    </button>
+      <button
+        type="button"
+        disabled={deleting}
+        onClick={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          if (!confirming) {
+            setConfirming(true);
+            return;
+          }
+          startDelete(() => purgeQuote(quoteId));
+        }}
+        onMouseLeave={() => setConfirming(false)}
+        aria-label={confirming ? "Точно удалить? Нажмите ещё раз" : "Удалить расчёт"}
+        title={confirming ? "Точно удалить? Нажмите ещё раз" : "Удалить расчёт"}
+        className={`${iconButtonClasses("danger")} ${
+          confirming ? "!bg-danger/15 !text-danger ring-2 ring-danger/40" : ""
+        }`}
+      >
+        <TrashIcon />
+      </button>
+    </span>
   );
 }

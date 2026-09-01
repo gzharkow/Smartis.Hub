@@ -103,16 +103,7 @@ export default async function CalculatorPage() {
               <li key={quote.id}>
                 <Link
                   href={`/calculator/${quote.id}`}
-                  className={`group relative grid min-w-0 grid-cols-1 gap-2 rounded-xl border border-border bg-surface px-4 py-3 transition hover:border-muted sm:grid-cols-[1fr_auto] sm:items-center ${
-                    // Резерв места под кнопку удаления (см. quote-list-row-actions.tsx):
-                    // сверху на мыши (right-top, всплывает по hover карточки —
-                    // без резерва наезжала бы на денежную колонку), снизу на
-                    // тач-экране (right-bottom, всегда видна) — той же
-                    // техникой отступа на весь контейнер, что и у плиток
-                    // хабов: не соревнуется за ширину колонок ни при каком
-                    // размере экрана.
-                    canEdit ? "sm:pt-10 pointer-coarse:pb-12" : ""
-                  }`}
+                  className="group relative grid min-w-0 grid-cols-1 gap-2 rounded-xl border border-border bg-surface px-4 py-3 transition hover:border-muted sm:grid-cols-[1fr_auto] sm:items-center"
                 >
                   <div className="min-w-0">
                     <div className="flex items-center gap-2">

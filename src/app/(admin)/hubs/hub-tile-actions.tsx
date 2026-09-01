@@ -38,6 +38,15 @@ function TrashIcon() {
  * Удаление требует повторного клика (см. hub-danger-buttons.tsx для того
  * же паттерна подтверждения в полный рост) — на плитке места на текст
  * предупреждения нет, поэтому подтверждение — это смена вида самой иконки.
+ *
+ * Это чистый оверлей: `position: absolute`, никогда не резервирует место в
+ * потоке (раньше пробовали резервировать отступом — на мыши, где кнопки
+ * видны только по hover, в состоянии покоя это выглядело как ничем не
+ * объяснимый сдвиг текста). Там, где кнопки перекрывают статус/автора,
+ * позади них лежит растушёвка фона (тот же приём, что и у HubTilePreview
+ * в hub-list.tsx) — текст не обрывается жёстко, а уходит в градиент.
+ * Растушёвка и кнопки — один элемент с одной прозрачностью, показываются
+ * и прячутся синхронно.
  */
 export function HubTileActions({ hubId, grid }: { hubId: string; grid: boolean }) {
   const [confirming, setConfirming] = useState(false);
@@ -58,50 +67,55 @@ export function HubTileActions({ hubId, grid }: { hubId: string; grid: boolean }
       // и «Копировать»/«Удалить» были не просто незаметны, а недостижимы —
       // тап по плитке сразу уходил на страницу хаба. На мыши поведение прежнее.
       //
-      // Якорь всегда top-right (а не inset-y-0 по центру строки в списке) —
-      // единое предсказуемое место, под которое верхний ряд карточки
-      // (см. hub-list.tsx) резервирует отступ, поэтому кнопки больше не
-      // наезжают на название хаба ни в плитке, ни в списке.
-      className={`absolute top-2 z-20 flex items-center gap-1 opacity-0 transition group-hover:opacity-100 pointer-coarse:opacity-100 ${
-        grid ? "right-2" : "right-3"
+      // Растушёвка всегда в верхнем правом углу (только там и лежат кнопки) —
+      // полоса на всю высоту строки пробовали раньше, но она заодно гасила
+      // дату в нижнем правом углу строки списка, хотя кнопки там никогда не
+      // было. Грид — фон плитки фото (см. HubTilePreview), поэтому градиент
+      // тёмный; список — сплошной bg-surface.
+      className={`absolute right-0 top-0 z-20 flex h-16 w-32 items-start justify-end rounded-tr-xl p-2 opacity-0 transition group-hover:opacity-100 pointer-coarse:opacity-100 ${
+        grid
+          ? "bg-gradient-to-bl from-black/60 via-black/30 to-transparent"
+          : "bg-gradient-to-bl from-surface via-surface/90 to-transparent"
       }`}
       onMouseLeave={() => setConfirming(false)}
     >
-      <button
-        type="button"
-        disabled={pending}
-        onClick={(e) => {
-          e.preventDefault();
-          e.stopPropagation();
-          startTransition(() => duplicateHub(hubId));
-        }}
-        title="Сделать копию"
-        className={`${iconBtn} ${copyClass}`}
-      >
-        <CopyIcon />
-      </button>
+      <span className="flex items-center gap-1">
+        <button
+          type="button"
+          disabled={pending}
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            startTransition(() => duplicateHub(hubId));
+          }}
+          title="Сделать копию"
+          className={`${iconBtn} ${copyClass}`}
+        >
+          <CopyIcon />
+        </button>
 
-      <button
-        type="button"
-        disabled={pending}
-        onClick={(e) => {
-          e.preventDefault();
-          e.stopPropagation();
-          if (!confirming) {
-            setConfirming(true);
-            return;
-          }
-          startTransition(() => archiveHub(hubId));
-        }}
-        title={confirming ? "Точно удалить? Нажмите ещё раз" : "Удалить"}
-        className={`${iconBtn} ${trashClass} ${
-          // Подтверждение — то же красное, но с кольцом, чтобы второй клик
-          // отличался от первого не только текстом подсказки.
-          confirming ? "ring-2 ring-white/80" : ""
-        }`}
-      >
-        <TrashIcon />
-      </button>
+        <button
+          type="button"
+          disabled={pending}
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            if (!confirming) {
+              setConfirming(true);
+              return;
+            }
+            startTransition(() => archiveHub(hubId));
+          }}
+          title={confirming ? "Точно удалить? Нажмите ещё раз" : "Удалить"}
+          className={`${iconBtn} ${trashClass} ${
+            // Подтверждение — то же красное, но с кольцом, чтобы второй клик
+            // отличался от первого не только текстом подсказки.
+            confirming ? "ring-2 ring-white/80" : ""
+          }`}
+        >
+          <TrashIcon />
+        </button>
+      </span>
     </span>
   );
 }

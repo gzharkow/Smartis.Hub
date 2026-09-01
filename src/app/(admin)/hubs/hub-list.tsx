@@ -181,17 +181,10 @@ export function HubList({
               ) : null}
               {hub.canManage ? <HubTileActions hubId={hub.id} grid={grid} /> : null}
               <span
-                className={`relative z-10 flex flex-wrap items-center justify-between gap-x-2 gap-y-1 ${
-                  // Резерв места под кнопки копировать/удалить (top-right,
-                  // см. hub-tile-actions.tsx) — отступом СВЕРХУ, а не
-                  // отступом справа: плитка на телефоне узкая (2 колонки,
-                  // ~130px), и горизонтальный резерв под кластер из двух
-                  // кнопок съедал почти всю ширину строки. Вертикальный
-                  // отступ не конкурирует за ширину ни при каком размере
-                  // плитки — статус/автор просто начинаются ниже кнопок.
-                  // Только когда кнопки вообще рендерятся.
-                  hub.canManage ? "pt-9 pointer-coarse:pt-12" : ""
-                }`}
+                // flex-wrap (не влияет на кнопки) — на узкой 2-колоночной
+                // плитке телефона статус и бейдж автора иначе не помещаются
+                // в одну строку; бейдж просто переносится вниз.
+                className="relative z-10 flex flex-wrap items-center justify-between gap-x-2 gap-y-1"
               >
                 <StatusCaption status={hub.status} grid={grid} />
                 {hub.owner ? (
