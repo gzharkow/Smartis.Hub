@@ -73,7 +73,12 @@ export default async function StatsPage() {
           hubs.length > 0 ? (
             <div className="flex flex-wrap items-center gap-2">
               <StatsSortControl sort={sort} />
-              <ViewToggle value={view} />
+              {/* Плитка на телефоне не несёт своей визуальной идентичности
+                  (в отличие от Хабов) — переключатель имеет смысл только
+                  от sm: и шире, где карточки реально становятся тайлами. */}
+              <div className="hidden sm:block">
+                <ViewToggle value={view} />
+              </div>
             </div>
           ) : null
         }
@@ -101,10 +106,15 @@ export default async function StatsPage() {
               <li key={hub.id}>
                 <Link
                   href={`/stats/${hub.id}`}
-                  className={`rounded-xl border border-border bg-surface px-4 py-3 transition hover:border-muted ${
+                  className={`rounded-xl border border-border bg-surface px-4 py-3 transition hover:border-muted grid gap-2 ${
+                    // Плитка на телефоне не имеет собственной визуальной
+                    // идентичности (в отличие от Хабов) — все плиточные
+                    // особенности (высота, flex-col) начинаются только с
+                    // sm:, на телефоне разметка всегда как у списка,
+                    // независимо от cookie sf_view.
                     grid
-                      ? "flex h-full flex-col gap-2"
-                      : "grid gap-2 sm:grid-cols-[1fr_auto] sm:items-center"
+                      ? "sm:flex sm:h-[176px] sm:flex-col"
+                      : "sm:grid-cols-[1fr_auto] sm:items-center"
                   }`}
                 >
                   <div className="min-w-0">
@@ -118,7 +128,7 @@ export default async function StatsPage() {
 
                   {stat.visits === 0 ? (
                     <span
-                      className={`text-sm text-muted ${grid ? "mt-auto pt-1" : ""}`}
+                      className={`text-sm text-muted ${grid ? "sm:mt-auto sm:pt-1" : ""}`}
                     >
                       не открывали
                     </span>
@@ -126,7 +136,7 @@ export default async function StatsPage() {
                     <div
                       className={`flex items-center gap-4 text-sm ${
                         grid
-                          ? "mt-auto flex-wrap pt-1"
+                          ? "sm:mt-auto sm:flex-wrap sm:pt-1"
                           : "shrink-0 sm:justify-end"
                       }`}
                     >

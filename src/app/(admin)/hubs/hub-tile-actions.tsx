@@ -102,13 +102,17 @@ export function HubTileActions({ hubId, grid }: { hubId: string; grid: boolean }
         // В ПЛИТКЕ на тач-экране этот оверлей уступает место инлайн-строке
         // ниже (pointer-coarse:hidden) — в списке остаётся как есть.
         //
-        // Растушёвка в верхнем правом углу — в плитке фон фото (см.
-        // HubTilePreview), поэтому градиент тёмный; в списке — сплошной
-        // bg-surface.
-        className={`absolute right-0 top-0 z-20 flex h-16 w-32 items-start justify-end rounded-tr-xl p-2 opacity-0 transition group-hover:opacity-100 pointer-coarse:opacity-100 ${
+        // Растушёвка в верхнем правом углу плитки — фон плитки фото (см.
+        // HubTilePreview), поэтому градиент тёмный. Строка списка компактнее
+        // (~70-90px, а не 248px квадрат) — та же h-16/w-32 коробка там
+        // перекрывала практически всю строку целиком, поэтому у списка
+        // отдельный, подогнанный под высоту самих кнопок размер: по центру
+        // строки по вертикали, а не от верхнего края, и растушёвка по
+        // горизонтали (от кнопок влево), а не по диагонали из угла.
+        className={`absolute z-20 flex items-center justify-end rounded-lg p-2 opacity-0 transition group-hover:opacity-100 pointer-coarse:opacity-100 ${
           grid
-            ? "pointer-coarse:hidden bg-gradient-to-bl from-black/60 via-black/30 to-transparent"
-            : "bg-gradient-to-bl from-surface via-surface/90 to-transparent"
+            ? "pointer-coarse:hidden right-0 top-0 h-16 w-32 items-start rounded-tr-xl bg-gradient-to-bl from-black/60 via-black/30 to-transparent"
+            : "right-2 top-1/2 h-11 w-28 -translate-y-1/2 bg-gradient-to-l from-surface via-surface/90 to-transparent"
         }`}
         onMouseLeave={() => setConfirming(false)}
       >

@@ -16,6 +16,7 @@ import {
 } from "@/lib/spec-values";
 import { NumberField } from "../calculator-panel-controls";
 import { buttonClasses } from "@/components/ui/button";
+import { PdfPreviewOverlay } from "@/components/pdf-preview-overlay";
 
 // Экран проверки Спецификации перед выпуском.
 //
@@ -293,6 +294,10 @@ function Preview({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const currentUrl = useRef<string | null>(null);
+  // Только для тач-экрана — см. кнопку «Показать документ» ниже: встроенный
+  // <iframe> там не листается системным PDF-плагином (особенно в PWA), а
+  // окно поверх страницы со своим PdfViewer скроллится честно.
+  const [previewOpen, setPreviewOpen] = useState(false);
 
   useEffect(() => {
     if (!available || blocked) return;
@@ -362,11 +367,39 @@ function Preview({
           <p className="mt-1 text-muted">{error}</p>
         </div>
       ) : url ? (
-        <iframe
-          src={url}
-          title="Предпросмотр Спецификации"
-          className="h-[80vh] w-full rounded-xl border border-border bg-white"
-        />
+        <>
+          {/* На мыши/десктопе — как раньше, встроенный просмотр. На
+              тач-экране встроенный <iframe> полагается на системный
+              PDF-плагин браузера — в PWA он часто не листается жестом,
+              поэтому там вместо него кнопка, открывающая тот же документ
+              в PdfPreviewOverlay (свой скроллящийся canvas-рендер). */}
+          <iframe
+            src={url}
+            title="Предпросмотр Спецификации"
+            className="h-[80vh] w-full rounded-xl border border-border bg-white pointer-coarse:hidden"
+          />
+          {/* Обёртка отдельно от buttonClasses() — у неё самой уже есть
+              безусловный inline-flex, и hidden/pointer-coarse:inline-flex
+              на том же элементе с ним конфликтовали бы (кнопка была видна
+              всегда, включая мышь). */}
+          <span className="hidden pointer-coarse:block">
+            <button
+              type="button"
+              onClick={() => setPreviewOpen(true)}
+              className={buttonClasses("secondary", "md")}
+            >
+              Показать документ
+            </button>
+          </span>
+          {previewOpen ? (
+            <PdfPreviewOverlay
+              title="Предпросмотр Спецификации"
+              url={url}
+              error={null}
+              onClose={() => setPreviewOpen(false)}
+            />
+          ) : null}
+        </>
       ) : (
         <div className="grid h-[80vh] place-items-center rounded-xl border border-dashed border-border text-sm text-muted">
           {blocked ? "Поправьте суммы слева" : "Собираем предпросмотр…"}
