@@ -112,13 +112,39 @@ export function Sidebar({
       >
         <Link
           href="/hubs"
-          className="flex items-center gap-2 font-semibold tracking-tight"
+          className="flex items-end gap-1"
           title="Smartis.Flite"
         >
+          {/* Узкая полоса — мобильный экран или свёрнутое меню — оставляем
+              прежнего паучка: новый вордмарк туда по ширине не влезает. */}
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/logo.png" alt="" className="h-6 w-auto shrink-0" />
-          <span className={collapsed ? "hidden" : "hidden md:inline"}>
-            Smartis.Flite
+          <img
+            src="/logo.png"
+            alt="Smartis"
+            className={`h-6 w-auto shrink-0 ${collapsed ? "block" : "block md:hidden"}`}
+          />
+          {!collapsed && (
+            <>
+              {/* Тёмный текст вордмарка на тёмном фоне сайдбара почти не
+                  виден — на тёмной теме показываем белый вариант. */}
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src="/logo-wordmark.png"
+                alt="Smartis"
+                className="hidden h-6 w-auto shrink-0 md:not-dark:block"
+              />
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src="/logo-wordmark-white.png"
+                alt="Smartis"
+                className="hidden h-6 w-auto shrink-0 md:dark:block"
+              />
+            </>
+          )}
+          <span
+            className={`not-dark:text-muted translate-y-[3px] text-[30px] leading-none font-light tracking-tight ${collapsed ? "hidden" : "hidden md:inline"}`}
+          >
+            .F<span className="text-[23px]">LiTE</span>
           </span>
         </Link>
 

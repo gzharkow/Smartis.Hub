@@ -45,21 +45,18 @@ export default async function LoginPage({
       <LoginBackdrop />
 
       <div className="w-full max-w-sm">
-        {/* Логотип и название — НАД карточкой, на тёмном фоне, как на референсе
-            my.smartis.bi. Начертание тонкое и разрядистое — под тот же характер
-            (точного шрифта в их SVG-логотипе нет, повторяем стиль). Всегда
+        {/* Логотип и название — НАД карточкой, на тёмном фоне. Всегда
             светлое: фон под входом тёмный независимо от темы кабинета. */}
         <div className="mb-8 flex flex-col items-center gap-3">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/logo.png" alt="" className="h-9 w-auto" />
-          <div className="flex items-baseline text-white">
-            <span className="text-[1.7rem] leading-none font-extralight tracking-[0.14em]">
-              SMARTIS
-            </span>
-            {/* Отрицательный отступ гасит хвост разрядки после последней S,
-                иначе точка отъезжала бы вправо. */}
-            <span className="-ml-[0.14em] text-[1.35rem] leading-none font-light text-white/70">
-              .Flite
+          <div className="flex items-end gap-1">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src="/logo-wordmark-white.png"
+              alt="Smartis"
+              className="h-9 w-auto"
+            />
+            <span className="translate-y-[5px] text-[45px] leading-none font-light text-white/70">
+              .F<span className="text-[34px]">LiTE</span>
             </span>
           </div>
         </div>
