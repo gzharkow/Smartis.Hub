@@ -1,13 +1,14 @@
 # Деплой Smartfollow на голый VPS (Reg.cloud)
 
 Рассчитано на чистый Ubuntu/Debian VPS с root-доступом по SSH, без
-Docker, без панели управления и **без git-репозитория** — код едет на
-сервер напрямую (архив по SSH), обновления делаются нечасто, поэтому
-процесс сборки одной командой важнее, чем полноценный git-деплой.
+Docker и без панели управления. Код на сервере — это git-клон
+приватного репозитория; редеплой — `git fetch` + `reset --hard` на
+сервере (через `deploy/deploy.sh`), без пересылки архивов.
 
-Шаги 1–3, 5–9 выполняются **на сервере**. Шаг 4 (доставка кода) и
-последующие редеплои — **с машины разработки** (Windows, через Git
-Bash/WSL, где есть `ssh`/`scp`/`tar`).
+Шаги 1–3, 5–9 выполняются **на сервере**. Шаг 4 (первичная доставка
+кода) частично на сервере (клонирование), частично с локальной
+машины (deploy key). Последующие редеплои — **с машины разработки**
+(Windows, через Git Bash/WSL, где есть `ssh`).
 
 ## 0. Что должно быть готово заранее
 
@@ -15,14 +16,17 @@ Bash/WSL, где есть `ssh`/`scp`/`tar`).
   всего настроить вход по SSH-ключу — тогда `deploy/deploy.sh` не
   будет спрашивать пароль на каждом шаге.
 - Пароль для PostgreSQL, который ты придумаешь на месте (шаг 2).
-- `ssh`, `scp` и `tar` на машине, с которой будешь деплоить (в Git
-  Bash на Windows они есть из коробки).
+- `ssh` на машине, с которой будешь деплоить (в Git Bash на Windows
+  есть из коробки).
+- Права на настройку Deploy keys в GitHub-репозитории
+  (Settings → Deploy keys) — репозиторий приватный, серверу нужен
+  свой read-only ключ, чтобы тянуть код.
 
 ## 1. Базовые пакеты и Node.js
 
 ```bash
 apt update && apt upgrade -y
-apt install -y curl build-essential nginx
+apt install -y curl build-essential nginx git
 
 # Node.js 24.x (та же мажорная версия, что и в разработке)
 curl -fsSL https://deb.nodesource.com/setup_24.x | bash -
@@ -84,27 +88,57 @@ mkdir -p /srv/smartfollow
 chown -R smartfollow:smartfollow /var/lib/smartfollow
 ```
 
-## 4. Код на сервер
+## 4. Код на сервер (git, первичная настройка)
 
-Код не лежит в репозитории — доставляется архивом с локальной машины.
-Первую заливку можно сделать вручную (дальше это же делает
-`deploy/deploy.sh`, см. «Повторный деплой» в конце файла):
+Репозиторий приватный, поэтому серверу нужен свой SSH-ключ с правом
+только читать этот один репозиторий (deploy key) — не твой личный
+ключ и не токен с доступом ко всем репозиториям.
+
+**На сервере** — сгенерировать ключ и настроить SSH под GitHub:
 
 ```bash
-# на локальной машине, из корня проекта
-# якорь "./" обязателен — без него --exclude='storage' срежет ещё и
-# src/lib/storage (код), а не только корневую папку с загруженными файлами
-tar --exclude='./node_modules' --exclude='./.next' --exclude='./storage' \
-    --exclude='./.env' --exclude='./.git' -czf /tmp/smartfollow.tar.gz .
-scp /tmp/smartfollow.tar.gz root@IP_СЕРВЕРА:/tmp/smartfollow.tar.gz
-ssh root@IP_СЕРВЕРА "tar --no-same-owner -xzf /tmp/smartfollow.tar.gz -C /srv/smartfollow && chown -R root:root /srv/smartfollow && rm /tmp/smartfollow.tar.gz"
+ssh-keygen -t ed25519 -f /root/.ssh/smartfollow_deploy -N ""
+cat /root/.ssh/smartfollow_deploy.pub   # скопировать вывод
 ```
+
+Добавить скопированный публичный ключ в GitHub: репозиторий →
+Settings → Deploy keys → Add deploy key (галку "Allow write access"
+**не** ставить — серверу достаточно только читать).
+
+```bash
+cat >> /root/.ssh/config <<'EOF'
+Host github-smartfollow
+    HostName github.com
+    User git
+    IdentityFile /root/.ssh/smartfollow_deploy
+    IdentitiesOnly yes
+EOF
+chmod 600 /root/.ssh/config
+```
+
+Клонировать репозиторий:
+
+```bash
+git clone github-smartfollow:gzharkow/Smartis.Flite.git /srv/smartfollow
+```
+
+> Если на сервере уже есть старый tar-деплой в `/srv/smartfollow`
+> (без git) — сначала сохрани `.env`, перенеси старый каталог в сторону
+> и клонируй в чистый `/srv/smartfollow`:
+> ```bash
+> cp /srv/smartfollow/.env /root/smartfollow.env.bak
+> mv /srv/smartfollow /srv/smartfollow.old-tar-deploy
+> git clone github-smartfollow:gzharkow/Smartis.Flite.git /srv/smartfollow
+> cp /root/smartfollow.env.bak /srv/smartfollow/.env
+> ```
+> `/srv/smartfollow.old-tar-deploy` можно удалить после того, как
+> убедишься, что сервис поднялся на новой git-версии.
 
 Дальше шаги 5–6 — уже на сервере, `cd /srv/smartfollow`.
 
 ## 5. Настройка окружения
 
-Файл `.env` не входит в архив (см. `--exclude` выше) — создаётся на
+Файл `.env` в git не попадает (см. `.gitignore`) — создаётся на
 сервере один раз и дальше не трогается редеплоями:
 
 ```bash
@@ -142,7 +176,7 @@ npm run build
 
 `prisma migrate deploy` — не `migrate dev`: он не создаёт новых миграций
 и не задаёт вопросов, только применяет то, что уже есть в `prisma/migrations/`
-(это то, что накопилось за разработку и приехало в архиве с шага 4).
+(это то, что накопилось за разработку и приехало с git-клоном на шаге 4).
 
 ## 7. systemd-сервис
 
@@ -206,27 +240,29 @@ ufw enable
 
 ## Повторный деплой (когда есть новый код)
 
-Запускается **с локальной машины**, не на сервере:
+Обычный порядок работы: на локальной машине правишь код, коммитишь,
+пушишь в `main` на GitHub — и только после этого деплоишь:
 
 ```bash
+git push origin main
+
 chmod +x deploy/deploy.sh   # один раз
 ./deploy/deploy.sh root@IP_СЕРВЕРА
 ```
 
-Скрипт паковает проект в архив (исключая корневые `node_modules`, `.next`,
-`storage`, `.env` — именно корневые, не `src/lib/storage`), заливает его по `scp`, распаковывает поверх
-`/srv/smartfollow` на сервере и там же выполняет `npm ci`, `prisma
-generate`, `prisma migrate deploy`, `npm run build`,
-`systemctl restart smartfollow` — по порядку, останавливаясь на первой
-ошибке. `.env` и `storage` не в архиве — редеплой их не трогает
-(владельца файла возвращает на `root:smartfollow` 640 отдельным
-шагом — иначе `chown -R root:root` после распаковки заодно откатывал
-бы группу и на `.env`, и Next.js переставал бы его открывать).
+Скрипт заходит на сервер по SSH и там выполняет `git fetch origin` +
+`git reset --hard origin/main`, затем `npm ci`, `prisma generate`,
+`prisma migrate deploy`, `npm run build`, `systemctl restart
+smartfollow` — по порядку, останавливаясь на первой ошибке. `.env` в
+git не попадает (см. `.gitignore`), `git reset --hard` его не
+трогает; `storage/` живёт вне `/srv/smartfollow`
+(`/var/lib/smartfollow/storage`) и деплоя вообще не касается.
 
 Первый аргумент — адрес сервера в формате `пользователь@IP` (в
 примерах выше — `root@IP_СЕРВЕРА`, как и остальная инструкция).
 Второй необязательный аргумент — путь на сервере, если называл каталог
-не `/srv/smartfollow`.
+не `/srv/smartfollow`. Третий необязательный аргумент — ветка, если
+нужно задеплоить не `main`.
 
 ## Резервные копии
 
@@ -246,12 +282,9 @@ generate`, `prisma migrate deploy`, `npm run build`,
   только `prisma migrate deploy` (применяет готовые, не создаёт новых).
 - Локально Turbopack/`next dev` пересобирает на лету; на сервере — `next build`
   один раз при деплое, дальше `next start` отдаёт готовую сборку.
-- `src/generated/prisma` собирается генератором Prisma и не входит в архив
-  деплоя (см. `.gitignore` — исключён по той же логике, что и из git) —
-  `prisma generate` обязателен на сервере после каждого `npm ci`.
-- **`tar` при редеплое только добавляет и перезаписывает файлы, не удаляет.**
-  Если файл убрали локально (например, сменили шрифт или картинку в
-  `public/`), на сервере старый файл останется мёртвым грузом — сам не
-  пропадёт. Не страшно для работы приложения (просто неиспользуемые байты),
-  но раз в несколько деплоев стоит вручную сверить `public/` на сервере
-  с локальной версией и убрать лишнее.
+- `src/generated/prisma` собирается генератором Prisma и в git не входит
+  (см. `.gitignore`) — `prisma generate` обязателен на сервере после
+  каждого `npm ci`.
+- `git reset --hard origin/main` корректно удаляет на сервере файлы,
+  убранные из репозитория локально (в отличие от старой tar-схемы) —
+  отдельно синхронизировать `public/` вручную больше не нужно.
