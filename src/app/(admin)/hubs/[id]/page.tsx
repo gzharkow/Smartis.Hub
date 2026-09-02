@@ -3,7 +3,7 @@ import { requireUser } from "@/lib/auth";
 import { notFound } from "next/navigation";
 import { hasEdit } from "@/lib/permissions";
 import { db } from "@/lib/db";
-import { formatFileSize, KIND_LABELS } from "@/lib/assets";
+import { formatFileSize, isSpecAsset, KIND_LABELS } from "@/lib/assets";
 import { parseContactMethods } from "@/lib/contact-methods";
 import { HubSettingsForm } from "./hub-settings-form";
 import { HubMaterials } from "./hub-materials";
@@ -108,9 +108,15 @@ export default async function HubPage({
 
   // КП калькулятора (Asset.quoteId заполнен) — не материал: живёт в своём
   // списке под виджетом «Добавить расчёт из Генератора КП», не в «Материалы».
-  // См. комментарий у addQuotePdfToHub в actions/hubs.ts.
+  // См. комментарий у addQuotePdfToHub в actions/hubs.ts. Спецификации
+  // (тоже quoteId, но kind: "DOCUMENT") в хаб вообще не добавляются — они
+  // только для скачивания из «Генератор КП → Спецификации», см. isSpecAsset.
+  // Если такой HubItem всё же существует (унаследован от старой версии,
+  // когда фильтров ещё не было), не показываем его нигде на странице хаба.
   const materialItems = hub.items.filter((i) => i.asset.quoteId === null);
-  const quoteItems = hub.items.filter((i) => i.asset.quoteId !== null);
+  const quoteItems = hub.items.filter(
+    (i) => i.asset.quoteId !== null && !isSpecAsset(i.asset),
+  );
 
   // Только 4 самых используемых по хабам материала — библиотека организации
   // может быть большой, а показывать её целиком в форме хаба незачем: то,
@@ -158,7 +164,9 @@ export default async function HubPage({
                     <PublishToggle
                       hubId={hub.id}
                       published={hub.status === "PUBLISHED"}
-                      itemCount={hub.items.length}
+                      // Не hub.items.length: скрытая от клиента спецификация
+                      // не должна давать хабу опубликоваться «непустым».
+                      itemCount={materialItems.length + quoteItems.length}
                     />
                   </>
                 )}

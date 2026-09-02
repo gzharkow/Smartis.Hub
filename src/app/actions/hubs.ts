@@ -343,6 +343,14 @@ export async function addItemToHub(hubId: string, assetId: string) {
   if (!asset || asset.organizationId !== user.organizationId) {
     throw new Error("Материал не найден.");
   }
+  // КП PDF и Спецификации (quoteId заполнен) добавляются в хаб только
+  // через addQuotePdfToHub — этот action для них недостижим и через
+  // текущий UI (поиск/frequentlyUsed их не отдают), но проверка здесь же
+  // дешева и не даёт этому свойству стать случайной дырой при будущей
+  // правке UI.
+  if (asset.quoteId !== null) {
+    throw new Error("Этот материал нельзя добавить в хаб напрямую.");
+  }
 
   const last = await db.hubItem.findFirst({
     where: { hubId: hub.id },

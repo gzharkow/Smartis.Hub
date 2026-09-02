@@ -4,6 +4,7 @@ import { cache } from "react";
 import { db } from "./db";
 import { parseContactMethods, type ContactMethod } from "./contact-methods";
 import { DEFAULT_BRAND_COLOR } from "./brand-color";
+import { isSpecAsset } from "./asset-formats";
 
 // Разбор клиентской ссылки. Здесь и происходят «живые коллекции»:
 // по токену мы находим ХАБ и читаем его текущее состояние. Ссылка ничего
@@ -75,8 +76,14 @@ export async function resolveShowcase(token: string): Promise<ShowcaseAccess> {
   }
 
   // Материалы, спрятанные в архив, с витрины пропадают — но история
-  // просмотров по ним остаётся, см. Asset.archivedAt.
-  const items = link.hub.items.filter((item) => item.asset.archivedAt === null);
+  // просмотров по ним остаётся, см. Asset.archivedAt. Спецификация
+  // (isSpecAsset) в хаб не добавляется никогда — но если такой HubItem
+  // всё же есть (унаследован от старой версии без этого фильтра), клиент
+  // не должен её увидеть: это снимок расчёта для скачивания из «Генератор
+  // КП → Спецификации», а не материал подборки.
+  const items = link.hub.items.filter(
+    (item) => item.asset.archivedAt === null && !isSpecAsset(item.asset),
+  );
 
   return { ok: true, data: { ...link, hub: { ...link.hub, items } } };
 }

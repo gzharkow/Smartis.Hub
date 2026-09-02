@@ -109,6 +109,17 @@ export const KIND_TINTS: Record<AssetKind, string> = {
 
 const SIZE_UNITS = ["Б", "КБ", "МБ", "ГБ"];
 
+/**
+ * Спецификация (DOCX-снимок расчёта, см. finalizeQuoteSpec в
+ * actions/quote-spec.ts) — не материал и не КП: существует только для
+ * повторного скачивания из «Генератор КП → Спецификации», в хабы её
+ * никогда не добавляют. От PDF-расчёта (тоже quoteId, но kind: "PDF",
+ * см. addQuotePdfToHub) отличаем по kind — тот в хабе законно виден.
+ */
+export function isSpecAsset(asset: { kind: AssetKind; quoteId: string | null }): boolean {
+  return asset.kind === "DOCUMENT" && asset.quoteId !== null;
+}
+
 export function formatFileSize(bytes: number): string {
   let value = bytes;
   let unit = 0;
