@@ -2,10 +2,11 @@
 
 import { useState, useTransition } from "react";
 import Link from "next/link";
-import { deleteHubFolder, renameHubFolder } from "@/app/actions/hub-folders";
+import { renameHubFolder } from "@/app/actions/hub-folders";
 import { withPlural, WORDS } from "@/lib/plural";
 import type { ViewMode } from "@/lib/view-mode";
-import { FolderColorPicker } from "./folder-color-picker";
+import { FolderMenu } from "./folder-menu";
+import { FolderShape } from "./folder-shape";
 import { buttonClasses } from "@/components/ui/button";
 
 export type FolderRowData = {
@@ -14,13 +15,6 @@ export type FolderRowData = {
   hubCount: number;
   color: string | null;
 };
-
-// Силуэт папки для режима плитки: один замкнутый контур с «язычком» слева
-// сверху. У навигационной ссылки-оверлея тот же clip-path — иначе можно было
-// бы кликнуть мимо видимого силуэта (в вырезе рядом с язычком) и всё равно
-// попасть в папку.
-const FOLDER_CLIP_PATH =
-  "polygon(6% 0%, 40% 0%, 46% 10%, 100% 10%, 100% 100%, 0% 100%, 0% 10%)";
 
 export function FolderRow({
   folder,
@@ -32,11 +26,14 @@ export function FolderRow({
   /** Право «Изменение» на «Хабы → Папки» — см. hubs/folders/page.tsx. */
   canEdit?: boolean;
 }) {
-  const [mode, setMode] = useState<"view" | "rename" | "confirm">("view");
+  // "confirm" больше не отдельный режим карточки — подтверждение удаления
+  // теперь живёт внутри попапа шестерёнки (см. FolderMenu), а не в потоке.
+  const [mode, setMode] = useState<"view" | "rename">("view");
   const [name, setName] = useState(folder.name);
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
   const grid = view === "grid";
+  const showGear = canEdit && mode === "view";
 
   function save() {
     setError(null);
@@ -79,7 +76,7 @@ export function FolderRow({
         // счётчик и кнопки уходят вниз, иначе имя обрезалось бы почти
         // сразу же, даже у коротких названий.
         className={`truncate font-medium transition group-hover:text-accent ${
-          grid ? "" : "min-w-0 flex-1 basis-full sm:basis-auto"
+          grid ? "block w-full" : "min-w-0 flex-1 basis-full sm:basis-auto"
         }`}
       >
         {folder.name}
@@ -89,124 +86,83 @@ export function FolderRow({
   // Растянутая ссылка: сосед остального содержимого, а не обёртка вокруг
   // него — внутри карточки есть настоящие интерактивные элементы (кнопки,
   // поле ввода), а <button>/<input> внутри <a> невалидны и не работают
-  // предсказуемо. Порядок z-index по всей карточке: 0 (фигура/заливка,
-  // плитка) < 10 (эта ссылка) < 20 (действия) < 30 (шестерёнка/попап цвета).
+  // предсказуемо. Порядок z-index по всей карточке: 10 (эта ссылка) < 20
+  // (иконка/название/счётчик) < 30 (шестерёнка/попап).
   const overlayLink =
     mode === "view" ? (
       <Link
         href={`/hubs/folders/${folder.id}`}
         aria-label={folder.name}
         className="absolute inset-0 z-10"
-        style={grid ? { clipPath: FOLDER_CLIP_PATH } : undefined}
       />
     ) : null;
 
   const errorEl = error ? (
-    <span className="relative text-xs text-danger">{error}</span>
+    <span className="relative z-20 text-xs text-danger">{error}</span>
   ) : null;
 
   const countEl = (
-    <span className="relative shrink-0 text-sm text-muted">
+    <span className="relative z-20 shrink-0 text-sm text-muted">
       {withPlural(folder.hubCount, WORDS.hub)}
     </span>
   );
 
-  const actions =
+  // Сохранить/Отмена при редактировании названия — единственное, что ещё
+  // остаётся кнопками в потоке карточки, всё остальное (цвет, переименовать,
+  // удалить) теперь внутри попапа шестерёнки.
+  const renameActions =
     mode === "rename" ? (
-        <>
-          <button
-            type="button"
-            disabled={pending}
-            onClick={save}
-            className={buttonClasses("link", "sm", "shrink-0")}
-          >
-            {pending ? "…" : "Сохранить"}
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              setName(folder.name);
-              setError(null);
-              setMode("view");
-            }}
-            className={buttonClasses("ghost", "sm", "shrink-0")}
-          >
-            Отмена
-          </button>
-        </>
-      ) : mode === "confirm" ? (
-        // Папка ничем не владеет, поэтому предупреждение мягкое: хабы никуда
-        // не денутся, просто окажутся вне папок.
-        <>
-          <span className="text-xs text-muted">
-            {folder.hubCount > 0
-              ? "Хабы останутся, но окажутся без папки"
-              : "Удалить папку?"}
-          </span>
-          <button
-            type="button"
-            disabled={pending}
-            onClick={() => startTransition(() => deleteHubFolder(folder.id))}
-            className={buttonClasses("danger", "sm", "shrink-0")}
-          >
-            {pending ? "…" : "Удалить"}
-          </button>
-          <button
-            type="button"
-            onClick={() => setMode("view")}
-            className={buttonClasses("ghost", "sm", "shrink-0")}
-          >
-            Отмена
-          </button>
-        </>
-      ) : canEdit ? (
-        <>
-          <button
-            type="button"
-            onClick={() => setMode("rename")}
-            className={buttonClasses("ghost", "sm", "shrink-0")}
-          >
-            Переименовать
-          </button>
-          <button
-            type="button"
-            onClick={() => setMode("confirm")}
-            className={buttonClasses("ghostDanger", "sm", "shrink-0")}
-          >
-            Удалить
-          </button>
-        </>
-      ) : null;
+      <>
+        <button
+          type="button"
+          disabled={pending}
+          onClick={save}
+          className={buttonClasses("link", "sm", "shrink-0")}
+        >
+          {pending ? "…" : "Сохранить"}
+        </button>
+        <button
+          type="button"
+          onClick={() => {
+            setName(folder.name);
+            setError(null);
+            setMode("view");
+          }}
+          className={buttonClasses("ghost", "sm", "shrink-0")}
+        >
+          Отмена
+        </button>
+      </>
+    ) : null;
 
   if (grid) {
-    const tint = folder.color ? `${folder.color}20` : "var(--surface)";
-    const accent = folder.color ?? "var(--border)";
-    const showGear = canEdit && mode === "view";
-
     return (
-      <li className="group relative flex h-full flex-col gap-2 px-4 py-3">
-        {/* Форма и цвет — отдельный слой позади содержимого (отрицательный
-            z-index), а не сам <li>: overflow-hidden на карточке сломал бы
-            попап выбора цвета, которому нужно выходить за её пределы. */}
-        <div
-          aria-hidden="true"
-          className="absolute inset-0 -z-10 border"
-          style={{ clipPath: FOLDER_CLIP_PATH, backgroundColor: tint, borderColor: accent }}
-        />
+      <li className="group relative flex flex-col items-center gap-1 px-1 py-2 text-center">
         {overlayLink}
-        {showGear ? (
-          <FolderColorPicker
-            folderId={folder.id}
-            color={folder.color}
-            className="absolute top-2 right-2 z-30"
-          />
-        ) : null}
-        <div className="relative mt-2 mr-7">{nameEl}</div>
+        {/* Иконка — как в Finder/Проводнике: небольшая, по центру, а не
+            подложка на всю карточку. Шестерёнка лежит на ней, но видна
+            только при наведении/фокусе. */}
+        <div className="relative">
+          <FolderShape color={folder.color} className="aspect-[5/4] w-20" />
+          {showGear ? (
+            <FolderMenu
+              folderId={folder.id}
+              color={folder.color}
+              hubCount={folder.hubCount}
+              canEdit={canEdit}
+              onRename={() => setMode("rename")}
+              className="absolute -top-1.5 -right-1.5 z-30 opacity-0 transition group-hover:opacity-100 group-focus-within:opacity-100"
+            />
+          ) : null}
+        </div>
+        <div className="relative z-20 mt-1 w-full">{nameEl}</div>
         {errorEl}
         {countEl}
-        <div className="relative z-20 mt-auto flex flex-wrap items-center gap-2 pt-1">
-          {actions}
-        </div>
+        {renameActions ? (
+          <div className="relative z-20 flex flex-wrap items-center justify-center gap-2 pt-1">
+            {renameActions}
+          </div>
+        ) : null}
       </li>
     );
   }
@@ -214,12 +170,21 @@ export function FolderRow({
   return (
     <li className="group relative flex flex-wrap items-center gap-3 rounded-xl border border-border bg-surface px-4 py-3">
       {overlayLink}
+      <FolderShape color={folder.color} className="aspect-[5/4] w-10 shrink-0" />
       {nameEl}
       {errorEl}
       {countEl}
-      <div className="relative z-20 flex flex-wrap items-center gap-2">
-        {actions}
-      </div>
+      {renameActions}
+      {showGear ? (
+        <FolderMenu
+          folderId={folder.id}
+          color={folder.color}
+          hubCount={folder.hubCount}
+          canEdit={canEdit}
+          onRename={() => setMode("rename")}
+          className="relative z-30 shrink-0"
+        />
+      ) : null}
     </li>
   );
 }

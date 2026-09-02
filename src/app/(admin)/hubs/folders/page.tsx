@@ -2,13 +2,7 @@ import { cookies } from "next/headers";
 import { requireUser } from "@/lib/auth";
 import { hasEdit } from "@/lib/permissions";
 import { db } from "@/lib/db";
-import { withPlural, WORDS } from "@/lib/plural";
-import {
-  parseViewMode,
-  VIEW_COOKIE,
-  VIEW_GRID_CLASS,
-  VIEW_LIST_CLASS,
-} from "@/lib/view-mode";
+import { parseViewMode, VIEW_COOKIE, VIEW_LIST_CLASS } from "@/lib/view-mode";
 import { ViewToggle } from "@/components/view-toggle";
 import { HubTabs } from "../hub-tabs";
 import { CreateFolderForm } from "./create-folder-form";
@@ -16,6 +10,12 @@ import { FolderRow } from "./folder-row";
 import { PageHeader } from "@/components/ui/page-header";
 
 export const dynamic = "force-dynamic";
+
+// Своя, более плотная сетка (не общая VIEW_GRID_CLASS): плитка папки —
+// маленькая иконка с подписью, а не насыщенная карточка хаба, поэтому даже
+// на экране телефона в ряд помещается две, а не одна.
+const FOLDERS_GRID_CLASS =
+  "grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 2xl:grid-cols-6";
 
 export default async function FoldersPage() {
   const user = await requireUser();
@@ -31,14 +31,6 @@ export default async function FoldersPage() {
       },
     },
     orderBy: { name: "asc" },
-  });
-
-  const looseCount = await db.hub.count({
-    where: {
-      organizationId: user.organizationId,
-      status: { not: "ARCHIVED" },
-      folderId: null,
-    },
   });
 
   const canEdit = hasEdit(user, "hubs.folders");
@@ -66,7 +58,7 @@ export default async function FoldersPage() {
           </p>
         </div>
       ) : (
-        <ul className={view === "grid" ? VIEW_GRID_CLASS : VIEW_LIST_CLASS}>
+        <ul className={view === "grid" ? FOLDERS_GRID_CLASS : VIEW_LIST_CLASS}>
           {folders.map((folder) => (
             <FolderRow
               key={folder.id}
@@ -82,13 +74,6 @@ export default async function FoldersPage() {
           ))}
         </ul>
       )}
-
-      {looseCount > 0 ? (
-        <p className="mt-4 text-sm text-muted">
-          Вне папок — {withPlural(looseCount, WORDS.hub)}. Папка выбирается на
-          странице самого хаба.
-        </p>
-      ) : null}
     </div>
   );
 }
