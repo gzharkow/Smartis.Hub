@@ -2,23 +2,34 @@
 
 import { useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { addQuotePdfToHub } from "@/app/actions/hubs";
+import { addQuotePdfToHub, removeItemFromHub } from "@/app/actions/hubs";
 import { backfillThumbnail } from "@/lib/backfill-thumbnail";
 import { fieldClasses } from "@/components/ui/field";
 import { buttonClasses } from "@/components/ui/button";
 
 type QuoteOption = { id: string; clientName: string };
 
+/** Уже добавленный в хаб КП — id здесь это HubItem.id, не Quote.id. */
+type AddedQuoteItem = { id: string; title: string; meta: string };
+
 const DEBOUNCE_MS = 250;
 
 /**
- * Добавление PDF расчёта из «Генератора КП» прямо в материалы хаба — строка
- * поиска только по названиям клиентов КП, а под ней сразу видно последние
- * 3 расчёта, чтобы не набирать текст ради того, что и так свежее всего.
- * Каждое нажатие «Добавить» генерирует PDF заново и кладёт его снимком
- * в библиотеку — см. addQuotePdfToHub в actions/hubs.ts.
+ * Добавление PDF расчёта из «Генератора КП» в хаб — отдельно от «Материалы»
+ * (КП не материал, см. quoteId в hubs.ts/addQuotePdfToHub). Строка поиска
+ * только по названиям клиентов КП, а под ней сразу видно последние 3 расчёта,
+ * чтобы не набирать текст ради того, что и так свежее всего. Каждое нажатие
+ * «Добавить» генерирует PDF заново и кладёт его снимком в библиотеку — см.
+ * addQuotePdfToHub в actions/hubs.ts. Уже добавленные в этот хаб КП показаны
+ * своим списком «В хабе» — тем же паттерном, что и материалы в HubMaterials.
  */
-export function HubQuotePicker({ hubId }: { hubId: string }) {
+export function HubQuotePicker({
+  hubId,
+  items,
+}: {
+  hubId: string;
+  items: AddedQuoteItem[];
+}) {
   const router = useRouter();
   const [query, setQuery] = useState("");
   const [quotes, setQuotes] = useState<QuoteOption[]>([]);
@@ -87,6 +98,39 @@ export function HubQuotePicker({ hubId }: { hubId: string }) {
 
   return (
     <div className="rounded-lg border border-border p-3">
+      <div className="mb-3">
+        <h3 className="mb-1.5 text-xs font-medium text-muted">
+          В хабе — {items.length}
+        </h3>
+        {items.length === 0 ? null : (
+          <ul className="grid grid-cols-1 gap-2">
+            {items.map((item) => (
+              <li
+                key={item.id}
+                className="flex flex-wrap items-center gap-3 rounded-lg border border-border bg-surface px-3 py-2"
+              >
+                <span className="min-w-0 flex-1 truncate text-sm">
+                  {item.title}
+                </span>
+                <span className="hidden shrink-0 text-xs text-muted sm:inline">
+                  {item.meta}
+                </span>
+                <button
+                  type="button"
+                  disabled={pending}
+                  onClick={() =>
+                    startTransition(() => removeItemFromHub(hubId, item.id))
+                  }
+                  className={buttonClasses("ghostDanger", "sm")}
+                >
+                  Убрать
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+
       <label className="grid gap-1.5">
         <span className="text-xs font-medium text-muted">
           Поиск по расчётам (Генератор КП)

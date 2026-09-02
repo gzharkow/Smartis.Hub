@@ -106,6 +106,12 @@ export default async function HubPage({
 
   const usedAssetIds = new Set(hub.items.map((i) => i.assetId));
 
+  // КП калькулятора (Asset.quoteId заполнен) — не материал: живёт в своём
+  // списке под виджетом «Добавить расчёт из Генератора КП», не в «Материалы».
+  // См. комментарий у addQuotePdfToHub в actions/hubs.ts.
+  const materialItems = hub.items.filter((i) => i.asset.quoteId === null);
+  const quoteItems = hub.items.filter((i) => i.asset.quoteId !== null);
+
   // Только 4 самых используемых по хабам материала — библиотека организации
   // может быть большой, а показывать её целиком в форме хаба незачем: то,
   // что ищут реже, найдётся через поиск ниже (см. HubMaterials/assets/search).
@@ -207,7 +213,7 @@ export default async function HubPage({
         <div className="mt-4">
           <HubMaterials
             hubId={hub.id}
-            items={hub.items.map((item) => ({
+            items={materialItems.map((item) => ({
               id: item.id,
               assetId: item.assetId,
               title: item.titleOverride ?? item.asset.title,
@@ -243,7 +249,14 @@ export default async function HubPage({
             Добавить расчёт из Генератора КП
           </summary>
           <div className="mt-4">
-            <HubQuotePicker hubId={hub.id} />
+            <HubQuotePicker
+              hubId={hub.id}
+              items={quoteItems.map((item) => ({
+                id: item.id,
+                title: item.titleOverride ?? item.asset.title,
+                meta: metaOf(item.asset),
+              }))}
+            />
           </div>
         </details>
       ) : null}
