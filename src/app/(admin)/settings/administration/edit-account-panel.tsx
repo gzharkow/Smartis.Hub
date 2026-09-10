@@ -102,7 +102,7 @@ export function EditAccountPanel({
                     checked={canAddAssets}
                     onChange={(e) => setCanAddAssets(e.target.checked)}
                   />
-                  Разрешить добавление материалов в библиотеку
+                  Разрешить добавление, изменение и удаление материалов
                 </label>
               ) : null}
               {canAccessAssets ? (
@@ -136,9 +136,7 @@ export function EditAccountPanel({
               />
             </div>
             <p className="text-xs text-muted">
-              Закрытый раздел не отображается в меню, и попасть в него нельзя. Переименование и
-              удаление материалов всё равно останутся недоступны — это может только
-              администратор.
+              Закрытый раздел не отображается в меню, и попасть в него нельзя.
             </p>
           </div>
 

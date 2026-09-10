@@ -6,9 +6,11 @@ import type { CurrentUser } from "./auth";
 // осям: canAccessSection (виден ли раздел целиком — настраивается при
 // создании/правке аккаунта в администрировании, см. User.canAccessHubs и
 // соседние поля) и hasEdit (внутри видимого раздела — можно ли менять).
-// Внутри раздела «Материалы» переименование/удаление/перенос — только
-// ADMIN, а добавление — по отдельному флагу User.canAddAssets, который
-// имеет смысл только при canAccessAssets = true (см. canAddMaterials).
+// Внутри раздела «Материалы» и добавление, и переименование/удаление/
+// перенос/замена файла даёт один и тот же флаг User.canAddAssets (имеет
+// смысл только при canAccessAssets = true) — см. canAddMaterials, на
+// которую hasEdit для "assets*" опирается напрямую, чтобы эти два права
+// не могли разъехаться.
 // «Настройки → Администрирование» сюда не входит — она доступна только
 // role = ADMIN, жёстко, см. requireAdmin() в auth.ts. «Настройки» целиком
 // галочки доступа не имеют — открыты любому вошедшему, независимо от
@@ -31,11 +33,13 @@ export function canAccessSection(user: CurrentUser, section: SectionKey): boolea
 }
 
 export function hasEdit(user: CurrentUser, sectionKey: string): boolean {
-  if (sectionKey.startsWith("assets")) return user.role === "ADMIN";
+  if (sectionKey.startsWith("assets")) return canAddMaterials(user);
   return true;
 }
 
-/** Право добавлять материалы в библиотеку — отдельное от hasEdit (см. выше). */
+/** Право на материалы библиотеки — и добавлять, и менять существующие
+ * (переименование, удаление, перенос, замена файла). Одно право на оба
+ * действия: см. комментарий в hasEdit выше. */
 export function canAddMaterials(user: CurrentUser): boolean {
   return user.role === "ADMIN" || user.canAddAssets === true;
 }

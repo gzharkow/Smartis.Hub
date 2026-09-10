@@ -70,7 +70,7 @@ export function AccountsTable({
                   {account.role === "ADMIN"
                     ? "Администратор"
                     : account.canAddAssets
-                      ? "Обычный пользователь (может добавлять материалы)"
+                      ? "Обычный пользователь (полный доступ к материалам)"
                       : "Обычный пользователь"}
                   {account.role === "MEMBER" && hasLimitedAccess(account)
                     ? " · ограниченный доступ"
