@@ -4,7 +4,7 @@ import { z } from "zod";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { requireUser } from "@/lib/auth";
-import { hasEdit } from "@/lib/permissions";
+import { canAccessSection, hasEdit } from "@/lib/permissions";
 import { db } from "@/lib/db";
 
 // Каждое действие проверяет вход и владение само — как в actions/hubs.ts:
@@ -14,7 +14,7 @@ import { db } from "@/lib/db";
 // auth-инвариант (org + owner/admin, "не найден" вместо "нет доступа").
 export async function ownedQuote(quoteId: string) {
   const user = await requireUser();
-  if (!hasEdit(user, "calculator")) {
+  if (!canAccessSection(user, "calculator") || !hasEdit(user, "calculator")) {
     throw new Error("Недостаточно прав.");
   }
 
@@ -156,7 +156,7 @@ export async function createQuote(
   formData: FormData,
 ): Promise<CreateQuoteState> {
   const user = await requireUser();
-  if (!hasEdit(user, "calculator")) {
+  if (!canAccessSection(user, "calculator") || !hasEdit(user, "calculator")) {
     return { error: "Недостаточно прав." };
   }
 

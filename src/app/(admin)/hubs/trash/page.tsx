@@ -1,5 +1,5 @@
 import { cookies } from "next/headers";
-import { requireUser } from "@/lib/auth";
+import { requireSection } from "@/lib/auth";
 import { hasEdit, showsOtherOwners, visibleOwnerFilter } from "@/lib/permissions";
 import { db } from "@/lib/db";
 import { daysLeft, purgeExpiredHubs, TRASH_DAYS } from "@/lib/hub-trash";
@@ -18,7 +18,7 @@ import { PageHeader } from "@/components/ui/page-header";
 export const dynamic = "force-dynamic";
 
 export default async function TrashPage() {
-  const user = await requireUser();
+  const user = await requireSection("hubs");
   const view = parseViewMode((await cookies()).get(VIEW_COOKIE)?.value);
 
   // Уборка просроченного — здесь, при открытии раздела. Настоящее место для

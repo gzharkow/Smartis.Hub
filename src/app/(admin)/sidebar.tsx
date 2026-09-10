@@ -72,13 +72,18 @@ function remember(name: string, value: string) {
  *
  * Cookie служебные — это лишь настройки вида, ничего личного в них нет.
  */
+type SectionAccess = { hubs: boolean; assets: boolean; stats: boolean; calculator: boolean };
+
 export function Sidebar({
   initialCollapsed,
   initialShut,
+  access,
 }: {
   initialCollapsed: boolean;
   /** Разделы, у которых подразделы свёрнуты. */
   initialShut: string[];
+  /** Какие разделы видны этому аккаунту (см. (admin)/layout.tsx). */
+  access: SectionAccess;
 }) {
   const [collapsed, setCollapsed] = useState(initialCollapsed);
   const [shut, setShut] = useState<string[]>(initialShut);
@@ -163,7 +168,7 @@ export function Sidebar({
       </div>
 
       <nav className="flex flex-1 flex-col gap-0.5 overflow-y-auto p-2">
-        {GROUPS.map((group) => (
+        {GROUPS.filter((group) => access[group.key as keyof SectionAccess]).map((group) => (
           <NavGroup
             key={group.key}
             href={group.href}
@@ -177,12 +182,14 @@ export function Sidebar({
         ))}
 
         {/* У статистики подразделов нет — стрелка ей не нужна. */}
-        <NavLink
-          href="/stats"
-          label="Статистика"
-          icon={<StatsIcon />}
-          collapsed={collapsed}
-        />
+        {access.stats ? (
+          <NavLink
+            href="/stats"
+            label="Статистика"
+            icon={<StatsIcon />}
+            collapsed={collapsed}
+          />
+        ) : null}
 
         {/* Раздел /settings открыт любому вошедшему (подраздел «Общие» —
             тема/аккаунт/смена пароля); «Администрирование» внутри него

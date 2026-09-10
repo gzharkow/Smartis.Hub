@@ -104,7 +104,9 @@ function BottomTabButton({
  * дублировать её здесь незачем. У Генератора КП такая же навигация
  * (CalculatorTabs) заведена отдельно вместе с этой задачей.
  */
-export function BottomNav() {
+type SectionAccess = { hubs: boolean; assets: boolean; stats: boolean; calculator: boolean };
+
+export function BottomNav({ access }: { access: SectionAccess }) {
   const [panel, setPanel] = useState<"search" | null>(null);
 
   return (
@@ -142,13 +144,15 @@ export function BottomNav() {
           onClick={() => setPanel("search")}
         />
 
-        <BottomTabLink
-          href="/stats"
-          label="Статистика"
-          icon={<StatsIcon size="lg" />}
-        />
+        {access.stats ? (
+          <BottomTabLink
+            href="/stats"
+            label="Статистика"
+            icon={<StatsIcon size="lg" />}
+          />
+        ) : null}
 
-        {ROUTE_TABS.map(({ key, ...tab }) => (
+        {ROUTE_TABS.filter(({ key }) => access[key as keyof SectionAccess]).map(({ key, ...tab }) => (
           <BottomTabLink key={key} {...tab} />
         ))}
       </nav>

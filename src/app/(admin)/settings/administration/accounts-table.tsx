@@ -11,10 +11,25 @@ export type AccountRow = {
   email: string;
   name: string | null;
   role: "ADMIN" | "MEMBER";
+  canAccessHubs: boolean;
+  canAccessAssets: boolean;
+  canAccessStats: boolean;
+  canAccessCalculator: boolean;
   canAddAssets: boolean;
   visibleOwnerIds: string[];
   createdLabel: string;
 };
+
+/** Ограничен ли доступ хоть по одному разделу — для короткой приписки в
+ * сводке строки (полный список разделов туда не выносим, см. форму). */
+function hasLimitedAccess(account: AccountRow): boolean {
+  return (
+    !account.canAccessHubs ||
+    !account.canAccessAssets ||
+    !account.canAccessStats ||
+    !account.canAccessCalculator
+  );
+}
 
 const SUPERADMIN_EMAIL = "admin@smartfollow.local";
 
@@ -56,7 +71,10 @@ export function AccountsTable({
                     ? "Администратор"
                     : account.canAddAssets
                       ? "Обычный пользователь (может добавлять материалы)"
-                      : "Обычный пользователь"}{" "}
+                      : "Обычный пользователь"}
+                  {account.role === "MEMBER" && hasLimitedAccess(account)
+                    ? " · ограниченный доступ"
+                    : ""}{" "}
                   · {account.createdLabel}
                 </p>
               </div>

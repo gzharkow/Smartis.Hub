@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
-import { canAddMaterials } from "@/lib/permissions";
+import { canAccessSection, canAddMaterials } from "@/lib/permissions";
 import { db } from "@/lib/db";
 import { storage, storageKeys } from "@/lib/storage";
 import { readPdfPageCount } from "@/lib/assets";
@@ -19,6 +19,9 @@ export async function POST(request: Request) {
   const user = await getCurrentUser();
   if (!user) {
     return NextResponse.json({ error: "Нужно войти." }, { status: 401 });
+  }
+  if (!canAccessSection(user, "assets")) {
+    return NextResponse.json({ error: "Недостаточно прав." }, { status: 403 });
   }
 
   const form = await request.formData();

@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { cookies } from "next/headers";
 import { requireUser } from "@/lib/auth";
+import { canAccessSection } from "@/lib/permissions";
 import { parseTheme, THEME_COLORS, THEME_COOKIE } from "@/lib/theme";
 import { NAV_COOKIE, NAV_SHUT_COOKIE } from "./nav-cookie";
 import { Sidebar } from "./sidebar";
@@ -64,6 +65,16 @@ export default async function AdminLayout({
 }) {
   const user = await requireUser();
 
+  // Какие пункты меню показывать этому аккаунту — считаем один раз здесь
+  // и раздаём и Sidebar, и BottomNav пропом, а не заставляем каждый из них
+  // заново читать пользователя.
+  const access = {
+    hubs: canAccessSection(user, "hubs"),
+    assets: canAccessSection(user, "assets"),
+    stats: canAccessSection(user, "stats"),
+    calculator: canAccessSection(user, "calculator"),
+  };
+
   // Читаем на сервере, чтобы страница сразу пришла в нужном виде — иначе
   // меню схлопывалось бы на глазах при каждом открытии.
   const jar = await cookies();
@@ -90,7 +101,7 @@ export default async function AdminLayout({
             составным условием убирает элемент целиком. На десктопе и в
             обычной вкладке браузера ничего не меняется. */}
         <div className="contents standalone:max-md:hidden">
-          <Sidebar initialCollapsed={collapsed} initialShut={shut} />
+          <Sidebar initialCollapsed={collapsed} initialShut={shut} access={access} />
         </div>
 
         <div className="flex min-w-0 flex-1 flex-col">
@@ -109,7 +120,7 @@ export default async function AdminLayout({
       </div>
 
       <PullToRefresh />
-      <BottomNav />
+      <BottomNav access={access} />
     </>
   );
 }

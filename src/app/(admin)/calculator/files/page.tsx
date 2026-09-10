@@ -1,5 +1,5 @@
 import { hasEdit, showsOtherOwners, visibleOwnerFilter } from "@/lib/permissions";
-import { requireUser } from "@/lib/auth";
+import { requireSection } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { formatFileSize } from "@/lib/assets";
 import { formatHubCreated } from "@/lib/hub-format";
@@ -20,7 +20,7 @@ export const dynamic = "force-dynamic";
 // предпросмотр, а не расчёт).
 
 export default async function CalculatorFilesPage() {
-  const user = await requireUser();
+  const user = await requireSection("calculator");
 
   const files = await db.asset.findMany({
     where: {

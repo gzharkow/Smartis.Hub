@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { requireUser } from "@/lib/auth";
+import { requireSection } from "@/lib/auth";
 import { notFound } from "next/navigation";
 import { hasEdit } from "@/lib/permissions";
 import { db } from "@/lib/db";
@@ -66,7 +66,7 @@ export default async function HubPage({
 }) {
   const { id } = await params;
   const { from } = await searchParams;
-  const user = await requireUser();
+  const user = await requireSection("hubs");
 
   const hub = await db.hub.findUnique({
     where: { id },

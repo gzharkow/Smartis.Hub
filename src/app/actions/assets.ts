@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { requireUser } from "@/lib/auth";
-import { canAddMaterials, hasEdit } from "@/lib/permissions";
+import { canAccessSection, canAddMaterials, hasEdit } from "@/lib/permissions";
 import { db } from "@/lib/db";
 import { parseSection, permissionKeyForSection } from "@/lib/asset-sections";
 import { checkLink, downloadLinkImage } from "@/lib/link-check";
@@ -65,6 +65,9 @@ async function ownedAsset(assetId: string) {
   const permissionKey = asset.quoteId
     ? "calculator.files"
     : permissionKeyForSection(asset.section);
+  if (!canAccessSection(user, asset.quoteId ? "calculator" : "assets")) {
+    throw new Error("Материал не найден.");
+  }
   if (!hasEdit(user, permissionKey)) {
     throw new Error("Недостаточно прав.");
   }
@@ -159,6 +162,9 @@ export async function addLinkAsset(
   formData: FormData,
 ): Promise<AddLinkState> {
   const user = await requireUser();
+  if (!canAccessSection(user, "assets")) {
+    return { error: "Недостаточно прав." };
+  }
 
   const url = String(formData.get("url") ?? "").trim();
   if (!url) return { error: "Введите адрес ссылки." };

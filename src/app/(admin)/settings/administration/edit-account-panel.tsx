@@ -20,6 +20,10 @@ export function EditAccountPanel({
   );
 
   const [role, setRole] = useState<"MEMBER" | "ADMIN">(account.role);
+  const [canAccessHubs, setCanAccessHubs] = useState(account.canAccessHubs);
+  const [canAccessAssets, setCanAccessAssets] = useState(account.canAccessAssets);
+  const [canAccessStats, setCanAccessStats] = useState(account.canAccessStats);
+  const [canAccessCalculator, setCanAccessCalculator] = useState(account.canAccessCalculator);
   const [canAddAssets, setCanAddAssets] = useState(account.canAddAssets);
   const [visibleOwnerIds, setVisibleOwnerIds] = useState<string[]>(account.visibleOwnerIds);
   const [resetPassword, setResetPassword] = useState(false);
@@ -44,7 +48,7 @@ export function EditAccountPanel({
               onChange={() => setRole("MEMBER")}
               className="size-4"
             />
-            Обычный пользователь — доступ как у администратора, кроме материалов
+            Обычный пользователь — доступ к разделам настраивается ниже
           </label>
           <label className="flex items-center gap-2 text-sm">
             <input
@@ -62,20 +66,81 @@ export function EditAccountPanel({
 
       {role === "MEMBER" ? (
         <div className="grid gap-4 rounded-lg border border-border p-4">
-          <label className="flex items-center gap-2 text-sm">
-            <input
-              type="checkbox"
-              className="size-4"
-              checked={canAddAssets}
-              onChange={(e) => setCanAddAssets(e.target.checked)}
-            />
-            Разрешить добавление материалов в библиотеку
-          </label>
-          <input type="hidden" name="canAddAssets" value={canAddAssets ? "1" : "0"} />
-          <p className="text-xs text-muted">
-            Переименование и удаление материалов всё равно останутся недоступны — это может
-            только администратор.
-          </p>
+          <div className="grid gap-1.5">
+            <span className="text-sm">Доступ к разделам</span>
+            <div className="grid gap-2">
+              <label className="flex items-center gap-2 text-sm">
+                <input
+                  type="checkbox"
+                  className="size-4"
+                  checked={canAccessHubs}
+                  onChange={(e) => setCanAccessHubs(e.target.checked)}
+                />
+                Хабы
+              </label>
+              <input type="hidden" name="canAccessHubs" value={canAccessHubs ? "1" : "0"} />
+
+              <label className="flex items-center gap-2 text-sm">
+                <input
+                  type="checkbox"
+                  className="size-4"
+                  checked={canAccessAssets}
+                  onChange={(e) => {
+                    setCanAccessAssets(e.target.checked);
+                    if (!e.target.checked) setCanAddAssets(false);
+                  }}
+                />
+                Материалы
+              </label>
+              <input type="hidden" name="canAccessAssets" value={canAccessAssets ? "1" : "0"} />
+
+              {canAccessAssets ? (
+                <label className="ml-6 flex items-center gap-2 text-sm text-muted">
+                  <input
+                    type="checkbox"
+                    className="size-4"
+                    checked={canAddAssets}
+                    onChange={(e) => setCanAddAssets(e.target.checked)}
+                  />
+                  Разрешить добавление материалов в библиотеку
+                </label>
+              ) : null}
+              {canAccessAssets ? (
+                <input type="hidden" name="canAddAssets" value={canAddAssets ? "1" : "0"} />
+              ) : null}
+
+              <label className="flex items-center gap-2 text-sm">
+                <input
+                  type="checkbox"
+                  className="size-4"
+                  checked={canAccessStats}
+                  onChange={(e) => setCanAccessStats(e.target.checked)}
+                />
+                Статистика
+              </label>
+              <input type="hidden" name="canAccessStats" value={canAccessStats ? "1" : "0"} />
+
+              <label className="flex items-center gap-2 text-sm">
+                <input
+                  type="checkbox"
+                  className="size-4"
+                  checked={canAccessCalculator}
+                  onChange={(e) => setCanAccessCalculator(e.target.checked)}
+                />
+                Генератор КП
+              </label>
+              <input
+                type="hidden"
+                name="canAccessCalculator"
+                value={canAccessCalculator ? "1" : "0"}
+              />
+            </div>
+            <p className="text-xs text-muted">
+              Закрытый раздел не отображается в меню, и попасть в него нельзя. Переименование и
+              удаление материалов всё равно останутся недоступны — это может только
+              администратор.
+            </p>
+          </div>
 
           <AccountVisibilityPicker
             options={otherAccounts}

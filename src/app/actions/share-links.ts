@@ -3,13 +3,13 @@
 import { z } from "zod";
 import { revalidatePath } from "next/cache";
 import { requireUser } from "@/lib/auth";
-import { hasEdit } from "@/lib/permissions";
+import { canAccessSection, hasEdit } from "@/lib/permissions";
 import { db } from "@/lib/db";
 import { newShareToken } from "@/lib/tokens";
 
 async function ownedHub(hubId: string) {
   const user = await requireUser();
-  if (!hasEdit(user, "hubs")) {
+  if (!canAccessSection(user, "hubs") || !hasEdit(user, "hubs")) {
     throw new Error("Недостаточно прав.");
   }
 

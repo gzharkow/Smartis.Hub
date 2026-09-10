@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { requireUser } from "@/lib/auth";
+import { requireSection } from "@/lib/auth";
 import { notFound } from "next/navigation";
 import { db } from "@/lib/db";
 import { formatFileSize } from "@/lib/assets";
@@ -15,7 +15,7 @@ export const dynamic = "force-dynamic";
 
 export default async function SpecPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  await requireUser();
+  await requireSection("calculator");
 
   const loaded = await loadQuoteForSpec(id);
   if (!loaded) notFound();

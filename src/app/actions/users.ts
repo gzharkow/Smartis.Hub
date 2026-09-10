@@ -30,6 +30,31 @@ function parseVisibleOwnerIds(formData: FormData): string[] {
   return formData.getAll("visibleOwnerIds").map(String).filter(Boolean);
 }
 
+/** Доступ по разделам и разрешение добавлять материалы — только для
+ * role = MEMBER (для ADMIN эти поля не проверяются и форсируются в false,
+ * так же как и canAddAssets/visibleOwnerIds ниже). Не доверяем скрытой на
+ * клиенте галочке canAddAssets — форсируем зависимость от canAccessAssets
+ * ещё раз здесь. */
+function parseSectionAccess(formData: FormData, role: "ADMIN" | "MEMBER") {
+  if (role !== "MEMBER") {
+    return {
+      canAccessHubs: false,
+      canAccessAssets: false,
+      canAccessStats: false,
+      canAccessCalculator: false,
+      canAddAssets: false,
+    };
+  }
+  const canAccessAssets = formData.get("canAccessAssets") === "1";
+  return {
+    canAccessHubs: formData.get("canAccessHubs") === "1",
+    canAccessAssets,
+    canAccessStats: formData.get("canAccessStats") === "1",
+    canAccessCalculator: formData.get("canAccessCalculator") === "1",
+    canAddAssets: canAccessAssets && formData.get("canAddAssets") === "1",
+  };
+}
+
 export type CreateAccountState =
   | { error: string }
   | { success: true; email: string; password: string }
@@ -54,7 +79,7 @@ export async function createAccount(
   const role = roleParsed.data;
 
   const name = String(formData.get("name") ?? "").trim() || null;
-  const canAddAssets = role === "MEMBER" && formData.get("canAddAssets") === "1";
+  const sectionAccess = parseSectionAccess(formData, role);
   const visibleOwnerIds = role === "MEMBER" ? parseVisibleOwnerIds(formData) : [];
 
   const password = generatePassword();
@@ -86,7 +111,7 @@ export async function createAccount(
           name,
           passwordHash,
           role,
-          canAddAssets,
+          ...sectionAccess,
           visibleOwners: { connect: visibleOwnerIds.map((id) => ({ id })) },
         },
       });
@@ -120,7 +145,7 @@ export async function updateAccountAccess(
   if (!roleParsed.success) return { error: "Выберите роль." };
   const role = roleParsed.data;
 
-  const canAddAssets = role === "MEMBER" && formData.get("canAddAssets") === "1";
+  const sectionAccess = parseSectionAccess(formData, role);
   const visibleOwnerIds = role === "MEMBER" ? parseVisibleOwnerIds(formData) : [];
 
   const newPasswordRaw = String(formData.get("newPassword") ?? "");
@@ -146,7 +171,7 @@ export async function updateAccountAccess(
         where: { id: userId },
         data: {
           role,
-          canAddAssets,
+          ...sectionAccess,
           // set вместо connect: список видимости — не добавка, а полная замена
           // тем, что отмечено в форме сейчас.
           visibleOwners: { set: visibleOwnerIds.map((id) => ({ id })) },

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
-import { visibleOwnerFilter } from "@/lib/permissions";
+import { canAccessSection, visibleOwnerFilter } from "@/lib/permissions";
 import { db } from "@/lib/db";
 
 // Сквозной поиск для строки в шапке: один запрос — хабы, папки, материалы
@@ -17,55 +17,66 @@ export async function GET(request: Request) {
   const q = new URL(request.url).searchParams.get("q")?.trim() ?? "";
   if (!q) return NextResponse.json({ hubs: [], folders: [], assets: [] });
 
-  // Видимость по разделам здесь больше не проверяется: права стали ролевыми,
-  // и разделы видны всем вошедшим (см. src/lib/permissions.ts). Что именно
-  // видно КОНКРЕТНОМУ человеку, решает visibleOwnerFilter — он остался.
+  // Раздел закрыт индивидуальным флагом — просто не ищем в нём, а не
+  // блокируем весь маршрут: остальные категории поиска всё равно нужны.
+  const canHubs = canAccessSection(user, "hubs");
+  const canAssets = canAccessSection(user, "assets");
+  const canCalculator = canAccessSection(user, "calculator");
+
   const [hubs, folders, assets, quotes] = await Promise.all([
-    db.hub.findMany({
-      where: {
-        organizationId: user.organizationId,
-        // Та же видимость, что и в разделе «Хабы».
-        ...visibleOwnerFilter(user),
-        status: { not: "ARCHIVED" },
-        title: { contains: q, mode: "insensitive" },
-      },
-      select: { id: true, title: true },
-      orderBy: { updatedAt: "desc" },
-      take: TAKE,
-    }),
-    db.hubFolder.findMany({
-      where: {
-        organizationId: user.organizationId,
-        name: { contains: q, mode: "insensitive" },
-      },
-      select: { id: true, name: true },
-      orderBy: { name: "asc" },
-      take: TAKE,
-    }),
-    db.asset.findMany({
-      where: {
-        organizationId: user.organizationId,
-        archivedAt: null,
-        // PDF калькулятора — не материал библиотеки; расчёт, из которого он
-        // сделан, и так находится ниже через db.quote.findMany.
-        quoteId: null,
-        title: { contains: q, mode: "insensitive" },
-      },
-      select: { id: true, title: true, section: true },
-      orderBy: { createdAt: "desc" },
-      take: TAKE,
-    }),
-    db.quote.findMany({
-      where: {
-        organizationId: user.organizationId,
-        // Та же логика видимости, что у хабов.
-        ...visibleOwnerFilter(user),
-        clientName: { contains: q, mode: "insensitive" },
-      },
-      select: { id: true, clientName: true },
-      orderBy: { updatedAt: "desc" },
-      take: TAKE,
-    }),
+    canHubs
+      ? db.hub.findMany({
+          where: {
+            organizationId: user.organizationId,
+            // Та же видимость, что и в разделе «Хабы».
+            ...visibleOwnerFilter(user),
+            status: { not: "ARCHIVED" },
+            title: { contains: q, mode: "insensitive" },
+          },
+          select: { id: true, title: true },
+          orderBy: { updatedAt: "desc" },
+          take: TAKE,
+        })
+      : Promise.resolve([]),
+    canHubs
+      ? db.hubFolder.findMany({
+          where: {
+            organizationId: user.organizationId,
+            name: { contains: q, mode: "insensitive" },
+          },
+          select: { id: true, name: true },
+          orderBy: { name: "asc" },
+          take: TAKE,
+        })
+      : Promise.resolve([]),
+    canAssets
+      ? db.asset.findMany({
+          where: {
+            organizationId: user.organizationId,
+            archivedAt: null,
+            // PDF калькулятора — не материал библиотеки; расчёт, из которого он
+            // сделан, и так находится ниже через db.quote.findMany.
+            quoteId: null,
+            title: { contains: q, mode: "insensitive" },
+          },
+          select: { id: true, title: true, section: true },
+          orderBy: { createdAt: "desc" },
+          take: TAKE,
+        })
+      : Promise.resolve([]),
+    canCalculator
+      ? db.quote.findMany({
+          where: {
+            organizationId: user.organizationId,
+            // Та же логика видимости, что у хабов.
+            ...visibleOwnerFilter(user),
+            clientName: { contains: q, mode: "insensitive" },
+          },
+          select: { id: true, clientName: true },
+          orderBy: { updatedAt: "desc" },
+          take: TAKE,
+        })
+      : Promise.resolve([]),
   ]);
 
   return NextResponse.json({

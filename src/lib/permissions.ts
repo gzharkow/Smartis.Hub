@@ -2,18 +2,33 @@ import "server-only";
 
 import type { CurrentUser } from "./auth";
 
-// Права доступа ролевые, без матрицы по разделам (модель AccessLevel из схемы
-// убрана). MEMBER видит и может менять всё наравне с ADMIN, кроме библиотеки
-// материалов: там переименование/удаление/перенос раздела — только ADMIN,
-// а добавление — по отдельному флагу User.canAddAssets (см. canAddMaterials).
+// ADMIN видит и может менять всё безусловно. MEMBER — по двум независимым
+// осям: canAccessSection (виден ли раздел целиком — настраивается при
+// создании/правке аккаунта в администрировании, см. User.canAccessHubs и
+// соседние поля) и hasEdit (внутри видимого раздела — можно ли менять).
+// Внутри раздела «Материалы» переименование/удаление/перенос — только
+// ADMIN, а добавление — по отдельному флагу User.canAddAssets, который
+// имеет смысл только при canAccessAssets = true (см. canAddMaterials).
 // «Настройки → Администрирование» сюда не входит — она доступна только
-// role = ADMIN, жёстко, см. requireAdmin() в auth.ts.
-//
-// Здесь НЕТ проверки «виден ли раздел»: она была бы `return true` для всех.
-// Страницы разделов открываются обычным requireUser(), меню и вкладки
-// показывают все пункты. Если видимость разделов понадобится снова —
-// заводить её вместе с моделью данных, а не оставлять пустую заглушку,
-// которая выглядит как защита, но ничего не проверяет.
+// role = ADMIN, жёстко, см. requireAdmin() в auth.ts. «Настройки» целиком
+// галочки доступа не имеют — открыты любому вошедшему, независимо от
+// canAccessSection.
+
+export type SectionKey = "hubs" | "assets" | "stats" | "calculator";
+
+const SECTION_FLAG: Record<SectionKey, keyof CurrentUser> = {
+  hubs: "canAccessHubs",
+  assets: "canAccessAssets",
+  stats: "canAccessStats",
+  calculator: "canAccessCalculator",
+};
+
+/** Виден ли раздел целиком. ADMIN — всегда true. MEMBER — по персональному
+ * флагу (см. src/lib/auth.ts requireSection() для блокировки страниц). */
+export function canAccessSection(user: CurrentUser, section: SectionKey): boolean {
+  if (user.role === "ADMIN") return true;
+  return user[SECTION_FLAG[section]] === true;
+}
 
 export function hasEdit(user: CurrentUser, sectionKey: string): boolean {
   if (sectionKey.startsWith("assets")) return user.role === "ADMIN";

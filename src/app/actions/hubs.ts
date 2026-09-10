@@ -5,7 +5,7 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { PDFDocument } from "pdf-lib";
 import { requireUser } from "@/lib/auth";
-import { hasEdit } from "@/lib/permissions";
+import { canAccessSection, hasEdit } from "@/lib/permissions";
 import { db } from "@/lib/db";
 import { isEmptyHtml, sanitizeHtml } from "@/lib/sanitize";
 import { storage, storageKeys } from "@/lib/storage";
@@ -25,7 +25,10 @@ async function ownedHub(hubId: string) {
   const user = await requireUser();
 
   // Единая точка входа для всех мутирующих действий над хабом — проверка
-  // права «Изменение» на раздел «Хабы» достаточно поставить здесь один раз.
+  // прав на раздел «Хабы» достаточно поставить здесь один раз.
+  if (!canAccessSection(user, "hubs")) {
+    throw new Error("Недостаточно прав.");
+  }
   if (!hasEdit(user, "hubs")) {
     throw new Error("Недостаточно прав.");
   }
@@ -54,7 +57,7 @@ export async function createHub(
   formData: FormData,
 ): Promise<CreateHubState> {
   const user = await requireUser();
-  if (!hasEdit(user, "hubs")) {
+  if (!canAccessSection(user, "hubs") || !hasEdit(user, "hubs")) {
     return { error: "Недостаточно прав." };
   }
 

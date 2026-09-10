@@ -1,6 +1,6 @@
 import { cookies } from "next/headers";
 import { notFound } from "next/navigation";
-import { requireUser } from "@/lib/auth";
+import { requireSection } from "@/lib/auth";
 import { canAddMaterials, hasEdit } from "@/lib/permissions";
 import { db } from "@/lib/db";
 import { formatFileSize, KIND_LABELS } from "@/lib/assets";
@@ -32,7 +32,7 @@ export default async function AssetsPage({
 }: {
   params: Promise<{ section?: string[] }>;
 }) {
-  const user = await requireUser();
+  const user = await requireSection("assets");
   const view = parseViewMode((await cookies()).get(VIEW_COOKIE)?.value);
 
   const { section: parts } = await params;

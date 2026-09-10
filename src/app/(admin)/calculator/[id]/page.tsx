@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { requireUser } from "@/lib/auth";
+import { requireSection } from "@/lib/auth";
 import { notFound } from "next/navigation";
 import { hasEdit } from "@/lib/permissions";
 import { db } from "@/lib/db";
@@ -15,7 +15,7 @@ export default async function QuotePage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const user = await requireUser();
+  const user = await requireSection("calculator");
 
   const quote = await db.quote.findUnique({
     where: { id },

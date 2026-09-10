@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { requireUser } from "@/lib/auth";
+import { requireSection } from "@/lib/auth";
 import Decimal from "decimal.js";
 import { cookies } from "next/headers";
 import { hasEdit, showsOtherOwners, visibleOwnerFilter } from "@/lib/permissions";
@@ -20,7 +20,7 @@ import { CalculatorTabs } from "./calculator-tabs";
 import { PageHeader } from "@/components/ui/page-header";
 
 export default async function CalculatorPage() {
-  const user = await requireUser();
+  const user = await requireSection("calculator");
   const jar = await cookies();
   const sort = parseQuoteSort(jar.get(QUOTE_SORT_COOKIE)?.value);
 

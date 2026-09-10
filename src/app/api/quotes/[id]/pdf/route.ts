@@ -1,4 +1,5 @@
 import { getCurrentUser } from "@/lib/auth";
+import { canAccessSection } from "@/lib/permissions";
 import { db } from "@/lib/db";
 import { renderQuotePdf } from "@/lib/quote-pdf";
 
@@ -12,6 +13,9 @@ export async function GET(
 ) {
   const user = await getCurrentUser();
   if (!user) return new Response("Нужно войти", { status: 401 });
+  if (!canAccessSection(user, "calculator")) {
+    return new Response("КП не найден", { status: 404 });
+  }
 
   const { id } = await params;
   const quote = await db.quote.findUnique({

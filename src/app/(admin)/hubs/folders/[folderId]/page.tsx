@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { requireUser } from "@/lib/auth";
+import { requireSection } from "@/lib/auth";
 import { cookies } from "next/headers";
 import { notFound } from "next/navigation";
 import { showsOtherOwners, visibleOwnerFilter } from "@/lib/permissions";
@@ -22,7 +22,7 @@ export default async function FolderPage({
   params: Promise<{ folderId: string }>;
 }) {
   const { folderId } = await params;
-  const user = await requireUser();
+  const user = await requireSection("hubs");
   const isAdmin = user.role === "ADMIN";
   const jar = await cookies();
   const view = parseViewMode(jar.get(VIEW_COOKIE)?.value);

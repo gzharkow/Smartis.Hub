@@ -1,5 +1,6 @@
 import { Readable } from "node:stream";
 import { getCurrentUser } from "@/lib/auth";
+import { canAccessSection } from "@/lib/permissions";
 import { db } from "@/lib/db";
 import { storage } from "@/lib/storage";
 
@@ -25,6 +26,9 @@ export async function GET(
 
   // Чужой организации материала «не существует».
   if (!asset || asset.organizationId !== user.organizationId || !asset.storageKey) {
+    return new Response("Материал не найден", { status: 404 });
+  }
+  if (!canAccessSection(user, asset.quoteId ? "calculator" : "assets")) {
     return new Response("Материал не найден", { status: 404 });
   }
 

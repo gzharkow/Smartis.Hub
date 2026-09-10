@@ -1,5 +1,5 @@
 import { cookies } from "next/headers";
-import { requireUser } from "@/lib/auth";
+import { requireSection } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { parseViewMode, VIEW_COOKIE } from "@/lib/view-mode";
 import {
@@ -20,7 +20,7 @@ import { DEFAULT_BRAND_COLOR } from "@/lib/brand-color";
 import { PageHeader } from "@/components/ui/page-header";
 
 export default async function HubsPage() {
-  const user = await requireUser();
+  const user = await requireSection("hubs");
   const isAdmin = user.role === "ADMIN";
   const jar = await cookies();
   const view = parseViewMode(jar.get(VIEW_COOKIE)?.value);

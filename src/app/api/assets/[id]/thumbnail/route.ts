@@ -2,7 +2,7 @@ import { Readable } from "node:stream";
 import { NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
 import { getCurrentUser } from "@/lib/auth";
-import { hasEdit } from "@/lib/permissions";
+import { canAccessSection, hasEdit } from "@/lib/permissions";
 import { db } from "@/lib/db";
 import { storage, storageKeys } from "@/lib/storage";
 import { permissionKeyForSection } from "@/lib/asset-sections";
@@ -31,6 +31,9 @@ export async function GET(
   ) {
     return new Response("Превью не найдено", { status: 404 });
   }
+  if (!canAccessSection(user, asset.quoteId ? "calculator" : "assets")) {
+    return new Response("Превью не найдено", { status: 404 });
+  }
 
   const stream = await storage.get(asset.thumbnailKey);
   return new Response(Readable.toWeb(stream) as ReadableStream, {
@@ -56,6 +59,9 @@ export async function POST(
   const asset = await db.asset.findUnique({ where: { id } });
 
   if (!asset || asset.organizationId !== user.organizationId) {
+    return NextResponse.json({ error: "Материал не найден." }, { status: 404 });
+  }
+  if (!canAccessSection(user, asset.quoteId ? "calculator" : "assets")) {
     return NextResponse.json({ error: "Материал не найден." }, { status: 404 });
   }
   if (!hasEdit(user, permissionKeyForSection(asset.section))) {

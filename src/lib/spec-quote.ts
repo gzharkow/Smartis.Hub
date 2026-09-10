@@ -1,5 +1,6 @@
 import "server-only";
 import { getCurrentUser, type CurrentUser } from "./auth";
+import { canAccessSection } from "./permissions";
 import { db } from "./db";
 import { parseCalculatorConfig } from "./quote-calculator";
 import type { SpecQuoteInput } from "./spec-values";
@@ -16,6 +17,7 @@ import type { SpecQuoteRecord } from "./spec-build";
 export async function loadQuoteForSpec(quoteId: string) {
   const user = await getCurrentUser();
   if (!user) return null;
+  if (!canAccessSection(user, "calculator")) return null;
 
   const quote = await db.quote.findUnique({
     where: { id: quoteId },

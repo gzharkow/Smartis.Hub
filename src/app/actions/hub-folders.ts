@@ -3,7 +3,7 @@
 import { z } from "zod";
 import { revalidatePath } from "next/cache";
 import { requireUser } from "@/lib/auth";
-import { hasEdit } from "@/lib/permissions";
+import { canAccessSection, hasEdit } from "@/lib/permissions";
 import { db } from "@/lib/db";
 import { isValidFolderColor } from "@/lib/folder-colors";
 
@@ -20,7 +20,7 @@ export type FolderState = { error: string } | undefined;
 
 async function ownedFolder(folderId: string) {
   const user = await requireUser();
-  if (!hasEdit(user, "hubs.folders")) {
+  if (!canAccessSection(user, "hubs") || !hasEdit(user, "hubs.folders")) {
     throw new Error("Недостаточно прав.");
   }
 
@@ -42,7 +42,7 @@ export async function createHubFolder(
   formData: FormData,
 ): Promise<FolderState> {
   const user = await requireUser();
-  if (!hasEdit(user, "hubs.folders")) {
+  if (!canAccessSection(user, "hubs") || !hasEdit(user, "hubs.folders")) {
     return { error: "Недостаточно прав." };
   }
 

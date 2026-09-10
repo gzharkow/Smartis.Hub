@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
-import { visibleOwnerFilter } from "@/lib/permissions";
+import { canAccessSection, visibleOwnerFilter } from "@/lib/permissions";
 import { db } from "@/lib/db";
 
 // Поиск расчётов калькулятора для «добавить в хаб» — не путать с общим
@@ -10,6 +10,9 @@ import { db } from "@/lib/db";
 export async function GET(request: Request) {
   const user = await getCurrentUser();
   if (!user) return NextResponse.json({ error: "Нужно войти." }, { status: 401 });
+  if (!canAccessSection(user, "calculator")) {
+    return NextResponse.json({ error: "Недостаточно прав." }, { status: 403 });
+  }
 
   const q = new URL(request.url).searchParams.get("q")?.trim() ?? "";
 

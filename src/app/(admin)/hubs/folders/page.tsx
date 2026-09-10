@@ -1,5 +1,5 @@
 import { cookies } from "next/headers";
-import { requireUser } from "@/lib/auth";
+import { requireSection } from "@/lib/auth";
 import { hasEdit } from "@/lib/permissions";
 import { db } from "@/lib/db";
 import { parseViewMode, VIEW_COOKIE, VIEW_LIST_CLASS } from "@/lib/view-mode";
@@ -18,7 +18,7 @@ const FOLDERS_GRID_CLASS =
   "grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 2xl:grid-cols-6";
 
 export default async function FoldersPage() {
-  const user = await requireUser();
+  const user = await requireSection("hubs");
   const view = parseViewMode((await cookies()).get(VIEW_COOKIE)?.value);
 
   const folders = await db.hubFolder.findMany({

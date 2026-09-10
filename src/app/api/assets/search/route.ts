@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
+import { canAccessSection } from "@/lib/permissions";
 import { db } from "@/lib/db";
 import { formatFileSize, KIND_LABELS } from "@/lib/assets";
 import { parseSection } from "@/lib/asset-sections";
@@ -13,6 +14,9 @@ import { parseSection } from "@/lib/asset-sections";
 export async function GET(request: Request) {
   const user = await getCurrentUser();
   if (!user) return NextResponse.json({ error: "Нужно войти." }, { status: 401 });
+  if (!canAccessSection(user, "assets")) {
+    return NextResponse.json({ error: "Недостаточно прав." }, { status: 403 });
+  }
 
   const url = new URL(request.url);
   const q = url.searchParams.get("q")?.trim() ?? "";
