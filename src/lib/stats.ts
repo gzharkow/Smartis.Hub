@@ -90,38 +90,56 @@ export async function hubStats(organizationId: string): Promise<Map<string, HubS
   return result;
 }
 
-export type MaterialEventStat = { opens: number; totalMs: number; downloads: number };
+export type MaterialEventStat = {
+  opens: number;
+  totalMs: number;
+  downloads: number;
+  /** Докуда долистали в PDF — суммарно по всем хабам сразу. */
+  maxPage: number | null;
+  /** Полная тепловая карта страниц — как в hubDetail, но по всем хабам сразу. */
+  pageHeat: PageHeat[];
+};
 
 /**
- * Открытия/время/скачивания по материалам — для «Общей статистики»
- * (агрегат по многим хабам сразу, в отличие от hubDetail — та же идея,
- * но там разбивка идёт по ссылкам ОДНОГО хаба). Один groupBy на все три
- * метрики: здесь, в отличие от hubDetail, естественного деления по
- * ссылкам нет, а нужны сразу все поля.
+ * Открытия/время/скачивания (и, для многостраничных PDF, тепловая карта
+ * страниц) по материалам — для «Общей статистики» (агрегат по многим
+ * хабам сразу, в отличие от hubDetail — та же идея, но там разбивка идёт
+ * по ссылкам ОДНОГО хаба). Один groupBy на opens/totalMs/downloads: здесь,
+ * в отличие от hubDetail, естественного деления по ссылкам нет, а нужны
+ * сразу все поля.
  */
 export async function materialEventStats(
   hubIds: string[],
-  assetIds: string[],
+  assets: { id: string; pageCount: number | null }[],
   range: StatsRange = null,
 ): Promise<Map<string, MaterialEventStat>> {
+  const assetIds = assets.map((a) => a.id);
   const result = new Map<string, MaterialEventStat>(
-    assetIds.map((id) => [id, { opens: 0, totalMs: 0, downloads: 0 }]),
+    assetIds.map((id) => [id, { opens: 0, totalMs: 0, downloads: 0, maxPage: null, pageHeat: [] }]),
   );
   if (hubIds.length === 0 || assetIds.length === 0) return result;
 
   const eventWhere = range ? { occurredAt: { gte: range.from, lte: range.to } } : {};
+  const scopeWhere = { hubId: { in: hubIds }, assetId: { in: assetIds }, ...eventWhere };
 
-  const rows = await db.event.groupBy({
-    by: ["assetId", "type"],
-    where: {
-      hubId: { in: hubIds },
-      assetId: { in: assetIds },
-      type: { in: ["HEARTBEAT", "ITEM_OPEN", "DOWNLOAD"] },
-      ...eventWhere,
-    },
-    _sum: { durationMs: true },
-    _count: { _all: true },
-  });
+  const [rows, pageRows, pageTime] = await Promise.all([
+    db.event.groupBy({
+      by: ["assetId", "type"],
+      where: { ...scopeWhere, type: { in: ["HEARTBEAT", "ITEM_OPEN", "DOWNLOAD"] } },
+      _sum: { durationMs: true },
+      _count: { _all: true },
+    }),
+    db.event.groupBy({
+      by: ["assetId"],
+      where: { ...scopeWhere, type: "PAGE_VIEW" },
+      _max: { pageNumber: true },
+    }),
+    db.event.groupBy({
+      by: ["assetId", "pageNumber"],
+      where: { ...scopeWhere, type: "HEARTBEAT", pageNumber: { not: null } },
+      _sum: { durationMs: true },
+    }),
+  ]);
 
   for (const row of rows) {
     const stat = result.get(row.assetId as string);
@@ -129,6 +147,27 @@ export async function materialEventStats(
     if (row.type === "HEARTBEAT") stat.totalMs += row._sum.durationMs ?? 0;
     else if (row.type === "ITEM_OPEN") stat.opens += row._count._all;
     else if (row.type === "DOWNLOAD") stat.downloads += row._count._all;
+  }
+
+  for (const row of pageRows) {
+    const stat = result.get(row.assetId as string);
+    if (stat) stat.maxPage = row._max.pageNumber;
+  }
+
+  const pageTimeByAsset = new Map<string, Map<number, number>>();
+  for (const row of pageTime) {
+    const assetId = row.assetId as string;
+    let map = pageTimeByAsset.get(assetId);
+    if (!map) pageTimeByAsset.set(assetId, (map = new Map()));
+    map.set(row.pageNumber as number, row._sum.durationMs ?? 0);
+  }
+
+  const pageCountById = new Map(assets.map((a) => [a.id, a.pageCount]));
+  for (const [assetId, stat] of result) {
+    stat.pageHeat = buildPageHeat(
+      pageCountById.get(assetId) ?? null,
+      pageTimeByAsset.get(assetId) ?? new Map(),
+    );
   }
 
   return result;
@@ -249,7 +288,7 @@ function heatLevel(ms: number, maxMs: number): 0 | 1 | 2 | 3 | 4 {
   return Math.min(4, Math.max(1, Math.ceil((ms / maxMs) * 4))) as 1 | 2 | 3 | 4;
 }
 
-function buildPageHeat(pageCount: number | null, msByPage: Map<number, number>): PageHeat[] {
+export function buildPageHeat(pageCount: number | null, msByPage: Map<number, number>): PageHeat[] {
   if (!pageCount || pageCount < 1) return [];
   const maxMs = Math.max(0, ...msByPage.values());
   const pages: PageHeat[] = [];
@@ -593,8 +632,14 @@ const HEAT_RAMP = ["text-heat-4", "text-heat-3", "text-heat-2", "text-heat-1"];
  * в «Прочее»). Цвет — по рангу на тёплой шкале, кроме материалов-ссылок:
  * время на них не «чтение», а «навигация» — холодный акцент вместо тёплого,
  * это и есть то самое «цвет несёт смысл» из ТЗ.
+ *
+ * Тип параметра — только то, что реально используется (не полный
+ * ItemStats): так функция годится и для агрегата «Общей статистики».
  */
-export function timeDonutSegments(items: ItemStats[], max = 5): DonutSegment[] {
+export function timeDonutSegments(
+  items: { title: string; totalMs: number; kind: string }[],
+  max = 5,
+): DonutSegment[] {
   const withTime = items.filter((i) => i.totalMs > 0).sort((a, b) => b.totalMs - a.totalMs);
   const headCount = withTime.length <= max ? withTime.length : max - 1;
   const head = withTime.slice(0, headCount);

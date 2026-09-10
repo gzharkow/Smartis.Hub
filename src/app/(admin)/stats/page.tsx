@@ -1,7 +1,7 @@
 import { cookies } from "next/headers";
 import { requireSection } from "@/lib/auth";
 import { db } from "@/lib/db";
-import { materialEventStats, formatDuration } from "@/lib/stats";
+import { materialEventStats, timeDonutSegments, formatDuration } from "@/lib/stats";
 import { parseStatsRange } from "@/lib/stats-range";
 import { parseExcludedAssetIds, STATS_MATERIALS_COOKIE } from "@/lib/stats-materials-filter";
 import { withPlural, WORDS } from "@/lib/plural";
@@ -10,8 +10,9 @@ import { PageHeader } from "@/components/ui/page-header";
 import { cardClasses } from "@/components/ui/card";
 import { StatsTabs } from "./stats-tabs";
 import { MaterialsPicker, type MaterialOption } from "./materials-picker";
-import { RankedBarChart } from "./clients/[id]/components/ranked-bar-chart";
+import { DonutChart } from "./clients/[id]/components/donut-chart";
 import { KpiTile } from "./clients/[id]/components/kpi-tile";
+import { PageHeatmap } from "./clients/[id]/components/page-heatmap";
 import type { AssetSection } from "@/generated/prisma/enums";
 
 export const dynamic = "force-dynamic";
@@ -51,7 +52,7 @@ export default async function StatsGeneralPage({
         section: { not: "CASES" },
         quoteId: null,
       },
-      select: { id: true, title: true, section: true },
+      select: { id: true, title: true, section: true, kind: true, pageCount: true },
       orderBy: { title: "asc" },
     }),
   ]);
@@ -65,7 +66,7 @@ export default async function StatsGeneralPage({
   const selected = eligibleAssets.filter((a) => !excludedIds.has(a.id));
   const statsByAsset = await materialEventStats(
     publishedHubs.map((h) => h.id),
-    selected.map((a) => a.id),
+    selected.map((a) => ({ id: a.id, pageCount: a.pageCount })),
     range,
   );
 
@@ -74,6 +75,8 @@ export default async function StatsGeneralPage({
       assetId: a.id,
       title: a.title,
       section: a.section,
+      kind: a.kind,
+      pageCount: a.pageCount,
       ...statsByAsset.get(a.id)!,
     }))
     .sort((a, b) => b.totalMs - a.totalMs);
@@ -137,25 +140,38 @@ export default async function StatsGeneralPage({
                     <p className="mb-3 font-mono text-[11px] tracking-wide text-muted uppercase">
                       Рейтинг материалов по времени
                     </p>
-                    <RankedBarChart items={group.materials} />
+                    <DonutChart
+                      segments={timeDonutSegments(group.materials)}
+                      centerLabel={formatDuration(totalMs)}
+                      centerSub={withPlural(withActivity.length, WORDS.material)}
+                    />
                   </div>
                 ) : null}
 
                 <ul className="grid grid-cols-1 gap-2">
-                  {group.materials.map((m) => (
-                    <li key={m.assetId} className={cardClasses("row")}>
-                      <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-                        <span className="min-w-0 flex-1 truncate font-medium">{m.title}</span>
-                        <span className="shrink-0 font-mono text-sm font-semibold tabular-nums">
-                          {formatDuration(m.totalMs)}
-                        </span>
-                      </div>
-                      <p className="mt-1 text-sm text-muted">
-                        {withPlural(m.opens, WORDS.time)} открывали
-                        {m.downloads > 0 ? ` · скачивали ${withPlural(m.downloads, WORDS.time)}` : ""}
-                      </p>
-                    </li>
-                  ))}
+                  {group.materials.map((m) => {
+                    const multiPage = m.kind === "PDF" && (m.pageCount ?? 0) > 1;
+                    return (
+                      <li key={m.assetId} className={cardClasses("row")}>
+                        <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                          <span className="min-w-0 flex-1 truncate font-medium">{m.title}</span>
+                          <span className="shrink-0 font-mono text-sm font-semibold tabular-nums">
+                            {formatDuration(m.totalMs)}
+                          </span>
+                        </div>
+                        <p className="mt-1 text-sm text-muted">
+                          {withPlural(m.opens, WORDS.time)} открывали
+                          {m.downloads > 0 ? ` · скачивали ${withPlural(m.downloads, WORDS.time)}` : ""}
+                          {multiPage
+                            ? ` · ${m.maxPage ? `долистали до ${m.maxPage}-й из ${m.pageCount}` : "не долистывали"}`
+                            : ""}
+                        </p>
+                        {multiPage && m.pageHeat.length > 0 ? (
+                          <PageHeatmap pages={m.pageHeat} />
+                        ) : null}
+                      </li>
+                    );
+                  })}
                 </ul>
               </section>
             );
