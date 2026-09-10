@@ -1,182 +1,166 @@
-import Link from "next/link";
-import { requireUser } from "@/lib/auth";
 import { cookies } from "next/headers";
-import { visibleOwnerFilter } from "@/lib/permissions";
+import { requireSection } from "@/lib/auth";
 import { db } from "@/lib/db";
-import { formatDuration, formatWhen, hubStats } from "@/lib/stats";
-import { plural, withPlural, WORDS } from "@/lib/plural";
-import {
-  parseViewMode,
-  VIEW_COOKIE,
-  VIEW_GRID_CLASS,
-  VIEW_LIST_CLASS,
-} from "@/lib/view-mode";
-import { ViewToggle } from "@/components/view-toggle";
-import { StatsSortControl } from "@/components/stats-sort-control";
-import { parseStatsSort, STATS_SORT_COOKIE } from "@/lib/stats-sort";
+import { materialEventStats, formatDuration } from "@/lib/stats";
+import { parseStatsRange } from "@/lib/stats-range";
+import { parseExcludedAssetIds, STATS_MATERIALS_COOKIE } from "@/lib/stats-materials-filter";
+import { withPlural, WORDS } from "@/lib/plural";
+import { StatsRangePicker } from "@/components/stats-range-picker";
 import { PageHeader } from "@/components/ui/page-header";
+import { cardClasses } from "@/components/ui/card";
+import { StatsTabs } from "./stats-tabs";
+import { MaterialsPicker, type MaterialOption } from "./materials-picker";
+import { RankedBarChart } from "./clients/[id]/components/ranked-bar-chart";
+import { KpiTile } from "./clients/[id]/components/kpi-tile";
+import type { AssetSection } from "@/generated/prisma/enums";
 
 export const dynamic = "force-dynamic";
 
-export default async function StatsPage() {
-  const user = await requireUser();
-  const jar = await cookies();
-  const view = parseViewMode(jar.get(VIEW_COOKIE)?.value);
-  const grid = view === "grid";
-  const sort = parseStatsSort(jar.get(STATS_SORT_COOKIE)?.value);
+// Группы вкладки «Общая статистика» — свои подписи, обращены к продавцу,
+// не совпадают дословно с названиями разделов библиотеки (asset-sections.ts).
+// CASES сюда никогда не попадает: по кейсам отслеживается только клик/
+// переход, агрегировать «время»/«открытия» для них нечего (решение
+// владельца продукта).
+const GROUPS: { section: AssetSection; label: string }[] = [
+  { section: "AUTO", label: "Автодилеры" },
+  { section: "REALTY", label: "Застройщики" },
+  { section: "COMMON", label: "Общие материалы" },
+];
 
-  const [hubs, stats] = await Promise.all([
+export default async function StatsGeneralPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ from?: string; to?: string }>;
+}) {
+  const user = await requireSection("stats");
+  const range = parseStatsRange(await searchParams);
+  const jar = await cookies();
+  const excludedIds = new Set(
+    parseExcludedAssetIds(jar.get(STATS_MATERIALS_COOKIE)?.value),
+  );
+
+  const [publishedHubs, eligibleAssets] = await Promise.all([
     db.hub.findMany({
+      where: { organizationId: user.organizationId, status: "PUBLISHED" },
+      select: { id: true },
+    }),
+    db.asset.findMany({
       where: {
         organizationId: user.organizationId,
-        // Как и в «Хабах»/«Генераторе КП»: без полного доступа видно только
-        // статистику по своим хабам плюс те, что явно открыл суперадмин.
-        ...visibleOwnerFilter(user),
+        archivedAt: null,
+        section: { not: "CASES" },
+        quoteId: null,
       },
-      include: {
-        owner: { select: { name: true, email: true } },
-        _count: { select: { shareLinks: true, items: true } },
-      },
+      select: { id: true, title: true, section: true },
+      orderBy: { title: "asc" },
     }),
-    hubStats(user.organizationId),
   ]);
 
-  // По умолчанию — сначала те, где было движение, и притом недавнее:
-  // продавцу важно «кто зашевелился», а не алфавитный порядок. Остальные
-  // поля выбираются панелью сортировки (см. StatsSortControl).
-  const dirMul = sort.dir === "asc" ? 1 : -1;
-  const rows = hubs.map((hub) => ({ hub, stat: stats.get(hub.id)! })).sort((a, b) => {
-    switch (sort.field) {
-      case "visits":
-        return dirMul * (a.stat.visits - b.stat.visits);
-      case "duration":
-        return dirMul * (a.stat.totalMs - b.stat.totalMs);
-      case "title":
-        return dirMul * a.hub.title.localeCompare(b.hub.title, "ru");
-      default: {
-        const at = a.stat.lastSeenAt?.getTime() ?? 0;
-        const bt = b.stat.lastSeenAt?.getTime() ?? 0;
-        return dirMul * (at - bt);
-      }
-    }
-  });
+  const pickerOptions: MaterialOption[] = eligibleAssets.map((a) => ({
+    id: a.id,
+    title: a.title,
+    section: a.section,
+  }));
 
-  const touched = rows.filter((r) => r.stat.visits > 0);
+  const selected = eligibleAssets.filter((a) => !excludedIds.has(a.id));
+  const statsByAsset = await materialEventStats(
+    publishedHubs.map((h) => h.id),
+    selected.map((a) => a.id),
+    range,
+  );
+
+  const rows = selected
+    .map((a) => ({
+      assetId: a.id,
+      title: a.title,
+      section: a.section,
+      ...statsByAsset.get(a.id)!,
+    }))
+    .sort((a, b) => b.totalMs - a.totalMs);
+
+  const groups = GROUPS.map((g) => ({
+    ...g,
+    materials: rows.filter((r) => r.section === g.section),
+  })).filter((g) => g.materials.length > 0);
 
   return (
     <div>
+      <StatsTabs current="general" right={<StatsRangePicker range={range} />} />
       <PageHeader
         className="mb-6"
-        title="Статистика"
-        subtitle="Кто из клиентов что смотрел и сколько времени"
-        actions={
-          hubs.length > 0 ? (
-            <div className="flex flex-wrap items-center gap-2">
-              <StatsSortControl sort={sort} />
-              {/* Плитка на телефоне не несёт своей визуальной идентичности
-                  (в отличие от Хабов) — переключатель имеет смысл только
-                  от sm: и шире, где карточки реально становятся тайлами. */}
-              <div className="hidden sm:block">
-                <ViewToggle value={view} />
-              </div>
-            </div>
-          ) : null
-        }
+        title="Общая статистика"
+        subtitle="Материалы во всех опубликованных хабах, по отраслям"
       />
 
-      {hubs.length === 0 ? (
+      <div className="mb-6">
+        <MaterialsPicker options={pickerOptions} excludedIds={[...excludedIds]} />
+      </div>
+
+      {publishedHubs.length === 0 ? (
         <div className="rounded-xl border border-dashed border-border py-16 text-center">
-          <p className="font-medium">Хабов пока нет</p>
+          <p className="font-medium">Опубликованных хабов пока нет</p>
           <p className="mx-auto mt-1 max-w-md text-sm text-muted">
-            Соберите хаб и отправьте ссылку клиенту — здесь появится, что он
-            смотрел.
+            Как только хаб опубликуют и клиенты начнут смотреть материалы,
+            здесь появится сводная статистика.
           </p>
         </div>
+      ) : groups.length === 0 ? (
+        <p className="rounded-lg border border-dashed border-border px-3 py-6 text-center text-sm text-muted">
+          Материалов для показа нет — проверьте, не сняты ли все галочки
+          в пикере выше.
+        </p>
       ) : (
-        <>
-          {touched.length === 0 ? (
-            <p className="mb-4 rounded-lg bg-warn/10 px-3 py-2 text-sm text-warn">
-              Ссылки ещё никто не открывал. Данные появятся после первого захода
-              клиента.
-            </p>
-          ) : null}
+        <div className="grid grid-cols-1 gap-8">
+          {groups.map((group) => {
+            const withActivity = group.materials.filter((m) => m.totalMs > 0 || m.opens > 0);
+            const totalMs = group.materials.reduce((sum, m) => sum + m.totalMs, 0);
+            const totalOpens = group.materials.reduce((sum, m) => sum + m.opens, 0);
+            const totalDownloads = group.materials.reduce((sum, m) => sum + m.downloads, 0);
 
-          <ul className={grid ? VIEW_GRID_CLASS : VIEW_LIST_CLASS}>
-            {rows.map(({ hub, stat }) => (
-              <li key={hub.id}>
-                <Link
-                  href={`/stats/${hub.id}`}
-                  className={`rounded-xl border border-border bg-surface px-4 py-3 transition hover:border-muted grid gap-2 ${
-                    // Плитка на телефоне не имеет собственной визуальной
-                    // идентичности (в отличие от Хабов) — все плиточные
-                    // особенности (высота, flex-col) начинаются только с
-                    // sm:, на телефоне разметка всегда как у списка,
-                    // независимо от cookie sf_view.
-                    grid
-                      ? "sm:flex sm:h-[176px] sm:flex-col"
-                      : "sm:grid-cols-[1fr_auto] sm:items-center"
-                  }`}
-                >
-                  <div className="min-w-0">
-                    <p className="truncate font-medium">{hub.title}</p>
-                    <p className="mt-0.5 text-sm text-muted">
-                      {withPlural(hub._count.items, WORDS.material)} ·{" "}
-                      {withPlural(hub._count.shareLinks, WORDS.link)}
-                      {hub.status !== "PUBLISHED" ? " · черновик" : ""}
+            return (
+              <section key={group.section} className="grid gap-4">
+                <h2 className="text-lg font-semibold tracking-tight">{group.label}</h2>
+
+                <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+                  <KpiTile
+                    label="Материалов"
+                    value={String(group.materials.length)}
+                    sub={`${withActivity.length} с активностью`}
+                  />
+                  <KpiTile label="Суммарное время" value={formatDuration(totalMs)} />
+                  <KpiTile label="Открытий" value={String(totalOpens)} />
+                  <KpiTile label="Скачиваний" value={String(totalDownloads)} />
+                </div>
+
+                {withActivity.length > 0 ? (
+                  <div className={cardClasses("card")}>
+                    <p className="mb-3 font-mono text-[11px] tracking-wide text-muted uppercase">
+                      Рейтинг материалов по времени
                     </p>
+                    <RankedBarChart items={group.materials} />
                   </div>
+                ) : null}
 
-                  {stat.visits === 0 ? (
-                    <span
-                      className={`text-sm text-muted ${grid ? "sm:mt-auto sm:pt-1" : ""}`}
-                    >
-                      не открывали
-                    </span>
-                  ) : (
-                    <div
-                      className={`flex items-center gap-4 text-sm ${
-                        grid
-                          ? "sm:mt-auto sm:flex-wrap sm:pt-1"
-                          : // На телефоне (без sm:) дату раньше ничего не
-                            // прижимало к краю — она просто шла третьим
-                            // элементом в общем потоке. justify-between
-                            // между этой группой и датой кладёт её в правый
-                            // нижний угол карточки; на sm: и шире всё как
-                            // раньше — весь блок единым целым у правого
-                            // края (расстояния те же, гарантирует
-                            // одинаковый gap-4 что внутри группы, что между
-                            // группой и датой).
-                            "justify-between shrink-0 sm:justify-end"
-                      }`}
-                    >
-                      <span className="flex items-center gap-4">
-                        <span>
-                          <b className="font-semibold">{stat.visits}</b>
-                          <span className="text-muted">
-                            {" "}
-                            {plural(stat.visits, WORDS.visit)}
-                          </span>
+                <ul className="grid grid-cols-1 gap-2">
+                  {group.materials.map((m) => (
+                    <li key={m.assetId} className={cardClasses("row")}>
+                      <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                        <span className="min-w-0 flex-1 truncate font-medium">{m.title}</span>
+                        <span className="shrink-0 font-mono text-sm font-semibold tabular-nums">
+                          {formatDuration(m.totalMs)}
                         </span>
-                        <span title="Суммарное время просмотра">
-                          <b className="font-semibold">
-                            {formatDuration(stat.totalMs)}
-                          </b>
-                        </span>
-                      </span>
-                      <span
-                        className={
-                          grid ? "text-muted" : "w-24 text-right text-muted"
-                        }
-                      >
-                        {formatWhen(stat.lastSeenAt)}
-                      </span>
-                    </div>
-                  )}
-                </Link>
-              </li>
-            ))}
-          </ul>
-        </>
+                      </div>
+                      <p className="mt-1 text-sm text-muted">
+                        {withPlural(m.opens, WORDS.time)} открывали
+                        {m.downloads > 0 ? ` · скачивали ${withPlural(m.downloads, WORDS.time)}` : ""}
+                      </p>
+                    </li>
+                  ))}
+                </ul>
+              </section>
+            );
+          })}
+        </div>
       )}
     </div>
   );

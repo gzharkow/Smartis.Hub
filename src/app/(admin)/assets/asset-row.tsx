@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import {
   archiveAsset,
@@ -12,13 +12,57 @@ import {
   setAssetSection,
 } from "@/app/actions/assets";
 import { backfillThumbnail } from "@/lib/backfill-thumbnail";
+import { makeThumbnail } from "@/lib/make-thumbnail";
 import { SECTIONS } from "@/lib/asset-sections";
+import { isUploadSupported, SUPPORTED_FORMATS_TEXT, UPLOAD_ACCEPT } from "@/lib/asset-formats";
 import { withPlural, WORDS } from "@/lib/plural";
 import type { ViewMode } from "@/lib/view-mode";
 import type { AssetKind, AssetSection } from "@/generated/prisma/enums";
 import { AssetPreviewModal } from "@/components/asset-preview-modal";
 import { buttonClasses } from "@/components/ui/button";
 import { iconButtonClasses } from "@/components/ui/icon-button";
+
+// Та же XHR-загрузка с прогрессом, что и в asset-uploader.tsx (fetch не
+// умеет сообщать процент отправки) — здесь на один файл и на другой адрес.
+function uploadReplacement(
+  assetId: string,
+  file: File,
+  thumbnail: Blob | null,
+  onProgress: (percent: number) => void,
+): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const body = new FormData();
+    body.append("file", file);
+    if (thumbnail) body.append("thumbnail", thumbnail, "thumb.jpg");
+
+    const xhr = new XMLHttpRequest();
+    xhr.open("POST", `/api/assets/${assetId}/replace`);
+
+    xhr.upload.addEventListener("progress", (e) => {
+      if (e.lengthComputable) onProgress(Math.round((e.loaded / e.total) * 100));
+    });
+
+    xhr.addEventListener("load", () => {
+      if (xhr.status >= 200 && xhr.status < 300) {
+        resolve();
+        return;
+      }
+      let message = `Ошибка ${xhr.status}`;
+      try {
+        message = JSON.parse(xhr.responseText).error ?? message;
+      } catch {
+        // Ответ не разобрался — покажем код статуса.
+      }
+      reject(new Error(message));
+    });
+
+    xhr.addEventListener("error", () =>
+      reject(new Error("Не удалось связаться с сервером.")),
+    );
+
+    xhr.send(body);
+  });
+}
 
 export type AssetRowData = {
   id: string;
@@ -60,6 +104,33 @@ export function AssetRow({
   const [thumbError, setThumbError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
   const [previewing, setPreviewing] = useState(false);
+
+  const [replacing, setReplacing] = useState(false);
+  const [replaceProgress, setReplaceProgress] = useState(0);
+  const [replaceError, setReplaceError] = useState<string | null>(null);
+  const replaceInputRef = useRef<HTMLInputElement>(null);
+
+  async function handleReplace(file: File | undefined) {
+    if (!file) return;
+    if (!isUploadSupported(file.type, file.name)) {
+      setReplaceError(
+        `Формат не поддерживается. Загружайте: ${SUPPORTED_FORMATS_TEXT}.`,
+      );
+      return;
+    }
+    setReplaceError(null);
+    setReplacing(true);
+    setReplaceProgress(0);
+    try {
+      const thumbnail = await makeThumbnail(file);
+      await uploadReplacement(asset.id, file, thumbnail, setReplaceProgress);
+      router.refresh();
+    } catch (e) {
+      setReplaceError(e instanceof Error ? e.message : "Не удалось заменить файл.");
+    } finally {
+      setReplacing(false);
+    }
+  }
 
   // Безвозвратное удаление (только из «Удалённых»): сначала показываем, из
   // каких хабов материал пропадёт, и только потом — кнопку подтверждения.
@@ -207,6 +278,37 @@ export function AssetRow({
         {thumbing ? "Готовим…" : "Сделать превью"}
       </button>
     ) : null;
+
+  // Заменить содержимое материала новым файлом — ссылки не имеют файла,
+  // их сюда не пускаем. Формат может отличаться от исходного (см.
+  // api/assets/[id]/replace/route.ts) — не только «тот же файл поновее».
+  const replaceBtn =
+    canEdit && !asset.archived && asset.kind !== "LINK" ? (
+      <>
+        <button
+          type="button"
+          disabled={replacing}
+          onClick={() => replaceInputRef.current?.click()}
+          className={buttonClasses("link", "sm", "shrink-0")}
+        >
+          {replacing ? `Заменяем… ${replaceProgress}%` : "Заменить файл"}
+        </button>
+        <input
+          ref={replaceInputRef}
+          type="file"
+          accept={UPLOAD_ACCEPT}
+          className="hidden"
+          onChange={(e) => {
+            void handleReplace(e.target.files?.[0]);
+            e.target.value = "";
+          }}
+        />
+      </>
+    ) : null;
+
+  const replaceErrorEl = replaceError ? (
+    <span className="shrink-0 text-xs text-danger">{replaceError}</span>
+  ) : null;
 
   const actionCluster = !canEdit ? null : asset.archived ? (
     confirmingDelete ? (
@@ -360,10 +462,12 @@ export function AssetRow({
           <span className="text-xs text-muted">Изменён {asset.updatedAt}</span>
 
           {thumbErrorEl}
+          {replaceErrorEl}
 
           <div className="mt-auto flex flex-wrap items-center gap-2 pt-1">
             {sectionSelect}
             {makePreviewBtn}
+            {replaceBtn}
             {actionCluster}
           </div>
         </div>
@@ -435,7 +539,9 @@ export function AssetRow({
 
       {sectionSelect}
       {thumbErrorEl}
+      {replaceErrorEl}
       {makePreviewBtn}
+      {replaceBtn}
       {actionCluster}
 
       {previewModal}

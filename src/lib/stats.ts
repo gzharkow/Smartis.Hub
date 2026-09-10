@@ -90,6 +90,50 @@ export async function hubStats(organizationId: string): Promise<Map<string, HubS
   return result;
 }
 
+export type MaterialEventStat = { opens: number; totalMs: number; downloads: number };
+
+/**
+ * Открытия/время/скачивания по материалам — для «Общей статистики»
+ * (агрегат по многим хабам сразу, в отличие от hubDetail — та же идея,
+ * но там разбивка идёт по ссылкам ОДНОГО хаба). Один groupBy на все три
+ * метрики: здесь, в отличие от hubDetail, естественного деления по
+ * ссылкам нет, а нужны сразу все поля.
+ */
+export async function materialEventStats(
+  hubIds: string[],
+  assetIds: string[],
+  range: StatsRange = null,
+): Promise<Map<string, MaterialEventStat>> {
+  const result = new Map<string, MaterialEventStat>(
+    assetIds.map((id) => [id, { opens: 0, totalMs: 0, downloads: 0 }]),
+  );
+  if (hubIds.length === 0 || assetIds.length === 0) return result;
+
+  const eventWhere = range ? { occurredAt: { gte: range.from, lte: range.to } } : {};
+
+  const rows = await db.event.groupBy({
+    by: ["assetId", "type"],
+    where: {
+      hubId: { in: hubIds },
+      assetId: { in: assetIds },
+      type: { in: ["HEARTBEAT", "ITEM_OPEN", "DOWNLOAD"] },
+      ...eventWhere,
+    },
+    _sum: { durationMs: true },
+    _count: { _all: true },
+  });
+
+  for (const row of rows) {
+    const stat = result.get(row.assetId as string);
+    if (!stat) continue;
+    if (row.type === "HEARTBEAT") stat.totalMs += row._sum.durationMs ?? 0;
+    else if (row.type === "ITEM_OPEN") stat.opens += row._count._all;
+    else if (row.type === "DOWNLOAD") stat.downloads += row._count._all;
+  }
+
+  return result;
+}
+
 /** Час пик на тепловой карте страниц: 0 — не открывали (серый), 1–4 — тёплая
  * шкала от бледного до тёмно-красного, пропорционально самой залипчивой
  * странице документа. */

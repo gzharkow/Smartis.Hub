@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { requireUser } from "@/lib/auth";
+import { requireSection } from "@/lib/auth";
 import { notFound } from "next/navigation";
 import { db } from "@/lib/db";
 import { KIND_LABELS } from "@/lib/assets";
@@ -54,7 +54,7 @@ export default async function HubStatsPage({
   searchParams: Promise<{ from?: string; to?: string }>;
 }) {
   const { id } = await params;
-  const user = await requireUser();
+  const user = await requireSection("stats");
   const range = parseStatsRange(await searchParams);
 
   const hub = await db.hub.findUnique({
@@ -77,10 +77,10 @@ export default async function HubStatsPage({
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <Link
-            href="/stats"
+            href="/stats/clients"
             className="text-sm text-muted transition hover:text-foreground"
           >
-            ← Вся статистика
+            ← Список клиентов
           </Link>
           <h1 className="mt-2 text-xl font-semibold tracking-tight">{hub.title}</h1>
           <p className="mt-0.5 text-sm text-muted">

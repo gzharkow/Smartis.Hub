@@ -1,4 +1,4 @@
-import { formatDuration, type ItemStats } from "@/lib/stats";
+import { formatDuration } from "@/lib/stats";
 
 // Горизонтальный бар-чарт «рейтинг материалов по времени» — тот же паттерн
 // трека, что и в PageHeatmap/старой полосе дочитывания (bg-heat-0 трек +
@@ -6,7 +6,13 @@ import { formatDuration, type ItemStats } from "@/lib/stats";
 // `items` приходит уже отсортированным по totalMs (см. hubDetail) — здесь
 // только масштабирование ширины под максимум, это презентационная, не
 // метрическая величина.
-export function RankedBarChart({ items }: { items: ItemStats[] }) {
+//
+// Тип пропа — только то, что реально используется (не полный ItemStats):
+// так компонент годится и для агрегата «Общей статистики», где нет ни
+// ссылок, ни постраничной статистики, только эти три поля.
+type RankedItem = { assetId: string; title: string; totalMs: number };
+
+export function RankedBarChart({ items }: { items: RankedItem[] }) {
   const withTime = items.filter((i) => i.totalMs > 0);
   if (withTime.length === 0) return null;
 
