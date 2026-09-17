@@ -25,6 +25,8 @@ type PickableAsset = {
   kind: AssetKind;
   meta: string;
   section: AssetSection;
+  /** Не null — личный материал («Мои материалы») из библиотеки владельца. */
+  ownerId: string | null;
   pageCount: number | null;
   externalUrl: string | null;
   embeddable: boolean | null;
@@ -80,9 +82,10 @@ function PickRow({
       </span>
       <span className="min-w-0 flex-1 truncate text-sm">{asset.title}</span>
       {/* Раздел видно всегда: иначе непонятно, почему при фильтре
-          «Авторынок» в списке лежит договор. */}
+          «Авторынок» в списке лежит договор. У личных материалов раздела
+          нет — показываем вместо него, что это личный материал. */}
       <span className="shrink-0 text-xs text-muted">
-        {SECTION_LABELS[asset.section]}
+        {asset.ownerId ? "Личный материал" : SECTION_LABELS[asset.section]}
       </span>
       <span className="hidden shrink-0 text-xs text-muted sm:inline">
         {asset.meta}

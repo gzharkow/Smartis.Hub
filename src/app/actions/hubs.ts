@@ -354,6 +354,20 @@ export async function addItemToHub(hubId: string, assetId: string) {
   if (asset.quoteId !== null) {
     throw new Error("Этот материал нельзя добавить в хаб напрямую.");
   }
+  // Личный материал («Мои материалы») — критично проверить здесь, а не
+  // только скрыть в UI: без серверной проверки чужой/неподтверждённый
+  // личный материал можно было бы добавить в хаб прямым вызовом этого
+  // действия с угаданным assetId. ADMIN — исключение (см.
+  // canManagePersonalAsset в permissions.ts), у него доступ ко всем
+  // личным библиотекам, но и его материал должен быть подтверждён.
+  if (asset.ownerId !== null) {
+    if (asset.ownerId !== user.id && user.role !== "ADMIN") {
+      throw new Error("Этот материал недоступен для добавления в хаб.");
+    }
+    if (asset.validatedAt === null) {
+      throw new Error("Материал ещё не подтверждён как проверенный.");
+    }
+  }
 
   const last = await db.hubItem.findFirst({
     where: { hubId: hub.id },

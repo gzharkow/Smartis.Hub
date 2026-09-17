@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
-import { canAccessSection, hasEdit } from "@/lib/permissions";
+import { canAccessSection, canManagePersonalAsset, hasEdit } from "@/lib/permissions";
 import { db } from "@/lib/db";
 import { permissionKeyForSection } from "@/lib/asset-sections";
 import { readPdfPageCount } from "@/lib/assets";
@@ -43,7 +43,13 @@ export async function POST(
   if (!canAccessSection(user, asset.quoteId ? "calculator" : "assets")) {
     return NextResponse.json({ error: "Материал не найден." }, { status: 404 });
   }
-  if (!hasEdit(user, permissionKeyForSection(asset.section))) {
+  // Личный материал («Мои материалы») — своя ось прав: владелец (и ADMIN)
+  // может заменять файл независимо от canAddAssets. См. canManagePersonalAsset.
+  const allowed =
+    asset.ownerId !== null
+      ? canManagePersonalAsset(user, asset)
+      : hasEdit(user, permissionKeyForSection(asset.section));
+  if (!allowed) {
     return NextResponse.json({ error: "Недостаточно прав." }, { status: 403 });
   }
   // Ссылки — не файл, менять нечего; снимки калькулятора живут в
@@ -127,6 +133,11 @@ export async function POST(
         pageCount,
         thumbnailKey: newThumbnailKey,
         thumbnailMime: newThumbnailKey ? "image/jpeg" : null,
+        // Содержимое личного материала сменилось — прежнее подтверждение
+        // «валидирован с руководством» относилось к старому файлу, его
+        // нельзя переносить молча. Общей библиотеки это не касается —
+        // ownerId у неё всегда null, validatedAt она не использует.
+        ...(asset.ownerId !== null ? { validatedAt: null } : {}),
       },
     });
   } catch (e) {
@@ -146,6 +157,7 @@ export async function POST(
   }
 
   revalidatePath("/assets");
+  revalidatePath("/assets/mine");
   revalidatePath("/hubs");
 
   return NextResponse.json({

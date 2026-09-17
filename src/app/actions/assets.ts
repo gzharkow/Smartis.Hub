@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { requireUser } from "@/lib/auth";
-import { canAccessSection, canAddMaterials, hasEdit } from "@/lib/permissions";
+import { canAccessSection, canAddMaterials, canManagePersonalAsset, hasEdit } from "@/lib/permissions";
 import { db } from "@/lib/db";
 import { parseSection, permissionKeyForSection } from "@/lib/asset-sections";
 import { checkLink, downloadLinkImage } from "@/lib/link-check";
@@ -55,19 +55,28 @@ async function ownedAsset(assetId: string) {
   if (!asset || asset.organizationId !== user.organizationId) {
     throw new Error("Материал не найден.");
   }
-  // Право «Изменение» проверяется по РАЗДЕЛУ, в котором материал лежит
-  // сейчас — Материалы видны всем с доступом к разделу целиком, но менять
-  // можно только там, где явно разрешено (см. hasEdit в permissions.ts).
-  // Исключение — PDF из «Генератора КП» (quoteId не пуст): у них
-  // asset.section всегда COMMON, но живут они не в «Материалах», а в
-  // «Генератор КП → Файлы», и это именно тот ключ матрицы, который
-  // должен решать, можно ли их удалять/восстанавливать.
-  const permissionKey = asset.quoteId
-    ? "calculator.files"
-    : permissionKeyForSection(asset.section);
   if (!canAccessSection(user, asset.quoteId ? "calculator" : "assets")) {
     throw new Error("Материал не найден.");
   }
+  // Личный материал («Мои материалы») — отдельная от разделов ось прав:
+  // владелец (и ADMIN) может управлять им независимо от canAddAssets.
+  // См. canManagePersonalAsset в permissions.ts.
+  if (asset.ownerId !== null) {
+    if (!canManagePersonalAsset(user, asset)) {
+      throw new Error("Недостаточно прав.");
+    }
+    return { user, asset };
+  }
+  // Материал общей библиотеки: право «Изменение» проверяется по РАЗДЕЛУ,
+  // в котором материал лежит сейчас — Материалы видны всем с доступом к
+  // разделу целиком, но менять можно только там, где явно разрешено (см.
+  // hasEdit в permissions.ts). Исключение — PDF из «Генератора КП»
+  // (quoteId не пуст): у них asset.section всегда COMMON, но живут они не
+  // в «Материалах», а в «Генератор КП → Файлы», и это именно тот ключ
+  // матрицы, который должен решать, можно ли их удалять/восстанавливать.
+  const permissionKey = asset.quoteId
+    ? "calculator.files"
+    : permissionKeyForSection(asset.section);
   if (!hasEdit(user, permissionKey)) {
     throw new Error("Недостаточно прав.");
   }
@@ -95,6 +104,7 @@ export async function archiveAsset(assetId: string) {
   });
 
   revalidatePath("/assets");
+  revalidatePath("/assets/mine");
   revalidatePath("/hubs");
 }
 
@@ -107,6 +117,7 @@ export async function restoreAsset(assetId: string) {
   });
 
   revalidatePath("/assets");
+  revalidatePath("/assets/mine");
   revalidatePath("/hubs");
 }
 
@@ -142,6 +153,7 @@ export async function deleteAssetPermanently(assetId: string) {
   if (asset.thumbnailKey) await storage.delete(asset.thumbnailKey).catch(() => {});
 
   revalidatePath("/assets");
+  revalidatePath("/assets/mine");
   revalidatePath("/hubs");
 }
 
@@ -247,6 +259,12 @@ export async function setAssetSection(assetId: string, section: string) {
 
   const { user, asset } = await ownedAsset(assetId);
 
+  // Личные материалы разделов не используют — UI не даёт сюда попасть,
+  // но проверяем и на сервере.
+  if (asset.ownerId !== null) {
+    throw new Error("У личного материала нет раздела.");
+  }
+
   // ownedAsset уже проверила права на ИСХОДНЫЙ раздел — здесь дополнительно
   // проверяем ЦЕЛЕВОЙ: иначе материал можно было бы переложить в раздел,
   // редактировать который не разрешено.
@@ -278,5 +296,26 @@ export async function renameAsset(assetId: string, title: string) {
   });
 
   revalidatePath("/assets");
+  revalidatePath("/assets/mine");
   revalidatePath("/hubs");
+}
+
+/**
+ * Ответ на попап «Файл валидирован с руководством?» — и при первой
+ * загрузке в личную библиотеку, и по кнопке «Валидировать» на карточке.
+ * Только личные материалы: общая библиотека это поле не использует —
+ * её материалы доступны для хабов всегда, без подтверждения.
+ */
+export async function setAssetValidated(assetId: string, validated: boolean) {
+  const { asset } = await ownedAsset(assetId);
+  if (asset.ownerId === null) {
+    throw new Error("Материалы общей библиотеки не требуют подтверждения.");
+  }
+
+  await db.asset.update({
+    where: { id: asset.id },
+    data: { validatedAt: validated ? new Date() : null },
+  });
+
+  revalidatePath("/assets/mine");
 }

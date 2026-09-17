@@ -44,6 +44,19 @@ export function canAddMaterials(user: CurrentUser): boolean {
   return user.role === "ADMIN" || user.canAddAssets === true;
 }
 
+/** Личная библиотека материалов («Мои материалы») — отдельная от
+ * canAddMaterials ось прав: владелец управляет своими материалами всегда,
+ * независимо от canAddAssets (то право касается только общей библиотеки).
+ * ADMIN — тоже, у него полный доступ везде, включая чужие личные библиотеки
+ * (см. комментарий роли ADMIN в schema.prisma). */
+export function canManagePersonalAsset(
+  user: CurrentUser,
+  asset: { ownerId: string | null },
+): boolean {
+  if (asset.ownerId === null) return false;
+  return user.role === "ADMIN" || asset.ownerId === user.id;
+}
+
 /** ownerId-фильтр для списков хабов/расчётов/статистики: ADMIN видит всё,
  * MEMBER — своё и то, что явно открыл суперадмин через visibleOwners. */
 export function visibleOwnerFilter(user: CurrentUser): { ownerId?: { in: string[] } } {

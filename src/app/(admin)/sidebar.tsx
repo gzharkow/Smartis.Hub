@@ -40,11 +40,17 @@ const GROUPS: Group[] = [
     href: "/assets",
     label: "Материалы",
     icon: <AssetsIcon />,
-    children: SECTIONS.map((s) => ({
-      key: `assets.${s.slug}`,
-      href: `/assets/${s.slug}`,
-      label: s.label,
-    })),
+    // «Мои материалы» — личная библиотека, доступна всем с доступом к
+    // разделу целиком (независимо от canAddAssets, см. permissions.ts),
+    // поэтому в отличие от остальных пунктов не завязана на SECTIONS.
+    children: [
+      ...SECTIONS.map((s) => ({
+        key: `assets.${s.slug}`,
+        href: `/assets/${s.slug}`,
+        label: s.label,
+      })),
+      { key: "assets.mine", href: "/assets/mine", label: "Мои материалы" },
+    ],
   },
   {
     key: "calculator",

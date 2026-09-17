@@ -88,6 +88,7 @@ model User {
   visibleTo     User[] @relation("AccountVisibility")
 
   uploadedSpecTemplates SpecTemplate[]
+  personalAssets        Asset[]        @relation("PersonalAssetOwner")
 
   @@unique([organizationId, email])
   @@index([organizationId])
@@ -165,14 +166,29 @@ model Asset {
   // пережить удаление исходного расчёта, как переживает и его правку.
   quoteId String?
 
+  // Личный материал: виден и доступен для добавления в хабы только
+  // владельцу (и ADMIN — у него полный доступ везде, как и к остальным
+  // материалам, см. комментарий роли ADMIN выше). null — материал общей
+  // библиотеки, текущее поведение не меняется. AssetSection у личных
+  // материалов не используется — остаётся COMMON по умолчанию, UI её не
+  // показывает и не даёт менять.
+  ownerId String?
+
+  // Только для ownerId != null: когда владелец подтвердил через попап
+  // «Файл валидирован с руководством?». null — не подтверждён, в хаб
+  // добавить нельзя. Общая библиотека это поле не использует.
+  validatedAt DateTime?
+
   organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   quote        Quote?       @relation(fields: [quoteId], references: [id], onDelete: SetNull)
+  owner        User?        @relation("PersonalAssetOwner", fields: [ownerId], references: [id], onDelete: Cascade)
   hubItems     HubItem[]
 
   @@index([organizationId])
   @@index([organizationId, archivedAt])
   @@index([organizationId, section])
   @@index([organizationId, quoteId])
+  @@index([ownerId])
 }
 
 // ─────────────────────────────  Хабы  ─────────────────────────────

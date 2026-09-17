@@ -29,6 +29,16 @@ export async function GET(request: Request) {
       : { OR: [{ section: filter }, { section: "COMMON" as const }] }
     : {};
 
+  // Личные материалы («Мои материалы») не участвуют в фильтре по разделу
+  // (AssetSection у них не используется, см. schema.prisma) — при активном
+  // фильтре ищем только общую библиотеку. Без фильтра («Все») добавляем
+  // свои ПОДТВЕРЖДЁННЫЕ личные материалы — чужие личные материалы, даже
+  // подтверждённые, сюда никогда не попадают: это критично для приватности
+  // личной библиотеки, а не только для UX.
+  const ownerWhere = filter
+    ? { ownerId: null }
+    : { OR: [{ ownerId: null }, { ownerId: user.id, validatedAt: { not: null } }] };
+
   const assets = await db.asset.findMany({
     where: {
       organizationId: user.organizationId,
@@ -38,6 +48,7 @@ export async function GET(request: Request) {
       quoteId: null,
       id: { notIn: excludeIds },
       ...sectionWhere,
+      ...ownerWhere,
       ...(q ? { title: { contains: q, mode: "insensitive" as const } } : {}),
     },
     orderBy: { createdAt: "desc" },
@@ -51,6 +62,7 @@ export async function GET(request: Request) {
       kindLabel: KIND_LABELS[a.kind],
       kind: a.kind,
       section: a.section,
+      ownerId: a.ownerId,
       meta: [
         a.pageCount ? `${a.pageCount} стр.` : null,
         a.sizeBytes ? formatFileSize(a.sizeBytes) : null,

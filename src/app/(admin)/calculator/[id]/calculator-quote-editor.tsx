@@ -73,6 +73,7 @@ export function CalculatorQuoteEditor({
         setVatRatePct={setVatRatePct}
         documentDate={documentDate}
         setDocumentDate={setDocumentDate}
+        requireLicenseConfirmation={clientType === "BUILDER"}
       />
 
       <ClientTypeControl quoteId={quote.id} currentType={clientType} />

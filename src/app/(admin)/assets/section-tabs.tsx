@@ -22,6 +22,9 @@ export function SectionTabs({
   const tabs = [
     { slug: null, label: "Все" },
     ...SECTIONS.map((s) => ({ slug: s.slug, label: s.label })),
+    // Личная библиотека — не AssetSection, свой маршрут /assets/mine;
+    // показывается всегда, независимо от canAddAssets (см. permissions.ts).
+    { slug: "mine", label: "Мои материалы" },
   ];
 
   return (
@@ -32,7 +35,13 @@ export function SectionTabs({
           return (
             <Link
               key={tab.label}
-              href={tab.slug ? `/assets/${tab.slug}` : "/assets"}
+              href={
+                tab.slug === "mine"
+                  ? "/assets/mine"
+                  : tab.slug
+                    ? `/assets/${tab.slug}`
+                    : "/assets"
+              }
               aria-current={active ? "page" : undefined}
               className={`inline-flex items-center rounded-full px-3 py-1.5 text-sm transition duration-100 pointer-coarse:min-h-11 ${
                 active

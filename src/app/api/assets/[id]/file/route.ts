@@ -1,6 +1,6 @@
 import { Readable } from "node:stream";
 import { getCurrentUser } from "@/lib/auth";
-import { canAccessSection } from "@/lib/permissions";
+import { canAccessSection, canManagePersonalAsset } from "@/lib/permissions";
 import { db } from "@/lib/db";
 import { storage } from "@/lib/storage";
 
@@ -29,6 +29,12 @@ export async function GET(
     return new Response("Материал не найден", { status: 404 });
   }
   if (!canAccessSection(user, asset.quoteId ? "calculator" : "assets")) {
+    return new Response("Материал не найден", { status: 404 });
+  }
+  // Личный материал («Мои материалы») — виден только владельцу (и ADMIN).
+  // Без этой проверки любой сотрудник с доступом к «Материалам» мог бы
+  // скачать чужой личный файл напрямую по id, зная или угадав его.
+  if (asset.ownerId !== null && !canManagePersonalAsset(user, asset)) {
     return new Response("Материал не найден", { status: 404 });
   }
 

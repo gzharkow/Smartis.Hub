@@ -63,10 +63,16 @@ export async function POST(request: Request) {
 
   const pageCount = kind === "PDF" ? await readPdfPageCount(buffer) : null;
 
+  // target=mine — загрузка в личную библиотеку («Мои материалы»): доступна
+  // любому, кто видит раздел «Материалы» вообще, независимо от canAddAssets
+  // (то право касается только общей библиотеки — см. canManagePersonalAsset
+  // в permissions.ts). Раздел (AssetSection) личные материалы не используют.
+  const isPersonal = form.get("target") === "mine";
+
   // Раздел не пришёл или пришёл незнакомый — кладём в «Общие». Терять файл
   // из-за этого незачем: раздел потом меняется одним нажатием.
   const section = parseSection(form.get("section")) ?? "COMMON";
-  if (!canAddMaterials(user)) {
+  if (!isPersonal && !canAddMaterials(user)) {
     return NextResponse.json({ error: "Недостаточно прав." }, { status: 403 });
   }
 
@@ -80,6 +86,7 @@ export async function POST(request: Request) {
       mimeType,
       sizeBytes: file.size,
       pageCount,
+      ownerId: isPersonal ? user.id : null,
     },
   });
 
@@ -130,5 +137,6 @@ export async function POST(request: Request) {
     kind: saved.kind,
     sizeBytes: saved.sizeBytes,
     pageCount: saved.pageCount,
+    ownerId: saved.ownerId,
   });
 }

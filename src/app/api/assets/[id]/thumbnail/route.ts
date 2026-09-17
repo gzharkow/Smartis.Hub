@@ -2,7 +2,7 @@ import { Readable } from "node:stream";
 import { NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
 import { getCurrentUser } from "@/lib/auth";
-import { canAccessSection, hasEdit } from "@/lib/permissions";
+import { canAccessSection, canManagePersonalAsset, hasEdit } from "@/lib/permissions";
 import { db } from "@/lib/db";
 import { storage, storageKeys } from "@/lib/storage";
 import { permissionKeyForSection } from "@/lib/asset-sections";
@@ -32,6 +32,11 @@ export async function GET(
     return new Response("Превью не найдено", { status: 404 });
   }
   if (!canAccessSection(user, asset.quoteId ? "calculator" : "assets")) {
+    return new Response("Превью не найдено", { status: 404 });
+  }
+  // Личный материал — превью тоже только владельцу (и ADMIN), см. тот же
+  // принцип в api/assets/[id]/file/route.ts.
+  if (asset.ownerId !== null && !canManagePersonalAsset(user, asset)) {
     return new Response("Превью не найдено", { status: 404 });
   }
 
@@ -64,7 +69,11 @@ export async function POST(
   if (!canAccessSection(user, asset.quoteId ? "calculator" : "assets")) {
     return NextResponse.json({ error: "Материал не найден." }, { status: 404 });
   }
-  if (!hasEdit(user, permissionKeyForSection(asset.section))) {
+  const allowed =
+    asset.ownerId !== null
+      ? canManagePersonalAsset(user, asset)
+      : hasEdit(user, permissionKeyForSection(asset.section));
+  if (!allowed) {
     return NextResponse.json({ error: "Недостаточно прав." }, { status: 403 });
   }
 
@@ -86,5 +95,6 @@ export async function POST(
   await db.asset.update({ where: { id: asset.id }, data: { thumbnailKey: key } });
 
   revalidatePath("/assets");
+  revalidatePath("/assets/mine");
   return NextResponse.json({ ok: true });
 }
