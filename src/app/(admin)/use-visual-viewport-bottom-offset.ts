@@ -16,6 +16,15 @@ import { useEffect, useRef } from "react";
  * там причина была разовый неверный снимок вьюпорта на холодном старте,
  * до первого touch-скролла. Здесь — живая подписка на реальные события,
  * синхронна с фактическим состоянием уже на первом кадре.
+ *
+ * Слушаем только resize, не scroll: resize стреляет именно на изменение
+ * РАЗМЕРА видимой области (в т.ч. скрытие/появление адресной строки — ради
+ * этого всё и заведено), а scroll — на изменение позиции (offsetTop),
+ * которое в WebKit паразитно дёргается ещё и во время эластичного отскока
+ * прокрутки (rubber-band bounce у верхней/нижней границы страницы). Раньше
+ * scroll тоже слушали — из-за него при резком флике до упора бар видимо
+ * «подпрыгивал» на переходных значениях и возвращался на место только
+ * когда отскок затихал и приходило финальное, уже верное resize-событие.
  */
 export function useVisualViewportBottomOffset<T extends HTMLElement>() {
   const ref = useRef<T>(null);
@@ -44,10 +53,8 @@ export function useVisualViewportBottomOffset<T extends HTMLElement>() {
 
     apply();
     vv.addEventListener("resize", schedule);
-    vv.addEventListener("scroll", schedule);
     return () => {
       vv.removeEventListener("resize", schedule);
-      vv.removeEventListener("scroll", schedule);
       if (raf) cancelAnimationFrame(raf);
     };
   }, []);

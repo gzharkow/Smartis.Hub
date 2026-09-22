@@ -142,9 +142,13 @@ export function BottomNav({ access }: { access: SectionAccess }) {
           46px на iPhone с чертой против 80px на телефоне без неё — область
           нажатия у одного и того же бара отличалась почти вдвое. Теперь
           полоса всегда 3.5rem, а вырез добавляется под ней. */}
+      {/* transition-[bottom] — подстраховка: хук пересчитывает bottom только
+          на resize (см. use-visual-viewport-bottom-offset.ts), но если
+          WebKit когда-нибудь всё же пришлёт переходное значение, скачок
+          сгладится плавно, а не дёрнет бар рывком. */}
       <nav
         ref={navRef}
-        className="fixed inset-x-0 bottom-0 z-30 hidden h-[calc(3.5rem+env(safe-area-inset-bottom))] w-full items-stretch border-t border-border bg-surface pb-[env(safe-area-inset-bottom)] standalone:max-md:flex"
+        className="fixed inset-x-0 bottom-0 z-30 hidden h-[calc(3.5rem+env(safe-area-inset-bottom))] w-full items-stretch border-t border-border bg-surface pb-[env(safe-area-inset-bottom)] transition-[bottom] duration-200 ease-out standalone:max-md:flex"
       >
         {/* Ведёт в раздел «Настройки»: подраздел «Общие» (тема/аккаунт/выход/
             смена пароля) виден всем, «Администрирование» — только админу. */}
