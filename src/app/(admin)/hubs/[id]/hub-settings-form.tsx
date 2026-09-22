@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useActionState, useEffect, useRef, useState } from "react";
 import { RichTextEditor } from "@/components/rich-text-editor";
 import { ShowcaseBackdrop } from "@/components/showcase/showcase-backdrop";
 import { ShowcaseHeader } from "@/components/showcase/showcase-header";
@@ -36,6 +36,10 @@ type Props = {
 };
 
 const MAX_CONTACTS = 8;
+/** Пауза тишины после правки, прежде чем автосохранение уйдёт само —
+ *  достаточно, чтобы не слать запрос на каждую букву, но не настолько
+ *  долго, чтобы уход со страницы ощущался как потеря правок. */
+const AUTOSAVE_DELAY_MS = 1500;
 
 export function HubSettingsForm({
   hub,
@@ -63,6 +67,79 @@ export function HubSettingsForm({
   const [title, setTitle] = useState(hub.title);
   const [contacts, setContacts] = useState<ContactMethod[]>(initialContacts);
   const [saveAsTemplate, setSaveAsTemplate] = useState(false);
+
+  // Автосохранение: раньше форма уходила только по клику на «Сохранить»,
+  // и правки легко забывали отправить. Сам сабмит не переписываем — просто
+  // дёргаем ту же форму программно после паузы в наборе, тем же путём,
+  // которым идёт кнопка (FormData → updateHub → вся валидация как была).
+  const formRef = useRef<HTMLFormElement>(null);
+  const [dirty, setDirty] = useState(false);
+  const mountedFields = useRef(false);
+  const autosaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // После успешного экшена React сам вызывает нативный form.reset() —
+  // у чекбоксов это откатывает checked к defaultChecked, а React его
+  // никогда не обновляет (мы задаём только checked, не defaultChecked).
+  // Если значение при сохранении совпадает и до, и после (а оно совпадает —
+  // мы же его не трогали), React не видит diff и не перезаписывает DOM,
+  // так что откат остаётся видимым, хотя в базе всё сохранилось верно.
+  // Пересоздаём чекбоксы через key сразу после сохранения — на свежем узле
+  // React выставит checked заново из актуального состояния. Заодно тут же
+  // снимаем «есть несохранённые изменения», раз сохранение завершилось.
+  const [checkboxGen, setCheckboxGen] = useState(0);
+  const wasPending = useRef(false);
+  useEffect(() => {
+    if (wasPending.current && !pending) {
+      setCheckboxGen((g) => g + 1);
+      setDirty(false);
+    }
+    wasPending.current = pending;
+  }, [pending]);
+
+  useEffect(() => {
+    if (!mountedFields.current) {
+      mountedFields.current = true;
+      return;
+    }
+    setDirty(true);
+    if (autosaveTimer.current) clearTimeout(autosaveTimer.current);
+    autosaveTimer.current = setTimeout(() => {
+      autosaveTimer.current = null;
+      formRef.current?.requestSubmit();
+    }, AUTOSAVE_DELAY_MS);
+  }, [
+    title,
+    headline,
+    descriptionHtml,
+    ctaLabel,
+    ctaEnabled,
+    demoUrl,
+    demoLabel,
+    demoNote,
+    contacts,
+    saveAsTemplate,
+  ]);
+
+  // Уход со страницы/сворачивание вкладки не должны терять последнюю правку,
+  // если таймер автосохранения ещё не сработал — досылаем сразу, тем же
+  // приёмом, что уже применяется для трекинга просмотров в use-tracker.ts.
+  useEffect(() => {
+    function flush() {
+      if (autosaveTimer.current) {
+        clearTimeout(autosaveTimer.current);
+        autosaveTimer.current = null;
+        formRef.current?.requestSubmit();
+      }
+    }
+    function onVisibility() {
+      if (document.hidden) flush();
+    }
+    document.addEventListener("visibilitychange", onVisibility);
+    return () => {
+      document.removeEventListener("visibilitychange", onVisibility);
+      flush();
+    };
+  }, []);
   // Подсказка «есть шаблон» видна, пока пользователь явно не выбрал один
   // из двух путей — заполнить из шаблона или вручную. Если контакты и так
   // не пустые (хаб уже настроен) или шаблона нет вовсе, подсказка не нужна.
@@ -96,6 +173,19 @@ export function HubSettingsForm({
 
   const hasContacts = contacts.some((c) => c.value.trim().length > 0);
 
+  // Приоритет статуса рядом с кнопкой: пока не сработало автосохранение —
+  // «есть несохранённые изменения» важнее старого результата предыдущего
+  // сохранения (он иначе завис бы «Сохранено» поверх свежих правок).
+  const saveStatus = pending
+    ? null
+    : dirty
+      ? { kind: "dirty" as const }
+      : state?.error
+        ? { kind: "error" as const, message: state.error }
+        : state?.saved
+          ? { kind: "saved" as const }
+          : null;
+
   const input =
     "rounded-lg border border-border bg-background px-3 py-2 focus:border-accent";
 
@@ -106,7 +196,7 @@ export function HubSettingsForm({
     // не нужна вовсе — остаётся один предпросмотр.
     <div className={canEdit ? "grid grid-cols-1 gap-6 lg:grid-cols-2 lg:items-start" : "grid grid-cols-1 gap-4"}>
       {canEdit ? (
-      <form action={action} className="grid grid-cols-1 gap-5">
+      <form ref={formRef} action={action} className="grid grid-cols-1 gap-5">
         <input type="hidden" name="hubId" value={hub.id} />
 
         <label className="grid gap-1.5">
@@ -154,6 +244,7 @@ export function HubSettingsForm({
 
           <label className="flex items-center gap-2">
             <input
+              key={`cta-${checkboxGen}`}
               type="checkbox"
               name="ctaEnabled"
               checked={ctaEnabled}
@@ -274,6 +365,7 @@ export function HubSettingsForm({
 
             <label className="flex items-center gap-2 pt-1">
               <input
+                key={`template-${checkboxGen}`}
                 type="checkbox"
                 name="saveAsTemplate"
                 checked={saveAsTemplate}
@@ -352,15 +444,14 @@ export function HubSettingsForm({
             {pending ? "Сохраняем…" : "Сохранить"}
           </button>
 
-          {state?.saved ? (
-            <span className="text-sm text-ok">
-              Сохранено
-            </span>
-          ) : null}
-          {state?.error ? (
+          {saveStatus?.kind === "dirty" ? (
+            <span className="text-sm text-muted">Есть несохранённые изменения…</span>
+          ) : saveStatus?.kind === "error" ? (
             <span role="alert" className="text-sm text-danger">
-              {state.error}
+              {saveStatus.message}
             </span>
+          ) : saveStatus?.kind === "saved" ? (
+            <span className="text-sm text-ok">Сохранено</span>
           ) : null}
         </div>
       </form>

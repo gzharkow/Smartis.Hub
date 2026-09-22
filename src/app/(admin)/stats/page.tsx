@@ -13,6 +13,7 @@ import { MaterialsPicker, type MaterialOption } from "./materials-picker";
 import { DonutChart } from "./clients/[id]/components/donut-chart";
 import { KpiTile } from "./clients/[id]/components/kpi-tile";
 import { PageHeatmap } from "./clients/[id]/components/page-heatmap";
+import { VideoWatchHeatmap } from "./clients/[id]/components/video-watch-heatmap";
 import type { AssetSection } from "@/generated/prisma/enums";
 
 export const dynamic = "force-dynamic";
@@ -52,7 +53,14 @@ export default async function StatsGeneralPage({
         section: { not: "CASES" },
         quoteId: null,
       },
-      select: { id: true, title: true, section: true, kind: true, pageCount: true },
+      select: {
+        id: true,
+        title: true,
+        section: true,
+        kind: true,
+        pageCount: true,
+        durationSec: true,
+      },
       orderBy: { title: "asc" },
     }),
   ]);
@@ -66,7 +74,7 @@ export default async function StatsGeneralPage({
   const selected = eligibleAssets.filter((a) => !excludedIds.has(a.id));
   const statsByAsset = await materialEventStats(
     publishedHubs.map((h) => h.id),
-    selected.map((a) => ({ id: a.id, pageCount: a.pageCount })),
+    selected.map((a) => ({ id: a.id, kind: a.kind, pageCount: a.pageCount, durationSec: a.durationSec })),
     range,
   );
 
@@ -168,6 +176,9 @@ export default async function StatsGeneralPage({
                         </p>
                         {multiPage && m.pageHeat.length > 0 ? (
                           <PageHeatmap pages={m.pageHeat} />
+                        ) : null}
+                        {m.kind === "VIDEO" && m.videoWatch ? (
+                          <VideoWatchHeatmap watch={m.videoWatch} />
                         ) : null}
                       </li>
                     );

@@ -117,7 +117,7 @@ export function HubMaterials({
   canEdit?: boolean;
 }) {
   const [pending, startTransition] = useTransition();
-  const [filter, setFilter] = useState<AssetSection | null>(null);
+  const [filter, setFilter] = useState<AssetSection | "mine" | null>(null);
   const [previewAsset, setPreviewAsset] = useState<PreviewAsset | null>(null);
   // Добавленное в хаб убираем из виду сразу, не дожидаясь revalidatePath —
   // иначе до перерисовки с сервера тот же материал можно нажать «Добавить»
@@ -130,7 +130,7 @@ export function HubMaterials({
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const abortRef = useRef<AbortController | null>(null);
 
-  function fetchResults(q: string, section: AssetSection | null) {
+  function fetchResults(q: string, section: AssetSection | "mine" | null) {
     abortRef.current?.abort();
     const controller = new AbortController();
     abortRef.current = controller;
@@ -272,14 +272,19 @@ export function HubMaterials({
           <h2 className="mr-1 text-sm font-medium">Библиотека</h2>
 
           {/* Фильтр по разделам: в хабе для автодилера незачем листать
-              материалы застройщика. */}
-          {[{ value: null, label: "Все" }, ...SECTIONS].map((chip) => {
+              материалы застройщика. «Мои материалы» — своя личная
+              библиотека, отдельно от разделов организации (см. /assets/mine). */}
+          {[
+            { value: null, label: "Все" },
+            ...SECTIONS,
+            { value: "mine" as const, label: "Мои материалы" },
+          ].map((chip) => {
             const active = filter === chip.value;
             return (
               <button
                 key={chip.label}
                 type="button"
-                onClick={() => setFilter(chip.value as AssetSection | null)}
+                onClick={() => setFilter(chip.value as AssetSection | "mine" | null)}
                 className={`rounded-full px-2.5 py-1 text-xs transition ${
                   active
                     ? "bg-border font-medium"

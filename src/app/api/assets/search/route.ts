@@ -20,24 +20,35 @@ export async function GET(request: Request) {
 
   const url = new URL(request.url);
   const q = url.searchParams.get("q")?.trim() ?? "";
-  const filter = parseSection(url.searchParams.get("section"));
+  const sectionParam = url.searchParams.get("section");
+  // «Мои материалы» — отдельная вкладка сверх обычных разделов организации
+  // (см. hub-materials.tsx), не значение AssetSection — parseSection её
+  // не распознает и вернёт null, поэтому проверяем раньше.
+  const isMine = sectionParam === "mine";
+  const filter = isMine ? null : parseSection(sectionParam);
   const excludeIds = url.searchParams.getAll("exclude");
 
-  const sectionWhere = filter
-    ? filter === "COMMON" || filter === "CASES"
-      ? { section: filter }
-      : { OR: [{ section: filter }, { section: "COMMON" as const }] }
-    : {};
+  const sectionWhere = isMine
+    ? {}
+    : filter
+      ? filter === "COMMON" || filter === "CASES"
+        ? { section: filter }
+        : { OR: [{ section: filter }, { section: "COMMON" as const }] }
+      : {};
 
   // Личные материалы («Мои материалы») не участвуют в фильтре по разделу
   // (AssetSection у них не используется, см. schema.prisma) — при активном
   // фильтре ищем только общую библиотеку. Без фильтра («Все») добавляем
   // свои ПОДТВЕРЖДЁННЫЕ личные материалы — чужие личные материалы, даже
   // подтверждённые, сюда никогда не попадают: это критично для приватности
-  // личной библиотеки, а не только для UX.
-  const ownerWhere = filter
-    ? { ownerId: null }
-    : { OR: [{ ownerId: null }, { ownerId: user.id, validatedAt: { not: null } }] };
+  // личной библиотеки, а не только для UX. На вкладке «Мои материалы» —
+  // та же приватность (только свои и только подтверждённые), но БЕЗ общей
+  // библиотеки вовсе.
+  const ownerWhere = isMine
+    ? { ownerId: user.id, validatedAt: { not: null } }
+    : filter
+      ? { ownerId: null }
+      : { OR: [{ ownerId: null }, { ownerId: user.id, validatedAt: { not: null } }] };
 
   const assets = await db.asset.findMany({
     where: {

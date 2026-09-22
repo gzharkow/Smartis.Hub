@@ -42,6 +42,11 @@ export const TrackEventSchema = z.object({
   itemId: z.string().max(40).optional(),
   pageNumber: z.number().int().min(1).max(10_000).optional(),
   positionSec: z.number().int().min(0).max(24 * 60 * 60).optional(),
+  /** Длительность ролика целиком — для VIDEO_PROGRESS. Берём с самого
+   *  плеера (Asset.durationSec никогда не вычисляется на сервере при
+   *  загрузке, в отличие от pageCount у PDF), сервер один раз запоминает
+   *  её на Asset — см. ingestEvents. */
+  durationSec: z.number().int().min(1).max(24 * 60 * 60).optional(),
   durationMs: z.number().int().min(0).max(MAX_EVENT_DURATION_MS).optional(),
   /** Момент события по часам клиента, мс. Нужен, чтобы не терять порядок
    *  у событий, накопленных пачкой и отправленных разом. */

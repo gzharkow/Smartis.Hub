@@ -124,7 +124,7 @@ function Viewer({
   openId: string;
   onSelect: (id: string) => void;
   onClose: () => void;
-  onVideoProgress: (itemId: string, positionSec: number) => void;
+  onVideoProgress: (itemId: string, positionSec: number, durationSec: number | null) => void;
   onDownload: (itemId: string) => void;
   onLinkClick: (itemId: string) => void;
   onPageChange: (itemId: string, page: number) => void;
@@ -192,7 +192,9 @@ function Viewer({
             // в 5 секунд, этого хватает, чтобы понять, докуда досмотрели.
             onTimeUpdate={(e) => {
               const sec = Math.floor(e.currentTarget.currentTime);
-              if (sec > 0 && sec % 5 === 0) onVideoProgress(item.id, sec);
+              const duration = e.currentTarget.duration;
+              const durationSec = Number.isFinite(duration) ? Math.round(duration) : null;
+              if (sec > 0 && sec % 5 === 0) onVideoProgress(item.id, sec, durationSec);
             }}
           />
         ) : item.kind === "IMAGE" ? (
@@ -347,10 +349,15 @@ export function ShowcaseBody({
   // иначе перемотка назад-вперёд насыпала бы дубликатов.
   const lastVideoSec = useRef<Record<string, number>>({});
   const onVideoProgress = useCallback(
-    (itemId: string, positionSec: number) => {
+    (itemId: string, positionSec: number, durationSec: number | null) => {
       if (lastVideoSec.current[itemId] === positionSec) return;
       lastVideoSec.current[itemId] = positionSec;
-      track({ type: "VIDEO_PROGRESS", itemId, positionSec });
+      track({
+        type: "VIDEO_PROGRESS",
+        itemId,
+        positionSec,
+        ...(durationSec ? { durationSec } : {}),
+      });
     },
     [track],
   );

@@ -123,5 +123,27 @@ export async function ingestEvents(params: {
   if (rows.length === 0) return 0;
 
   await db.event.createMany({ data: rows });
+
+  // Длительность ролика — свойство файла, а не события: не пишем её в
+  // каждый Event, а один раз запоминаем на Asset (durationSec никогда не
+  // вычисляется на сервере при загрузке, в отличие от pageCount у PDF —
+  // см. комментарий в schema.prisma). where: durationSec: null делает
+  // повторные приходы того же значения безобидным no-op.
+  const videoDurations = new Map<string, number>();
+  for (const e of params.events) {
+    if (e.type === "VIDEO_PROGRESS" && e.itemId && e.durationSec) {
+      const assetId = params.itemToAsset.get(e.itemId);
+      if (assetId) videoDurations.set(assetId, e.durationSec);
+    }
+  }
+  await Promise.all(
+    [...videoDurations].map(([assetId, durationSec]) =>
+      db.asset.updateMany({
+        where: { id: assetId, durationSec: null },
+        data: { durationSec },
+      }),
+    ),
+  );
+
   return rows.length;
 }

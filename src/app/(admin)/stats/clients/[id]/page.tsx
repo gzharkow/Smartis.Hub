@@ -21,6 +21,7 @@ import { KpiTile } from "./components/kpi-tile";
 import { DonutChart } from "./components/donut-chart";
 import { RankedBarChart } from "./components/ranked-bar-chart";
 import { PageHeatmap } from "./components/page-heatmap";
+import { VideoWatchHeatmap } from "./components/video-watch-heatmap";
 import { VisitTimeline } from "./components/visit-timeline";
 import { cardClasses } from "@/components/ui/card";
 
@@ -41,6 +42,13 @@ function itemMeta(item: ItemStats): string {
     parts.push("1 стр. — прочитан полностью");
   } else if (item.kind === "PDF" && item.maxPage && item.pageCount) {
     parts.push(`долистали до ${item.maxPage}-й из ${item.pageCount}`);
+  } else if (item.kind === "VIDEO" && item.videoWatch) {
+    const full = item.videoWatch.milestones.find((m) => m.pct === 100);
+    parts.push(
+      full && full.reached > 0
+        ? `досмотрели полностью ${withPlural(full.reached, WORDS.time)}`
+        : "не досмотрели до конца",
+    );
   }
 
   return parts.join(" · ");
@@ -282,6 +290,9 @@ export default async function HubStatsPage({
 
                       {item.kind === "PDF" && !item.isSinglePage && item.pageHeat.length > 0 ? (
                         <PageHeatmap pages={item.pageHeat} />
+                      ) : null}
+                      {item.kind === "VIDEO" && item.videoWatch ? (
+                        <VideoWatchHeatmap watch={item.videoWatch} />
                       ) : null}
                     </li>
                   ))}

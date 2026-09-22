@@ -98,6 +98,8 @@ export type MaterialEventStat = {
   maxPage: number | null;
   /** Полная тепловая карта страниц — как в hubDetail, но по всем хабам сразу. */
   pageHeat: PageHeat[];
+  /** Воронка глубины просмотра видео — как в hubDetail, но по всем хабам сразу. */
+  videoWatch: VideoWatchStat | null;
 };
 
 /**
@@ -110,19 +112,22 @@ export type MaterialEventStat = {
  */
 export async function materialEventStats(
   hubIds: string[],
-  assets: { id: string; pageCount: number | null }[],
+  assets: { id: string; kind: string; pageCount: number | null; durationSec: number | null }[],
   range: StatsRange = null,
 ): Promise<Map<string, MaterialEventStat>> {
   const assetIds = assets.map((a) => a.id);
   const result = new Map<string, MaterialEventStat>(
-    assetIds.map((id) => [id, { opens: 0, totalMs: 0, downloads: 0, maxPage: null, pageHeat: [] }]),
+    assetIds.map((id) => [
+      id,
+      { opens: 0, totalMs: 0, downloads: 0, maxPage: null, pageHeat: [], videoWatch: null },
+    ]),
   );
   if (hubIds.length === 0 || assetIds.length === 0) return result;
 
   const eventWhere = range ? { occurredAt: { gte: range.from, lte: range.to } } : {};
   const scopeWhere = { hubId: { in: hubIds }, assetId: { in: assetIds }, ...eventWhere };
 
-  const [rows, pageRows, pageTime] = await Promise.all([
+  const [rows, pageRows, pageTime, videoRows] = await Promise.all([
     db.event.groupBy({
       by: ["assetId", "type"],
       where: { ...scopeWhere, type: { in: ["HEARTBEAT", "ITEM_OPEN", "DOWNLOAD"] } },
@@ -138,6 +143,11 @@ export async function materialEventStats(
       by: ["assetId", "pageNumber"],
       where: { ...scopeWhere, type: "HEARTBEAT", pageNumber: { not: null } },
       _sum: { durationMs: true },
+    }),
+    db.event.groupBy({
+      by: ["assetId", "visitId"],
+      where: { ...scopeWhere, type: "VIDEO_PROGRESS" },
+      _max: { positionSec: true },
     }),
   ]);
 
@@ -170,6 +180,21 @@ export async function materialEventStats(
     );
   }
 
+  const videoPosByAsset = new Map<string, Map<string, number>>();
+  for (const row of videoRows) {
+    const assetId = row.assetId as string;
+    let map = videoPosByAsset.get(assetId);
+    if (!map) videoPosByAsset.set(assetId, (map = new Map()));
+    map.set(row.visitId, row._max.positionSec ?? 0);
+  }
+
+  const assetById = new Map(assets.map((a) => [a.id, a]));
+  for (const [assetId, stat] of result) {
+    const asset = assetById.get(assetId);
+    if (asset?.kind !== "VIDEO") continue;
+    stat.videoWatch = buildVideoWatch(asset.durationSec, videoPosByAsset.get(assetId) ?? new Map());
+  }
+
   return result;
 }
 
@@ -195,6 +220,9 @@ export type ItemStats = {
   /** Полная тепловая карта страниц — по одной ячейке на каждую страницу
    * документа. Пусто для не-PDF. */
   pageHeat: PageHeat[];
+  /** Воронка глубины просмотра видео — 25/50/75/100%. null для не-видео
+   * или пока не известна длительность ролика (Asset.durationSec). */
+  videoWatch: VideoWatchStat | null;
   /** Однострочный документ всегда даёт 100% дочитывания — это не заслуга,
    * а свойство длины. Помечаем отдельно и не мешаем с остальными в сортировке
    * по глубине. */
@@ -299,6 +327,39 @@ export function buildPageHeat(pageCount: number | null, msByPage: Map<number, nu
   return pages;
 }
 
+/** Одна веха воронки просмотра видео: сколько сеансов из всех досмотрело
+ * хотя бы до этой доли ролика. */
+export type WatchMilestone = { pct: 25 | 50 | 75 | 100; reached: number; level: 0 | 1 | 2 | 3 | 4 };
+export type VideoWatchStat = { sessions: number; milestones: WatchMilestone[] };
+
+const WATCH_MILESTONE_PCTS = [25, 50, 75, 100] as const;
+
+/**
+ * Воронка глубины просмотра видео — аналог buildPageHeat, но для видео нет
+ * «страниц», только непрерывная позиция, поэтому берём фиксированные вехи
+ * 25/50/75/100%. `level` — доля сеансов, дошедших до вехи, не относительно
+ * самой популярной вехи (та всегда ≥ остальных — шкала «сама на себя»
+ * ничего не показала бы).
+ */
+export function buildVideoWatch(
+  durationSec: number | null,
+  maxPosByVisit: Map<string, number>,
+): VideoWatchStat | null {
+  if (!durationSec || durationSec <= 0) return null;
+
+  const positions = [...maxPosByVisit.values()];
+  const sessions = positions.length;
+
+  const milestones = WATCH_MILESTONE_PCTS.map((pct) => {
+    const reached = positions.filter((sec) => sec / durationSec >= pct / 100).length;
+    const level: WatchMilestone["level"] =
+      sessions === 0 || reached === 0 ? 0 : (Math.max(1, Math.ceil((reached / sessions) * 4)) as 1 | 2 | 3 | 4);
+    return { pct, reached, level };
+  });
+
+  return { sessions, milestones };
+}
+
 const shortDateFmt = new Intl.DateTimeFormat("ru-RU", { day: "numeric", month: "long" });
 
 /** «12 августа» — для подписи версии и хронологии заходов. */
@@ -358,6 +419,7 @@ export async function hubDetail(
         pageRows,
         linkClicks,
         pageTime,
+        videoRows,
         demoClicks,
         contactClicks,
       ] = await Promise.all([
@@ -418,6 +480,16 @@ export async function hubDetail(
           },
           _sum: { durationMs: true },
         }),
+        db.event.groupBy({
+          by: ["assetId", "visitId"],
+          where: {
+            shareLinkId: link.id,
+            type: "VIDEO_PROGRESS",
+            assetId: { not: null },
+            ...eventWhere,
+          },
+          _max: { positionSec: true },
+        }),
         // Клики по кнопкам шапки — события уровня хаба, без материала.
         db.event.count({
           where: { shareLinkId: link.id, type: "DEMO_CLICK", ...eventWhere },
@@ -470,6 +542,16 @@ export async function hubDetail(
         map.set(row.pageNumber!, row._sum.durationMs ?? 0);
       }
 
+      // Та же идея для видео: карта макс-позиции по каждому визиту —
+      // основа воронки 25/50/75/100% (buildVideoWatch).
+      const videoPosByAsset = new Map<string, Map<string, number>>();
+      for (const row of videoRows) {
+        const assetId = row.assetId!;
+        let map = videoPosByAsset.get(assetId);
+        if (!map) videoPosByAsset.set(assetId, (map = new Map()));
+        map.set(row.visitId, row._max.positionSec ?? 0);
+      }
+
       // Черновые карточки материалов — по одной на каждый Asset, ещё без
       // схлопывания версий КП. quoteId/createdAt нужны только для
       // следующего шага и не попадают в финальный ItemStats.
@@ -494,6 +576,10 @@ export async function hubDetail(
           maxPage: maxPageByAsset.get(asset.id) ?? null,
           topPages,
           pageHeat: buildPageHeat(asset.pageCount, msByPage),
+          videoWatch:
+            asset.kind === "VIDEO"
+              ? buildVideoWatch(asset.durationSec, videoPosByAsset.get(asset.id) ?? new Map())
+              : null,
           isSinglePage: asset.pageCount === 1,
           versionNote: null,
           quoteId: asset.quoteId,
@@ -550,6 +636,9 @@ export async function hubDetail(
             .sort((a, b) => b.ms - a.ms)
             .slice(0, 5),
           pageHeat: buildPageHeat(pageCount, msByPage),
+          // Расчёты КП (единственный случай схлопывания версий) — всегда
+          // PDF, у видео quoteId не бывает вовсе.
+          videoWatch: null,
           isSinglePage: pageCount === 1,
           versionNote: `версия от ${formatShortDate(newest.createdAt)}`,
         });
