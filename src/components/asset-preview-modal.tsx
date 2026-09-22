@@ -49,7 +49,11 @@ export function AssetPreviewModal({
 
   return (
     <div className="fixed inset-0 z-50 flex flex-col bg-zinc-900">
-      <div className="flex shrink-0 items-center gap-3 px-4 py-2.5">
+      {/* pt складывает обычный отступ (0.625rem = py-2.5) с вырезом
+          статус-бара — тот же приём, что и у pdf-preview-overlay.tsx: без
+          него «← Закрыть» уезжала под статус-бар iPhone и переставала
+          нажиматься (видна только размытая полоса под ним). */}
+      <div className="flex shrink-0 items-center gap-3 px-4 pb-2.5 pt-[calc(0.625rem+env(safe-area-inset-top))]">
         <button
           type="button"
           onClick={onClose}

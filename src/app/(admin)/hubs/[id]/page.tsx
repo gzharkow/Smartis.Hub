@@ -129,10 +129,9 @@ export default async function HubPage({
       // PDF калькулятора добавляются отдельным виджетом (HubQuotePicker
       // ниже), не через общую библиотеку — иначе она забивается расчётами.
       quoteId: null,
-      // Общая библиотека + свои ПОДТВЕРЖДЁННЫЕ личные материалы — чужие
-      // личные материалы (даже подтверждённые) сюда не должны попасть,
+      // Личная библиотека сюда не попадает вовсе — ни своя, ни чужая,
       // как и в /api/assets/search (см. тот же фильтр там).
-      OR: [{ ownerId: null }, { ownerId: user.id, validatedAt: { not: null } }],
+      ownerId: null,
     },
     include: { _count: { select: { hubItems: true } } },
     orderBy: [{ hubItems: { _count: "desc" } }, { createdAt: "desc" }],

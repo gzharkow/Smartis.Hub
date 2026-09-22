@@ -13,6 +13,7 @@ import {
   StatsIcon,
 } from "./nav-icons";
 import { SearchOverlay } from "./search-overlay";
+import { useVisualViewportBottomOffset } from "./use-visual-viewport-bottom-offset";
 
 // Порядок — зеркальный тому, что был в сайдбаре (решение владельца):
 // Настройки → Поиск → (Статистика) → Генератор КП → Материалы → Хабы.
@@ -79,6 +80,13 @@ function BottomTabButton({
     <button
       type="button"
       onClick={onClick}
+      // На iOS synthetic click идёт с задержкой после реального касания —
+      // если тап пришёлся на момент, когда JS ещё не успел «прогреться»,
+      // click иногда вовсе не долетает, и нужен второй тап. pointerup
+      // срабатывает раньше и надёжнее; onClick оставлен как есть для
+      // клавиатуры/скринридеров. Двойной вызов безвреден — setPanel("search")
+      // идемпотентен.
+      onPointerUp={onClick}
       aria-label={label}
       aria-pressed={active}
       className={`flex h-full flex-1 flex-col items-center justify-center gap-0.5 text-xs transition duration-100 ${
@@ -108,18 +116,24 @@ type SectionAccess = { hubs: boolean; assets: boolean; stats: boolean; calculato
 
 export function BottomNav({ access }: { access: SectionAccess }) {
   const [panel, setPanel] = useState<"search" | null>(null);
+  const navRef = useVisualViewportBottomOffset<HTMLElement>();
 
   return (
     <>
-      {/* sticky, не fixed: на холодном запуске standalone-PWA WebKit иногда
-          не сразу применяет полный экран под статус-баром, и fixed;bottom:0
-          резолвился относительно ещё не устоявшегося вьюпорта — бар "висел"
-          выше нужного места до первого touch-скролла (замерено debug-панелью,
-          не догадка). sticky работает через обычную раскладку/скролл, не
-          через привязку к моментальному снимку вьюпорта — этого класса бага
-          у него нет. Бар теперь — обычный элемент потока (прямой flex-child
-          body, см. (admin)/layout.tsx), поэтому сам резервирует место —
-          компенсирующий отступ у <main> больше не нужен.
+      {/* fixed + visualViewport, не sticky: sticky (как обычный flex-child
+          body, см. (admin)/layout.tsx) решал баг холодного старта (fixed
+          резолвился против ещё не устоявшегося вьюпорта, бар "висел" выше
+          нужного места до первого touch-скролла), но открыл другой — во
+          время скролла WebKit на iOS анимирует скрытие/появление адресной
+          строки, и sticky/dvh может на кадр-другой разъехаться с реальным
+          нижним краем экрана (бар "отлетает" к середине). visualViewport
+          не подвержен ни тому, ни другому: даёт живые фактические размеры
+          видимой области с первого кадра, а не снимок/расчётную dvh-высоту
+          (см. use-visual-viewport-bottom-offset.ts). bottom-0 в классе —
+          запасное значение на случай недоступности API, хук его тут же
+          перекрывает инлайн-стилем.
+          fixed выходит из потока — <main> снова нужен компенсирующий
+          нижний отступ той же высоты (см. (admin)/layout.tsx).
           flex-1 на каждом пункте сам делит ширину поровну — на 5 или 6
           пунктов, без явного grid-cols. */}
       {/* Высота считается ОТ полосы значков, а не до неё. Раньше стояло h-20
@@ -128,7 +142,10 @@ export function BottomNav({ access }: { access: SectionAccess }) {
           46px на iPhone с чертой против 80px на телефоне без неё — область
           нажатия у одного и того же бара отличалась почти вдвое. Теперь
           полоса всегда 3.5rem, а вырез добавляется под ней. */}
-      <nav className="sticky bottom-0 z-30 hidden h-[calc(3.5rem+env(safe-area-inset-bottom))] w-full items-stretch border-t border-border bg-surface pb-[env(safe-area-inset-bottom)] standalone:max-md:flex">
+      <nav
+        ref={navRef}
+        className="fixed inset-x-0 bottom-0 z-30 hidden h-[calc(3.5rem+env(safe-area-inset-bottom))] w-full items-stretch border-t border-border bg-surface pb-[env(safe-area-inset-bottom)] standalone:max-md:flex"
+      >
         {/* Ведёт в раздел «Настройки»: подраздел «Общие» (тема/аккаунт/выход/
             смена пароля) виден всем, «Администрирование» — только админу. */}
         <BottomTabLink

@@ -104,17 +104,26 @@ export function PdfViewer({ src, pageCount, onPageChange }: Props) {
 
     const canvas = document.createElement("canvas");
     // На экранах с высокой плотностью точек рисуем крупнее, иначе текст мылит.
-    // Потолок в 2 — дальше разница не видна, а память тратится всерьёз.
-    const dpr = Math.min(window.devicePixelRatio || 1, 2);
-    canvas.width = Math.floor(viewport.width * dpr);
-    canvas.height = Math.floor(viewport.height * dpr);
+    // Потолок подняли с 2 до 3 (реальный DPR большинства смартфонов, а не
+    // только десктопных Retina-экранов, под которые считался старый потолок).
+    const dpr = Math.min(window.devicePixelRatio || 1, 3);
+    // Запас поверх «по ширине колонки»: страница рисуется один раз при
+    // попадании в область видимости и потом не перерисовывается — без
+    // запаса при родном pinch-zoom браузера (a maximumScale нигде не
+    // ограничен) растр упирается в свою же резолюцию раньше, чем в этом
+    // есть смысл, и текст расползается на пиксели. x2 даёт зумиться
+    // примерно вдвое, оставаясь читаемым.
+    const ZOOM_HEADROOM = 2;
+    const renderScale = scale * dpr * ZOOM_HEADROOM;
+    canvas.width = Math.floor(viewport.width * dpr * ZOOM_HEADROOM);
+    canvas.height = Math.floor(viewport.height * dpr * ZOOM_HEADROOM);
     canvas.style.width = "100%";
     canvas.style.height = "auto";
     canvas.style.display = "block";
 
     await page.render({
       canvas,
-      viewport: page.getViewport({ scale: scale * dpr }),
+      viewport: page.getViewport({ scale: renderScale }),
     }).promise;
 
     slot.replaceChildren(canvas);

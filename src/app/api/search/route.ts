@@ -57,6 +57,9 @@ export async function GET(request: Request) {
             // PDF калькулятора — не материал библиотеки; расчёт, из которого он
             // сделан, и так находится ниже через db.quote.findMany.
             quoteId: null,
+            // Личная библиотека сюда не попадает — ни своя, ни чужая, у неё
+            // своя вкладка «Мои материалы» (см. тот же фильтр в assets/search).
+            ownerId: null,
             title: { contains: q, mode: "insensitive" },
           },
           select: { id: true, title: true, section: true },

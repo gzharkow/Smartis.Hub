@@ -86,11 +86,6 @@ export default async function AdminLayout({
   const theme = parseTheme(jar.get(THEME_COOKIE)?.value);
 
   return (
-    // Фрагмент, не общая обёртка: BottomNav должен быть ПРЯМЫМ flex-child'ом
-    // <body> (см. корневой layout.tsx — min-h-dvh flex flex-col), иначе
-    // sticky-позиционирование бара не сможет опереться на стандартную
-    // раскладку "sticky footer" (flex-колонка минимум в экран высотой,
-    // последний элемент — sticky bottom-0).
     <>
       <div className="flex flex-1">
         {/* На узком экране установленного PWA сайдбар и шапка уступают место
@@ -111,9 +106,11 @@ export default async function AdminLayout({
 
           {/* Отступ сверху — только на узком экране PWA: 2rem — тот же
               базовый отступ, что и py-8 на десктопе, плюс вырез статус-бара
-              (иначе заголовок страницы под ним). Снизу отступ больше не
-              нужен — sticky-бар сам резервирует место в потоке. */}
-          <main className="flex-1 px-6 py-8 xl:px-10 2xl:px-14 standalone:max-md:pt-[calc(2rem+env(safe-area-inset-top))]">
+              (иначе заголовок страницы под ним). Снизу — та же высота, что
+              и у самого бара (bottom-nav.tsx): он снова position: fixed
+              (см. комментарий там), выходит из потока и сам место больше
+              не резервирует. */}
+          <main className="flex-1 px-6 py-8 xl:px-10 2xl:px-14 standalone:max-md:pt-[calc(2rem+env(safe-area-inset-top))] standalone:max-md:pb-[calc(3.5rem+env(safe-area-inset-bottom))]">
             {children}
           </main>
         </div>
