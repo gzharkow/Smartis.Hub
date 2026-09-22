@@ -2,7 +2,6 @@ import { hasEdit, showsOtherOwners, visibleOwnerFilter } from "@/lib/permissions
 import { requireSection } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { formatFileSize } from "@/lib/assets";
-import { formatHubCreated } from "@/lib/hub-format";
 import { ownerLabel } from "@/lib/owner-color";
 import { withPlural, WORDS } from "@/lib/plural";
 import { QuoteFileRow, type QuoteFileRowData } from "./quote-file-row";
@@ -57,7 +56,7 @@ export default async function CalculatorFilesPage() {
     ]
       .filter(Boolean)
       .join(" · "),
-    created: formatHubCreated(a.createdAt),
+    created: a.createdAt,
     hubCount: a._count.hubItems,
     quoteId: a.quote?.id ?? null,
     archived: a.archivedAt !== null,

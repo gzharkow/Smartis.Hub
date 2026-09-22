@@ -3,7 +3,6 @@ import { requireSection } from "@/lib/auth";
 import { notFound } from "next/navigation";
 import { db } from "@/lib/db";
 import { formatFileSize } from "@/lib/assets";
-import { formatHubCreated } from "@/lib/hub-format";
 import { specAvailability } from "@/lib/spec-build";
 import { loadQuoteForSpec, specInputFrom, specRecordFrom } from "@/lib/spec-quote";
 import { SPEC_TEMPLATE_TITLES } from "@/lib/spec-template";
@@ -81,10 +80,11 @@ async function Available({
       previewAvailable={await isSofficeAvailable()}
       released={released.map((a) => ({
         id: a.id,
-        // Форматируем здесь: formatFileSize живёт в server-only модуле.
-        meta: [formatHubCreated(a.createdAt), a.sizeBytes ? formatFileSize(a.sizeBytes) : null]
-          .filter(Boolean)
-          .join(" · "),
+        createdAt: a.createdAt,
+        // Размер форматируем здесь: formatFileSize живёт в server-only
+        // модуле. Дату — нет, её форматирует сам компонент (браузер
+        // зрителя, не сервера, см. src/lib/format-datetime.ts).
+        sizeLabel: a.sizeBytes ? formatFileSize(a.sizeBytes) : null,
       }))}
     />
   );

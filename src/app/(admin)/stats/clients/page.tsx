@@ -2,7 +2,7 @@ import { requireSection } from "@/lib/auth";
 import { cookies } from "next/headers";
 import { visibleOwnerFilter } from "@/lib/permissions";
 import { db } from "@/lib/db";
-import { formatDuration, formatWhen, hubStats } from "@/lib/stats";
+import { formatDuration, hubStats } from "@/lib/stats";
 import { parseViewMode, VIEW_COOKIE } from "@/lib/view-mode";
 import { ViewToggle } from "@/components/view-toggle";
 import { StatsSortControl } from "@/components/stats-sort-control";
@@ -58,8 +58,10 @@ export default async function StatsClientsPage() {
 
   const touched = rows.filter((r) => r.stat.visits > 0);
 
-  // Числа/даты форматируем здесь — hub-list.tsx клиентский, а форматтеры
-  // живут в lib/stats.ts, помеченном "server-only".
+  // Длительность форматируем здесь (не зависит от часового пояса) —
+  // hub-list.tsx клиентский, а lib/stats.ts помечен "server-only". Дату
+  // последнего захода — нет: её форматирует сам hub-list.tsx, в браузере
+  // зрителя, не сервера (см. src/lib/format-datetime.ts).
   const clientRows: ClientHubRow[] = rows.map(({ hub, stat }) => ({
     hubId: hub.id,
     title: hub.title,
@@ -68,7 +70,7 @@ export default async function StatsClientsPage() {
     linksCount: hub._count.shareLinks,
     visits: stat.visits,
     durationLabel: formatDuration(stat.totalMs),
-    lastSeenLabel: formatWhen(stat.lastSeenAt),
+    lastSeenAt: stat.lastSeenAt,
   }));
 
   return (

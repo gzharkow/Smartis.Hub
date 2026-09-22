@@ -6,7 +6,6 @@ import { showsOtherOwners, visibleOwnerFilter } from "@/lib/permissions";
 import { db } from "@/lib/db";
 import { parseViewMode, VIEW_COOKIE } from "@/lib/view-mode";
 import { DEFAULT_HUB_SORT, hubOrderBy, HUB_SORT_COOKIE, parseHubSort } from "@/lib/hub-sort";
-import { formatHubCreated } from "@/lib/hub-format";
 import { ownerLabel } from "@/lib/owner-color";
 import { ViewToggle } from "@/components/view-toggle";
 import { HubSortControl } from "@/components/hub-sort-control";
@@ -59,7 +58,7 @@ export default async function FolderPage({
     items: h._count.items,
     links: h._count.shareLinks,
     folderName: null,
-    createdLabel: formatHubCreated(h.createdAt),
+    createdAt: h.createdAt,
     owner:
       "owner" in h && h.owner
         ? { id: h.owner.id, label: ownerLabel(h.owner) }

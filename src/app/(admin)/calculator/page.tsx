@@ -4,7 +4,7 @@ import Decimal from "decimal.js";
 import { cookies } from "next/headers";
 import { hasEdit, showsOtherOwners, visibleOwnerFilter } from "@/lib/permissions";
 import { db } from "@/lib/db";
-import { formatHubCreated } from "@/lib/hub-format";
+import { LocalDateTime } from "@/components/local-datetime";
 import { ownerLabel } from "@/lib/owner-color";
 import { OwnerBadge } from "@/components/owner-badge";
 import { calculateQuote, formatMoney } from "@/lib/quote-calc";
@@ -108,7 +108,7 @@ export default async function CalculatorPage() {
                   <div className="min-w-0">
                     <p className="truncate font-medium">{quote.clientName}</p>
                     <p className="mt-0.5 text-sm text-muted">
-                      Изменён {formatHubCreated(quote.updatedAt)}
+                      Изменён <LocalDateTime kind="hubCreated" date={quote.updatedAt} />
                     </p>
                   </div>
                   <div className="grid grid-cols-1 gap-0.5 text-sm sm:justify-items-end sm:text-right">

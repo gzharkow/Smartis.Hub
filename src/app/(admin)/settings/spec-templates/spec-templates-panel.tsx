@@ -3,6 +3,7 @@
 import { useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { deleteSpecTemplate } from "@/app/actions/spec-templates";
+import { formatHubCreated } from "@/lib/format-datetime";
 import type { SpecTemplateKind } from "@/lib/spec-template";
 import { buttonClasses } from "@/components/ui/button";
 import { cardClasses } from "@/components/ui/card";
@@ -19,7 +20,8 @@ export type SpecTemplateRow = {
   kindTitle: string;
   vatRatePct: string;
   fileName: string;
-  meta: string;
+  updatedAt: Date;
+  sizeLabel: string;
   uploadedBy: string | null;
 };
 
@@ -196,7 +198,9 @@ function TemplateRow({ row }: { row: SpecTemplateRow }) {
         {row.fileName}
       </span>
 
-      <span className="hidden shrink-0 text-xs text-muted sm:inline">{row.meta}</span>
+      <span className="hidden shrink-0 text-xs text-muted sm:inline">
+        {formatHubCreated(row.updatedAt)} · {row.sizeLabel}
+      </span>
       {row.uploadedBy ? (
         <span className="hidden shrink-0 text-xs text-muted md:inline">{row.uploadedBy}</span>
       ) : null}

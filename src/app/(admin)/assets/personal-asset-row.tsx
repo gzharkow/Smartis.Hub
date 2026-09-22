@@ -10,6 +10,7 @@ import {
   restoreAsset,
 } from "@/app/actions/assets";
 import { backfillThumbnail } from "@/lib/backfill-thumbnail";
+import { formatHubCreated } from "@/lib/format-datetime";
 import { makeThumbnail } from "@/lib/make-thumbnail";
 import { isUploadSupported, SUPPORTED_FORMATS_TEXT, UPLOAD_ACCEPT } from "@/lib/asset-formats";
 import { withPlural, WORDS } from "@/lib/plural";
@@ -69,7 +70,7 @@ export type PersonalAssetRowData = {
   kindLabel: string;
   meta: string;
   pageCount: number | null;
-  updatedAt: string;
+  updatedAt: Date;
   hubCount: number;
   archived: boolean;
   hasThumbnail: boolean;
@@ -417,7 +418,7 @@ export function PersonalAssetRow({
             <span className="text-xs text-muted">{asset.meta}</span>
           ) : null}
 
-          <span className="text-xs text-muted">Изменён {asset.updatedAt}</span>
+          <span className="text-xs text-muted">Изменён {formatHubCreated(asset.updatedAt)}</span>
 
           {thumbErrorEl}
           {replaceErrorEl}
@@ -481,7 +482,7 @@ export function PersonalAssetRow({
 
       <span className="shrink-0 text-sm text-muted">{asset.meta}</span>
       <span className="hidden shrink-0 text-xs text-muted sm:inline">
-        Изменён {asset.updatedAt}
+        Изменён {formatHubCreated(asset.updatedAt)}
       </span>
 
       {thumbErrorEl}

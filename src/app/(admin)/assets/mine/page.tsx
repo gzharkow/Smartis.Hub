@@ -3,7 +3,6 @@ import { notFound } from "next/navigation";
 import { requireSection } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { formatFileSize, KIND_LABELS } from "@/lib/assets";
-import { formatHubCreated } from "@/lib/hub-format";
 import { withPlural, WORDS } from "@/lib/plural";
 import {
   parseViewMode,
@@ -75,7 +74,7 @@ export default async function MyAssetsPage({
     ]
       .filter(Boolean)
       .join(" · "),
-    updatedAt: formatHubCreated(a.updatedAt),
+    updatedAt: a.updatedAt,
     hubCount: a._count.hubItems,
     archived: a.archivedAt !== null,
     hasThumbnail: a.thumbnailKey !== null,

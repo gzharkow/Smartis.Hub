@@ -8,7 +8,6 @@ import {
   HUB_SORT_COOKIE,
   parseHubSort,
 } from "@/lib/hub-sort";
-import { formatHubCreated } from "@/lib/hub-format";
 import { hasEdit, showsOtherOwners, visibleOwnerFilter } from "@/lib/permissions";
 import { ownerLabel } from "@/lib/owner-color";
 import { ViewToggle } from "@/components/view-toggle";
@@ -59,7 +58,7 @@ export default async function HubsPage() {
     items: h._count.items,
     links: h._count.shareLinks,
     folderName: h.folder?.name ?? null,
-    createdLabel: formatHubCreated(h.createdAt),
+    createdAt: h.createdAt,
     owner:
       "owner" in h && h.owner
         ? { id: h.owner.id, label: ownerLabel(h.owner) }

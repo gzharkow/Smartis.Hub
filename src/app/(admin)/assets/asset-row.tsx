@@ -12,6 +12,7 @@ import {
   setAssetSection,
 } from "@/app/actions/assets";
 import { backfillThumbnail } from "@/lib/backfill-thumbnail";
+import { formatHubCreated } from "@/lib/format-datetime";
 import { makeThumbnail } from "@/lib/make-thumbnail";
 import { SECTIONS } from "@/lib/asset-sections";
 import { isUploadSupported, SUPPORTED_FORMATS_TEXT, UPLOAD_ACCEPT } from "@/lib/asset-formats";
@@ -78,8 +79,7 @@ export type AssetRowData = {
   embeddable: boolean | null;
   /** Ссылка, которую сайт запрещает встраивать: откроется новой вкладкой. */
   opensInNewTab: boolean;
-  /** Готовая строка «ДД.ММ.ГГГГ, ЧЧ:ММ» по московскому времени. */
-  updatedAt: string;
+  updatedAt: Date;
   /** В скольких хабах стоит. Нужно предупредить: удаление уберёт его с витрин. */
   hubCount: number;
   archived: boolean;
@@ -459,7 +459,7 @@ export function AssetRow({
             <span className="text-xs text-muted">{asset.meta}</span>
           ) : null}
 
-          <span className="text-xs text-muted">Изменён {asset.updatedAt}</span>
+          <span className="text-xs text-muted">Изменён {formatHubCreated(asset.updatedAt)}</span>
 
           {thumbErrorEl}
           {replaceErrorEl}
@@ -534,7 +534,7 @@ export function AssetRow({
 
       <span className="shrink-0 text-sm text-muted">{asset.meta}</span>
       <span className="hidden shrink-0 text-xs text-muted sm:inline">
-        Изменён {asset.updatedAt}
+        Изменён {formatHubCreated(asset.updatedAt)}
       </span>
 
       {sectionSelect}

@@ -1,6 +1,5 @@
 import { requireAdmin } from "@/lib/auth";
 import { db } from "@/lib/db";
-import { formatHubCreated } from "@/lib/hub-format";
 import { CreateAccountForm } from "./create-account-form";
 import { AccountsTable, type AccountRow } from "./accounts-table";
 import { SettingsTabs } from "../settings-tabs";
@@ -28,7 +27,7 @@ export default async function AdministrationPage() {
     canAccessCalculator: u.canAccessCalculator,
     canAddAssets: u.canAddAssets,
     visibleOwnerIds: u.visibleOwners.map((o) => o.id),
-    createdLabel: formatHubCreated(u.createdAt),
+    createdAt: u.createdAt,
   }));
 
   // Для выбора «чьи хабы/расчёты видит новый аккаунт» — все остальные

@@ -4,10 +4,11 @@ import { useState } from "react";
 import Link from "next/link";
 import { plural, withPlural, WORDS } from "@/lib/plural";
 import { VIEW_GRID_CLASS, VIEW_LIST_CLASS } from "@/lib/view-mode";
+import { formatWhen } from "@/lib/format-datetime";
 
-// Строки уже отформатированы на сервере (formatDuration/formatWhen живут
-// в lib/stats.ts, а тот помечен "server-only" — тянуть его в клиентский
-// компонент нельзя даже ради двух чистых функций форматирования).
+// durationLabel уже отформатирован на сервере (formatDuration не зависит
+// от часового пояса). lastSeenAt — сырая дата: formatWhen форматирует её
+// здесь же, в браузере зрителя, а не сервера (см. format-datetime.ts).
 export type ClientHubRow = {
   hubId: string;
   title: string;
@@ -16,7 +17,7 @@ export type ClientHubRow = {
   linksCount: number;
   visits: number;
   durationLabel: string;
-  lastSeenLabel: string;
+  lastSeenAt: Date | null;
 };
 
 /**
@@ -93,7 +94,7 @@ export function ClientHubList({ rows, grid }: { rows: ClientHubRow[]; grid: bool
                       </span>
                     </span>
                     <span className={grid ? "text-muted" : "w-24 text-right text-muted"}>
-                      {row.lastSeenLabel}
+                      {formatWhen(row.lastSeenAt)}
                     </span>
                   </div>
                 )}

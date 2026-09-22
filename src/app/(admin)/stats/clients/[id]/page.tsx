@@ -5,7 +5,6 @@ import { db } from "@/lib/db";
 import { KIND_LABELS } from "@/lib/assets";
 import {
   formatDuration,
-  formatWhen,
   hubDetail,
   visitTimeline,
   timeDonutSegments,
@@ -14,6 +13,7 @@ import {
 } from "@/lib/stats";
 import { parseStatsRange } from "@/lib/stats-range";
 import { StatsRangePicker } from "@/components/stats-range-picker";
+import { LocalDateTime } from "@/components/local-datetime";
 import { withPlural, WORDS } from "@/lib/plural";
 import type { AssetKind } from "@/generated/prisma/enums";
 import { StatusPill } from "./components/status-pill";
@@ -135,7 +135,7 @@ export default async function HubStatsPage({
               </h2>
               <StatusPill tag={link.statusTag} />
               <span className="text-xs text-muted">
-                Последний заход: {formatWhen(link.lastSeenAt)}
+                Последний заход: <LocalDateTime kind="relative" date={link.lastSeenAt} />
               </span>
               {link.revoked ? (
                 <span className="rounded bg-border/70 px-1.5 py-0.5 text-xs">
@@ -272,9 +272,9 @@ export default async function HubStatsPage({
                         <span className="min-w-0 flex-1 truncate font-medium">
                           {item.title}
                         </span>
-                        {item.versionNote ? (
+                        {item.versionAt ? (
                           <span className="shrink-0 text-xs text-muted">
-                            ({item.versionNote})
+                            (версия от <LocalDateTime kind="shortDate" date={item.versionAt} />)
                           </span>
                         ) : null}
                         <span className="shrink-0 font-mono text-sm font-semibold tabular-nums">

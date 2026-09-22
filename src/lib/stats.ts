@@ -2,6 +2,7 @@ import "server-only";
 
 import { db } from "./db";
 import type { StatsRange } from "./stats-range";
+import { formatDuration } from "./format-datetime";
 
 // Подсчёты для админской статистики. Держим отдельно от страниц: одни и те же
 // цифры нужны и в сводке, и на карточке хаба, и в уведомлениях.
@@ -228,8 +229,10 @@ export type ItemStats = {
    * по глубине. */
   isSinglePage: boolean;
   /** Заполнено, если строка — результат схлопывания нескольких версий одного
-   * расчёта КП (общий quoteId): «версия от 12 августа». */
-  versionNote: string | null;
+   * расчёта КП (общий quoteId) — дата создания самой свежей версии. Строку
+   * «версия от 12 августа» собирает сам компонент (см. LocalDateTime) —
+   * не здесь: это часовой пояс устройства зрителя, не сервера. */
+  versionAt: Date | null;
 };
 
 export type TimelineChip = {
@@ -358,25 +361,6 @@ export function buildVideoWatch(
   });
 
   return { sessions, milestones };
-}
-
-const shortDateFmt = new Intl.DateTimeFormat("ru-RU", { day: "numeric", month: "long" });
-
-/** «12 августа» — для подписи версии и хронологии заходов. */
-export function formatShortDate(date: Date): string {
-  return shortDateFmt.format(date);
-}
-
-const timeFmt = new Intl.DateTimeFormat("ru-RU", { hour: "2-digit", minute: "2-digit" });
-
-/** «12 августа, 14:32» — точное время захода, в отличие от formatWhen. */
-export function formatVisitWhen(date: Date): string {
-  return `${formatShortDate(date)}, ${timeFmt.format(date)}`;
-}
-
-/** «14:32» — метка времени для чипа в хронологии заходов. */
-export function formatEventTime(date: Date): string {
-  return timeFmt.format(date);
 }
 
 /**
@@ -581,7 +565,7 @@ export async function hubDetail(
               ? buildVideoWatch(asset.durationSec, videoPosByAsset.get(asset.id) ?? new Map())
               : null,
           isSinglePage: asset.pageCount === 1,
-          versionNote: null,
+          versionAt: null,
           quoteId: asset.quoteId,
           createdAt: asset.createdAt,
         };
@@ -640,7 +624,7 @@ export async function hubDetail(
           // PDF, у видео quoteId не бывает вовсе.
           videoWatch: null,
           isSinglePage: pageCount === 1,
-          versionNote: `версия от ${formatShortDate(newest.createdAt)}`,
+          versionAt: newest.createdAt,
         });
       }
 
@@ -895,41 +879,15 @@ export async function visitTimeline(
   });
 }
 
-/** «2 мин 30 сек», «45 сек», «1 ч 5 мин». */
-export function formatDuration(ms: number): string {
-  const sec = Math.round(ms / 1000);
-  if (sec < 60) return `${sec} сек`;
-
-  const min = Math.floor(sec / 60);
-  if (min < 60) {
-    const rest = sec % 60;
-    return rest > 0 ? `${min} мин ${rest} сек` : `${min} мин`;
-  }
-
-  const hours = Math.floor(min / 60);
-  const restMin = min % 60;
-  return restMin > 0 ? `${hours} ч ${restMin} мин` : `${hours} ч`;
-}
-
-/** «только что», «12 минут назад», «вчера», «3 июля». */
-export function formatWhen(date: Date | null): string {
-  if (!date) return "—";
-
-  const diffMs = Date.now() - date.getTime();
-  const min = Math.round(diffMs / 60_000);
-
-  if (min < 1) return "только что";
-  if (min < 60) return `${min} мин назад`;
-
-  const hours = Math.round(min / 60);
-  if (hours < 24) return `${hours} ч назад`;
-
-  const days = Math.round(hours / 24);
-  if (days === 1) return "вчера";
-  if (days < 7) return `${days} дн. назад`;
-
-  return new Intl.DateTimeFormat("ru-RU", {
-    day: "numeric",
-    month: "long",
-  }).format(date);
-}
+// Форматирование дат/времени для экрана переехало в format-datetime.ts —
+// оно там БЕЗ "server-only", чтобы клиентские компоненты могли его звать
+// напрямую (этот файл ходит в Prisma, ему server-only необходим целиком).
+// Реэкспорт — чтобы существующие `import {...} from "@/lib/stats"` в
+// Server Component'ах не трогать: им барьер не мешает.
+export {
+  formatDuration,
+  formatWhen,
+  formatShortDate,
+  formatVisitWhen,
+  formatEventTime,
+} from "./format-datetime";

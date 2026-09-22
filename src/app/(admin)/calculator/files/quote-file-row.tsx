@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import Link from "next/link";
 import { archiveAsset, deleteAssetPermanently, restoreAsset } from "@/app/actions/assets";
+import { formatHubCreated } from "@/lib/format-datetime";
 import { withPlural, WORDS } from "@/lib/plural";
 import { OwnerBadge } from "@/components/owner-badge";
 import { buttonClasses } from "@/components/ui/button";
@@ -15,7 +16,7 @@ export type QuoteFileRowData = {
   kindLabel: string;
   title: string;
   meta: string;
-  created: string;
+  created: Date;
   hubCount: number;
   /** Расчёт-источник. null — расчёт удалён физически (крайний случай). */
   quoteId: string | null;
@@ -142,7 +143,7 @@ export function QuoteFileRow({
       {file.owner ? <OwnerBadge id={file.owner.id} label={file.owner.label} /> : null}
 
       <span className="hidden shrink-0 text-xs text-muted sm:inline">
-        {file.created}
+        {formatHubCreated(file.created)}
       </span>
       <span className="hidden shrink-0 text-sm text-muted sm:inline">
         {file.meta}

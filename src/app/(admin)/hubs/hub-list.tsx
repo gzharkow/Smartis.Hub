@@ -2,6 +2,7 @@ import Link from "next/link";
 import { withPlural, WORDS } from "@/lib/plural";
 import { OwnerBadge } from "@/components/owner-badge";
 import { HubTileActions } from "./hub-tile-actions";
+import { LocalDateTime } from "@/components/local-datetime";
 import {
   VIEW_LIST_CLASS,
   type ViewMode,
@@ -22,8 +23,9 @@ export type HubRow = {
   links: number;
   /** Название папки или null. Показываем только там, где хабы вперемешку. */
   folderName: string | null;
-  /** Готовая подпись «когда создан», дата и время. */
-  createdLabel: string;
+  /** Когда создан — сырая дата, подпись собирает LocalDateTime (в браузере
+   *  зрителя, не сервера). */
+  createdAt: Date;
   /**
    * Кто создал — только заполнено, когда список показывает чужие записи
    * (администратор видит хабы всех сотрудников). У обычного пользователя
@@ -157,7 +159,7 @@ export function HubList({
               {showFolder && hub.folderName ? ` · ${hub.folderName}` : ""}
             </span>
             <span className="shrink-0" title="Дата и время создания">
-              {hub.createdLabel}
+              <LocalDateTime kind="hubCreated" date={hub.createdAt} />
             </span>
           </span>
         );

@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { archiveAsset, deleteAssetPermanently, restoreAsset } from "@/app/actions/assets";
+import { formatHubCreated } from "@/lib/format-datetime";
 import { withPlural, WORDS } from "@/lib/plural";
 import { OwnerBadge } from "@/components/owner-badge";
 import { buttonClasses } from "@/components/ui/button";
@@ -123,7 +124,7 @@ export function SpecFileRow({
       {file.owner ? <OwnerBadge id={file.owner.id} label={file.owner.label} /> : null}
 
       <span className="hidden shrink-0 text-xs text-muted sm:inline">
-        {file.created}
+        {formatHubCreated(file.created)}
       </span>
       <span className="hidden shrink-0 text-sm text-muted sm:inline">
         {file.meta}

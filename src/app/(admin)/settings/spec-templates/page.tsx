@@ -1,7 +1,6 @@
 import { requireAdmin } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { formatFileSize } from "@/lib/assets";
-import { formatHubCreated } from "@/lib/hub-format";
 import { ownerLabel } from "@/lib/owner-color";
 import { MAX_SPEC_TEMPLATE_BYTES } from "@/lib/spec-build";
 import {
@@ -38,7 +37,8 @@ export default async function SpecTemplatesPage() {
     kindTitle: SPEC_TEMPLATE_TITLES[t.kind],
     vatRatePct: t.vatRatePct.toString(),
     fileName: t.fileName,
-    meta: [formatHubCreated(t.updatedAt), formatFileSize(t.sizeBytes)].join(" · "),
+    updatedAt: t.updatedAt,
+    sizeLabel: formatFileSize(t.sizeBytes),
     uploadedBy: t.uploadedBy ? ownerLabel(t.uploadedBy) : null,
   }));
 

@@ -1,9 +1,12 @@
-import {
-  formatDuration,
-  formatEventTime,
-  formatVisitWhen,
-  type VisitTimelineEntry,
-} from "@/lib/stats";
+"use client";
+
+// Импорт значений — только из format-datetime.ts (без "server-only"): даже
+// реэкспортированный formatDuration из lib/stats тянул бы за собой весь
+// модуль целиком (там же import "server-only"), а это ломает клиентскую
+// сборку. Тип — отдельным `import type`, он стирается компилятором и
+// рантайм-импорта не создаёт.
+import { formatDuration, formatEventTime, formatVisitWhen } from "@/lib/format-datetime";
+import type { VisitTimelineEntry } from "@/lib/stats";
 
 // Заходов может накопиться много (десятки за пару недель) — список тогда
 // сам по себе растягивает дашборд на полстраницы. Секцию целиком тоже

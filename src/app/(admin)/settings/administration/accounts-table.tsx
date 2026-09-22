@@ -2,6 +2,7 @@
 
 import { useActionState, useState } from "react";
 import { deleteAccount, type DeleteAccountState } from "@/app/actions/users";
+import { formatHubCreated } from "@/lib/format-datetime";
 import { EditAccountPanel } from "./edit-account-panel";
 import type { AccountOption } from "./account-visibility-picker";
 import { buttonClasses } from "@/components/ui/button";
@@ -17,7 +18,7 @@ export type AccountRow = {
   canAccessCalculator: boolean;
   canAddAssets: boolean;
   visibleOwnerIds: string[];
-  createdLabel: string;
+  createdAt: Date;
 };
 
 /** Ограничен ли доступ хоть по одному разделу — для короткой приписки в
@@ -75,7 +76,7 @@ export function AccountsTable({
                   {account.role === "MEMBER" && hasLimitedAccess(account)
                     ? " · ограниченный доступ"
                     : ""}{" "}
-                  · {account.createdLabel}
+                  · {formatHubCreated(account.createdAt)}
                 </p>
               </div>
               <div className="flex shrink-0 items-center gap-1">

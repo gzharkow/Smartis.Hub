@@ -4,7 +4,6 @@ import { requireSection } from "@/lib/auth";
 import { canAddMaterials, hasEdit } from "@/lib/permissions";
 import { db } from "@/lib/db";
 import { formatFileSize, KIND_LABELS } from "@/lib/assets";
-import { formatHubCreated } from "@/lib/hub-format";
 import { SECTIONS, sectionFromSlug, permissionKeyForSection } from "@/lib/asset-sections";
 import { withPlural, WORDS } from "@/lib/plural";
 import {
@@ -88,7 +87,7 @@ export default async function AssetsPage({
     // Предупреждаем только про ссылки, которые точно не встраиваются:
     // у файлов это поле не значит ничего.
     opensInNewTab: a.kind === "LINK" && a.embeddable !== true,
-    updatedAt: formatHubCreated(a.updatedAt),
+    updatedAt: a.updatedAt,
     hubCount: a._count.hubItems,
     archived: a.archivedAt !== null,
     hasThumbnail: a.thumbnailKey !== null,

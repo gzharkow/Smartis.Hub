@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { finalizeQuoteSpec } from "@/app/actions/quote-spec";
+import { formatHubCreated } from "@/lib/format-datetime";
 import { formatAmount, moneyParts } from "@/lib/rubles-in-words";
 import {
   computeSpecValues,
@@ -34,7 +35,7 @@ const inputCls =
 const badInputCls =
   "w-32 rounded-lg border border-danger bg-background px-2 py-1.5 text-sm text-right";
 
-export type ReleasedSpec = { id: string; meta: string };
+export type ReleasedSpec = { id: string; createdAt: Date; sizeLabel: string | null };
 
 export function SpecReview({
   quoteId,
@@ -245,7 +246,10 @@ export function SpecReview({
                   key={file.id}
                   className="flex items-center justify-between gap-3 px-4 py-2.5 text-sm"
                 >
-                  <span className="text-muted">{file.meta}</span>
+                  <span className="text-muted">
+                    {formatHubCreated(file.createdAt)}
+                    {file.sizeLabel ? ` · ${file.sizeLabel}` : ""}
+                  </span>
                   <a
                     href={`/api/assets/${file.id}/file?download=1`}
                     className="shrink-0 transition hover:text-accent"
