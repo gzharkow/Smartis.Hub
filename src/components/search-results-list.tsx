@@ -89,7 +89,7 @@ export function SearchResultsList({
           {result.assets.map((asset) => (
             <Link
               key={asset.id}
-              href={`/assets/${slugOfSection(asset.section)}`}
+              href={`/assets/${slugOfSection(asset.section)}?open=${asset.id}`}
               onClick={onSelect}
               className={itemClass}
             >

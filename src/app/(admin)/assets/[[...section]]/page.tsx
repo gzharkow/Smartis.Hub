@@ -28,13 +28,17 @@ export const dynamic = "force-dynamic";
 
 export default async function AssetsPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ section?: string[] }>;
+  // ?open=<id> — ссылка из общего поиска: сразу открыть этот материал.
+  searchParams: Promise<{ open?: string }>;
 }) {
   const user = await requireSection("assets");
   const view = parseViewMode((await cookies()).get(VIEW_COOKIE)?.value);
 
   const { section: parts } = await params;
+  const { open } = await searchParams;
 
   // /assets/auto/что-то-ещё — такого раздела нет, честно отвечаем 404,
   // а не показываем молча всю библиотеку.
@@ -149,7 +153,14 @@ export default async function AssetsPage({
       ) : (
         <ul className={view === "grid" ? VIEW_GRID_CLASS : VIEW_LIST_CLASS}>
           {active.map((asset) => (
-            <AssetRow key={asset.id} asset={asset} view={view} />
+            <AssetRow
+              // Другой key пересоздаёт строку — окно откроется, даже если
+              // человек уже на этой странице и нашёл через поиск второй материал.
+              key={asset.id === open ? `${asset.id}:open` : asset.id}
+              asset={asset}
+              view={view}
+              autoOpen={asset.id === open}
+            />
           ))}
         </ul>
       )}
@@ -170,7 +181,12 @@ export default async function AssetsPage({
 
           <ul className={view === "grid" ? VIEW_GRID_CLASS : VIEW_LIST_CLASS}>
             {archived.map((asset) => (
-              <AssetRow key={asset.id} asset={asset} view={view} />
+              <AssetRow
+                key={asset.id === open ? `${asset.id}:open` : asset.id}
+                asset={asset}
+                view={view}
+                autoOpen={asset.id === open}
+              />
             ))}
           </ul>
         </details>

@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useState, useTransition } from "react";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import {
   archiveAsset,
   backfillLinkThumbnail,
@@ -93,17 +93,21 @@ export type AssetRowData = {
 export function AssetRow({
   asset,
   view = "list",
+  autoOpen = false,
 }: {
   asset: AssetRowData;
   view?: ViewMode;
+  /** Сразу открыть предпросмотр — пришли сюда из общего поиска (?open=id). */
+  autoOpen?: boolean;
 }) {
   const canEdit = asset.canEdit;
   const router = useRouter();
+  const pathname = usePathname();
   const [confirming, setConfirming] = useState(false);
   const [thumbing, setThumbing] = useState(false);
   const [thumbError, setThumbError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
-  const [previewing, setPreviewing] = useState(false);
+  const [previewing, setPreviewing] = useState(autoOpen);
 
   const [replacing, setReplacing] = useState(false);
   const [replaceProgress, setReplaceProgress] = useState(0);
@@ -400,7 +404,12 @@ export function AssetRow({
         embeddable: asset.embeddable,
         pageCount: asset.pageCount,
       }}
-      onClose={() => setPreviewing(false)}
+      onClose={() => {
+        setPreviewing(false);
+        // Окно открыто по ссылке из поиска — убираем ?open из адреса, иначе
+        // обновление страницы открыло бы его снова.
+        if (autoOpen) router.replace(pathname, { scroll: false });
+      }}
     />
   ) : null;
 
