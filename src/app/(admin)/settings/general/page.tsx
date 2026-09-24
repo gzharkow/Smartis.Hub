@@ -1,11 +1,11 @@
 import { cookies } from "next/headers";
 import { requireUser } from "@/lib/auth";
-import { parseTheme, THEME_COOKIE } from "@/lib/theme";
+import { parseThemePreference, THEME_COOKIE } from "@/lib/theme";
 import { logout } from "@/app/actions/auth";
 import { LogoutIcon } from "../../nav-icons";
-import { ThemeToggle } from "../../theme-toggle";
 import { SettingsTabs } from "../settings-tabs";
 import { ChangePasswordButton } from "./change-password-dialog";
+import { ThemePicker } from "./theme-picker";
 import { PageHeader } from "@/components/ui/page-header";
 import { cardClasses } from "@/components/ui/card";
 import { buttonClasses } from "@/components/ui/button";
@@ -13,7 +13,7 @@ import { buttonClasses } from "@/components/ui/button";
 export default async function GeneralSettingsPage() {
   const user = await requireUser();
   const jar = await cookies();
-  const theme = parseTheme(jar.get(THEME_COOKIE)?.value);
+  const themePref = parseThemePreference(jar.get(THEME_COOKIE)?.value);
   const isAdmin = user.role === "ADMIN";
 
   return (
@@ -24,9 +24,9 @@ export default async function GeneralSettingsPage() {
       </div>
 
       <section className="grid gap-3 rounded-xl border border-border bg-surface p-5">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-wrap items-center justify-between gap-2">
           <span className="text-sm">Тема</span>
-          <ThemeToggle initial={theme} />
+          <ThemePicker initial={themePref} />
         </div>
 
         <div className="flex items-center justify-between border-t border-border pt-3">

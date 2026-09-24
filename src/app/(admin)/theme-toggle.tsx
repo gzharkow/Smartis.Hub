@@ -1,12 +1,7 @@
 "use client";
 
 import { useSyncExternalStore } from "react";
-import {
-  syncThemeColor,
-  THEME_COOKIE,
-  THEME_COOKIE_MAX_AGE,
-  type Theme,
-} from "@/lib/theme";
+import { setThemePreference, THEME_EVENT, type Theme } from "@/lib/theme";
 
 function MoonIcon() {
   return (
@@ -44,28 +39,18 @@ function SunIcon() {
 }
 
 // Тема живёт не в React, а в атрибуте <html> — её туда ставит скрипт ещё до
-// первой отрисовки. Поэтому читаем её как внешнее хранилище, а не держим
-// вторую копию в состоянии: две копии рано или поздно разойдутся.
-
-const listeners = new Set<() => void>();
+// первой отрисовки и он же меняет её, когда сменилась тема устройства.
+// Поэтому читаем её как внешнее хранилище, а не держим вторую копию в
+// состоянии: две копии рано или поздно разойдутся. Любая смена — кнопкой,
+// из настроек или самой системой — сопровождается событием THEME_EVENT.
 
 function subscribe(notify: () => void) {
-  listeners.add(notify);
-  return () => listeners.delete(notify);
+  window.addEventListener(THEME_EVENT, notify);
+  return () => window.removeEventListener(THEME_EVENT, notify);
 }
 
 function readTheme(): Theme {
   return document.documentElement.dataset.theme === "dark" ? "dark" : "light";
-}
-
-/** Тему пишем прямо в <html>: там её ждут и переменные цвета, и классы dark:*. */
-function apply(theme: Theme) {
-  document.documentElement.dataset.theme = theme;
-  document.cookie = `${THEME_COOKIE}=${theme}; path=/; max-age=${THEME_COOKIE_MAX_AGE}; samesite=lax`;
-  // Полоса состояния в установленном PWA красится мета-тегом, а не CSS —
-  // без этой строки она осталась бы от прежней темы до перезапуска.
-  syncThemeColor(theme);
-  listeners.forEach((notify) => notify());
 }
 
 /**
@@ -87,7 +72,7 @@ export function ThemeToggle({ initial }: { initial: Theme | null }) {
   return (
     <button
       type="button"
-      onClick={() => apply(next)}
+      onClick={() => setThemePreference(next)}
       title={next === "dark" ? "Тёмная тема" : "Светлая тема"}
       aria-label={
         next === "dark" ? "Включить тёмную тему" : "Включить светлую тему"
