@@ -1,7 +1,12 @@
 "use client";
 
 import { useSyncExternalStore } from "react";
-import { setThemePreference, THEME_EVENT, type Theme } from "@/lib/theme";
+import {
+  setThemePreference,
+  systemTheme,
+  THEME_EVENT,
+  type Theme,
+} from "@/lib/theme";
 
 function MoonIcon() {
   return (
@@ -72,7 +77,12 @@ export function ThemeToggle({ initial }: { initial: Theme | null }) {
   return (
     <button
       type="button"
-      onClick={() => setThemePreference(next)}
+      // Тему, совпадающую с системной, не закрепляем, а возвращаемся в
+      // автоматику: «тёмная» на тёмном устройстве — это и есть «как в системе».
+      // Иначе одно нажатие туда-обратно навсегда отвязывало бы от системы.
+      onClick={() =>
+        setThemePreference(next === systemTheme() ? "system" : next)
+      }
       title={next === "dark" ? "Тёмная тема" : "Светлая тема"}
       aria-label={
         next === "dark" ? "Включить тёмную тему" : "Включить светлую тему"

@@ -2,7 +2,12 @@
 // и серверу (чтобы отдать страницу сразу в нужной теме), и браузеру
 // (чтобы запомнить выбор).
 
-export const THEME_COOKIE = "sf_theme";
+// «2» — разовый сброс 2026-09-24: до появления режима «Как в системе» кнопка
+// в топбаре закрепляла тему в "sf_theme" на год, и у всех, кто хоть раз её
+// нажимал, система больше не командовала. Новое имя — все начинают с
+// автоматики. Старую cookie не читаем, только стираем (LEGACY_THEME_COOKIE).
+export const THEME_COOKIE = "sf_theme2";
+const LEGACY_THEME_COOKIE = "sf_theme";
 export const THEME_COOKIE_MAX_AGE = 365 * 24 * 60 * 60;
 
 export type Theme = "light" | "dark";
@@ -56,7 +61,7 @@ export const THEME_EVENT = "sf-theme";
  * Перекрашиваем только те theme-color, что сейчас стоят в цвете одной из тем:
  * у /login свой постоянный цвет подложки, его трогать нельзя.
  */
-export const THEME_SCRIPT = `(function(){try{var d=document.documentElement,q=window.matchMedia("(prefers-color-scheme: dark)"),C=${JSON.stringify(THEME_COLORS)};function p(){var m=document.cookie.match(/(?:^|; )${THEME_COOKIE}=([^;]*)/);var t=m&&m[1];return t==="light"||t==="dark"?t:null}d.dataset.theme=p()||(q.matches?"dark":"light");function f(){if(p())return;var t=q.matches?"dark":"light";d.dataset.theme=t;document.querySelectorAll('meta[name="theme-color"]').forEach(function(x){var c=x.getAttribute("content");if(c===C.light||c===C.dark)x.setAttribute("content",C[t])});window.dispatchEvent(new Event("${THEME_EVENT}"))}q.addEventListener?q.addEventListener("change",f):q.addListener(f)}catch(e){}})()`;
+export const THEME_SCRIPT = `(function(){try{var d=document.documentElement,q=window.matchMedia("(prefers-color-scheme: dark)"),C=${JSON.stringify(THEME_COLORS)};document.cookie="${LEGACY_THEME_COOKIE}=; path=/; max-age=0; samesite=lax";function p(){var m=document.cookie.match(/(?:^|; )${THEME_COOKIE}=([^;]*)/);var t=m&&m[1];return t==="light"||t==="dark"?t:null}d.dataset.theme=p()||(q.matches?"dark":"light");function f(){if(p())return;var t=q.matches?"dark":"light";d.dataset.theme=t;document.querySelectorAll('meta[name="theme-color"]').forEach(function(x){var c=x.getAttribute("content");if(c===C.light||c===C.dark)x.setAttribute("content",C[t])});window.dispatchEvent(new Event("${THEME_EVENT}"))}q.addEventListener?q.addEventListener("change",f):q.addListener(f)}catch(e){}})()`;
 
 /**
  * Перекрасить полосу состояния в момент смены темы из интерфейса.
