@@ -1,0 +1,3 @@
+-- AlterTable
+ALTER TABLE "KpiMonth" ADD COLUMN     "planMaxAuto" DECIMAL(14,2) NOT NULL DEFAULT 0,
+ADD COLUMN     "planOptimalAuto" DECIMAL(14,2) NOT NULL DEFAULT 0;

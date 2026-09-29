@@ -39,6 +39,8 @@ function CreateAccountFormInner({
   const [canAccessAssets, setCanAccessAssets] = useState(true);
   const [canAccessStats, setCanAccessStats] = useState(true);
   const [canAccessCalculator, setCanAccessCalculator] = useState(true);
+  const [canAccessKpi, setCanAccessKpi] = useState(true);
+  const [canManageKpi, setCanManageKpi] = useState(false);
   const [canAddAssets, setCanAddAssets] = useState(false);
   const [visibleOwnerIds, setVisibleOwnerIds] = useState<string[]>([]);
   const [copied, setCopied] = useState(false);
@@ -203,6 +205,35 @@ function CreateAccountFormInner({
                 name="canAccessCalculator"
                 value={canAccessCalculator ? "1" : "0"}
               />
+
+              <label className="flex items-center gap-2 text-sm">
+                <input
+                  type="checkbox"
+                  className="size-4"
+                  checked={canAccessKpi}
+                  onChange={(e) => {
+                    setCanAccessKpi(e.target.checked);
+                    if (!e.target.checked) setCanManageKpi(false);
+                  }}
+                />
+                KPI план/факт
+              </label>
+              <input type="hidden" name="canAccessKpi" value={canAccessKpi ? "1" : "0"} />
+
+              {canAccessKpi ? (
+                <label className="ml-6 flex items-center gap-2 text-sm text-muted">
+                  <input
+                    type="checkbox"
+                    className="size-4"
+                    checked={canManageKpi}
+                    onChange={(e) => setCanManageKpi(e.target.checked)}
+                  />
+                  Разрешить менять названия показателей и должности
+                </label>
+              ) : null}
+              {canAccessKpi ? (
+                <input type="hidden" name="canManageKpi" value={canManageKpi ? "1" : "0"} />
+              ) : null}
             </div>
             <p className="text-xs text-muted">
               Закрытый раздел не отображается в меню, и попасть в него нельзя.

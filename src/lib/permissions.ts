@@ -16,13 +16,14 @@ import type { CurrentUser } from "./auth";
 // галочки доступа не имеют — открыты любому вошедшему, независимо от
 // canAccessSection.
 
-export type SectionKey = "hubs" | "assets" | "stats" | "calculator";
+export type SectionKey = "hubs" | "assets" | "stats" | "calculator" | "kpi";
 
 const SECTION_FLAG: Record<SectionKey, keyof CurrentUser> = {
   hubs: "canAccessHubs",
   assets: "canAccessAssets",
   stats: "canAccessStats",
   calculator: "canAccessCalculator",
+  kpi: "canAccessKpi",
 };
 
 /** Виден ли раздел целиком. ADMIN — всегда true. MEMBER — по персональному
@@ -68,4 +69,12 @@ export function visibleOwnerFilter(user: CurrentUser): { ownerId?: { in: string[
  * действительно могут быть чужие хабы/расчёты. */
 export function showsOtherOwners(user: CurrentUser): boolean {
   return user.role === "ADMIN" || user.visibleOwners.length > 0;
+}
+
+/** Настройка KPI-таблицы: названия показателей, должности, состав сотрудников.
+ * ADMIN — всегда; MEMBER — по персональному флагу (и только при доступе к
+ * самому разделу). Ввод плана/факта и сделок этим правом не ограничен. */
+export function canManageKpi(user: CurrentUser): boolean {
+  if (user.role === "ADMIN") return true;
+  return user.canAccessKpi === true && user.canManageKpi === true;
 }

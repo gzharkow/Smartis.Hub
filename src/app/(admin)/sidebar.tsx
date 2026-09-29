@@ -10,6 +10,7 @@ import {
   CalculatorIcon,
   ChevronIcon,
   HubsIcon,
+  KpiIcon,
   SettingsIcon,
   StatsIcon,
 } from "./nav-icons";
@@ -78,7 +79,7 @@ function remember(name: string, value: string) {
  *
  * Cookie служебные — это лишь настройки вида, ничего личного в них нет.
  */
-type SectionAccess = { hubs: boolean; assets: boolean; stats: boolean; calculator: boolean };
+type SectionAccess = { hubs: boolean; assets: boolean; stats: boolean; calculator: boolean; kpi: boolean };
 
 export function Sidebar({
   initialCollapsed,
@@ -193,6 +194,15 @@ export function Sidebar({
             href="/stats"
             label="Статистика"
             icon={<StatsIcon />}
+            collapsed={collapsed}
+          />
+        ) : null}
+
+        {access.kpi ? (
+          <NavLink
+            href="/kpi"
+            label="KPI план/факт"
+            icon={<KpiIcon />}
             collapsed={collapsed}
           />
         ) : null}

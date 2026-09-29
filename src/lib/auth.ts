@@ -40,11 +40,12 @@ const SECTION_ROUTE: Record<SectionKey, string> = {
   assets: "/assets",
   calculator: "/calculator",
   stats: "/stats",
+  kpi: "/kpi",
 };
 
 // Порядок — тот же, что и в сайдбаре: если запрошенный раздел закрыт,
 // уводим на первый, который открыт, а не молча гадаем.
-const SECTION_FALLBACK_ORDER: SectionKey[] = ["hubs", "assets", "calculator", "stats"];
+const SECTION_FALLBACK_ORDER: SectionKey[] = ["hubs", "assets", "calculator", "stats", "kpi"];
 
 /** Блокирует страницу раздела для тех, у кого он закрыт индивидуальным
  * флагом (см. canAccessSection в permissions.ts). «Настройки» в эту

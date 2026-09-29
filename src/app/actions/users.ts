@@ -42,15 +42,20 @@ function parseSectionAccess(formData: FormData, role: "ADMIN" | "MEMBER") {
       canAccessAssets: false,
       canAccessStats: false,
       canAccessCalculator: false,
+      canAccessKpi: false,
+      canManageKpi: false,
       canAddAssets: false,
     };
   }
   const canAccessAssets = formData.get("canAccessAssets") === "1";
+  const canAccessKpi = formData.get("canAccessKpi") === "1";
   return {
     canAccessHubs: formData.get("canAccessHubs") === "1",
     canAccessAssets,
     canAccessStats: formData.get("canAccessStats") === "1",
     canAccessCalculator: formData.get("canAccessCalculator") === "1",
+    canAccessKpi,
+    canManageKpi: canAccessKpi && formData.get("canManageKpi") === "1",
     canAddAssets: canAccessAssets && formData.get("canAddAssets") === "1",
   };
 }

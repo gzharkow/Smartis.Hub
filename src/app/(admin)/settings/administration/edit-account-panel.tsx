@@ -24,6 +24,8 @@ export function EditAccountPanel({
   const [canAccessAssets, setCanAccessAssets] = useState(account.canAccessAssets);
   const [canAccessStats, setCanAccessStats] = useState(account.canAccessStats);
   const [canAccessCalculator, setCanAccessCalculator] = useState(account.canAccessCalculator);
+  const [canAccessKpi, setCanAccessKpi] = useState(account.canAccessKpi);
+  const [canManageKpi, setCanManageKpi] = useState(account.canManageKpi);
   const [canAddAssets, setCanAddAssets] = useState(account.canAddAssets);
   const [visibleOwnerIds, setVisibleOwnerIds] = useState<string[]>(account.visibleOwnerIds);
   const [resetPassword, setResetPassword] = useState(false);
@@ -134,6 +136,35 @@ export function EditAccountPanel({
                 name="canAccessCalculator"
                 value={canAccessCalculator ? "1" : "0"}
               />
+
+              <label className="flex items-center gap-2 text-sm">
+                <input
+                  type="checkbox"
+                  className="size-4"
+                  checked={canAccessKpi}
+                  onChange={(e) => {
+                    setCanAccessKpi(e.target.checked);
+                    if (!e.target.checked) setCanManageKpi(false);
+                  }}
+                />
+                KPI план/факт
+              </label>
+              <input type="hidden" name="canAccessKpi" value={canAccessKpi ? "1" : "0"} />
+
+              {canAccessKpi ? (
+                <label className="ml-6 flex items-center gap-2 text-sm text-muted">
+                  <input
+                    type="checkbox"
+                    className="size-4"
+                    checked={canManageKpi}
+                    onChange={(e) => setCanManageKpi(e.target.checked)}
+                  />
+                  Разрешить менять названия показателей и должности
+                </label>
+              ) : null}
+              {canAccessKpi ? (
+                <input type="hidden" name="canManageKpi" value={canManageKpi ? "1" : "0"} />
+              ) : null}
             </div>
             <p className="text-xs text-muted">
               Закрытый раздел не отображается в меню, и попасть в него нельзя.

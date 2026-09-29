@@ -73,6 +73,7 @@ export default async function AdminLayout({
     assets: canAccessSection(user, "assets"),
     stats: canAccessSection(user, "stats"),
     calculator: canAccessSection(user, "calculator"),
+    kpi: canAccessSection(user, "kpi"),
   };
 
   // Читаем на сервере, чтобы страница сразу пришла в нужном виде — иначе

@@ -46,6 +46,24 @@ export const AssetsIcon = ({ size }: { size?: IconSize } = {}) => (
   </Icon>
 );
 
+/** «Ещё» — три горизонтальные полоски: меню остальных разделов. */
+export const MenuIcon = ({ size }: { size?: IconSize } = {}) => (
+  <Icon size={size}>
+    <path d="M4 6.5h16" />
+    <path d="M4 12h16" />
+    <path d="M4 17.5h16" />
+  </Icon>
+);
+
+/** KPI план/факт — мишень: цель и попадание. */
+export const KpiIcon = ({ size }: { size?: IconSize } = {}) => (
+  <Icon size={size}>
+    <circle cx="12" cy="12" r="9" />
+    <circle cx="12" cy="12" r="5" />
+    <circle cx="12" cy="12" r="1.2" />
+  </Icon>
+);
+
 /** Статистика — столбики отчёта. */
 export const StatsIcon = ({ size }: { size?: IconSize } = {}) => (
   <Icon size={size}>

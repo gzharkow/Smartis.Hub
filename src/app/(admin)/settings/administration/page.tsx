@@ -25,6 +25,8 @@ export default async function AdministrationPage() {
     canAccessAssets: u.canAccessAssets,
     canAccessStats: u.canAccessStats,
     canAccessCalculator: u.canAccessCalculator,
+    canAccessKpi: u.canAccessKpi,
+    canManageKpi: u.canManageKpi,
     canAddAssets: u.canAddAssets,
     visibleOwnerIds: u.visibleOwners.map((o) => o.id),
     createdAt: u.createdAt,

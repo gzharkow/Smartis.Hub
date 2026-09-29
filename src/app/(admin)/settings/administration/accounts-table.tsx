@@ -16,6 +16,8 @@ export type AccountRow = {
   canAccessAssets: boolean;
   canAccessStats: boolean;
   canAccessCalculator: boolean;
+  canAccessKpi: boolean;
+  canManageKpi: boolean;
   canAddAssets: boolean;
   visibleOwnerIds: string[];
   createdAt: Date;
@@ -28,7 +30,8 @@ function hasLimitedAccess(account: AccountRow): boolean {
     !account.canAccessHubs ||
     !account.canAccessAssets ||
     !account.canAccessStats ||
-    !account.canAccessCalculator
+    !account.canAccessCalculator ||
+    !account.canAccessKpi
   );
 }
 

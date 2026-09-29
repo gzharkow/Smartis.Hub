@@ -36,6 +36,11 @@ model Organization {
   quotes  Quote[]
 
   specTemplates SpecTemplate[]
+
+  kpiPeople  KpiPerson[]
+  kpiEntries KpiEntry[]
+  kpiMonths  KpiMonth[]
+  kpiDeals   KpiDeal[]
 }
 
 enum UserRole {
@@ -60,6 +65,12 @@ model User {
   canAccessAssets     Boolean @default(true)
   canAccessStats      Boolean @default(true)
   canAccessCalculator Boolean @default(true)
+  canAccessKpi        Boolean @default(true)
+
+  // Только для role = MEMBER и canAccessKpi = true: право менять в KPI
+  // названия показателей и должности сотрудников (а также добавлять/убирать
+  // сотрудников таблицы). Остальное в разделе доступно всем с доступом.
+  canManageKpi Boolean @default(false)
 
   // Только для role = MEMBER, и только когда canAccessAssets = true:
   // разрешение добавлять материалы в библиотеку. Переименование/удаление/
@@ -600,4 +611,126 @@ model SpecTemplate {
   // файл, а не плодит вторую запись, между которыми потом гадать.
   @@unique([organizationId, kind, vatRatePct])
   @@index([organizationId])
+}
+
+// ─────────────────────────────  KPI план/факт  ─────────────────────────────
+//
+// Замена внутренней Excel-таблицы отдела. Люди — просто список имён (не
+// аккаунты): одни ведут активность (встречи), другие — менеджеры по
+// сделкам. Итоги месяца/квартала не хранятся, считаются из записей.
+
+enum KpiMetric {
+  MEETINGS // проведено встреч / демо
+  QUALIFIED // квалифицировано
+  DEALS // сделки (план/факт на месяц)
+}
+
+enum KpiScope {
+  WEEK // periodStart — понедельник недели
+  MONTH // periodStart — первое число месяца
+}
+
+// Должность в таблице активности: у менеджера по развитию — встречи,
+// квалификация и сделки; у ассистента — только встречи.
+enum KpiRole {
+  DEVELOPMENT
+  ASSISTANT
+}
+
+enum KpiDirection {
+  AUTO
+  REALTY
+}
+
+model KpiPerson {
+  id             String  @id @default(cuid())
+  organizationId String
+  name           String
+  // Участвует в блоке «Активность» / выступает менеджером в сделках.
+  inActivity     Boolean @default(true)
+  inSales        Boolean @default(false)
+  role           KpiRole @default(DEVELOPMENT)
+  archived       Boolean @default(false)
+  position       Int     @default(0)
+
+  createdAt DateTime @default(now())
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  entries      KpiEntry[]
+
+  @@index([organizationId])
+}
+
+model KpiEntry {
+  id             String    @id @default(cuid())
+  organizationId String
+  personId       String
+  metric         KpiMetric
+  scope          KpiScope
+  periodStart    DateTime  @db.Date
+
+  // null — в ячейке прочерк («не применимо / не задано»): в итоги идёт как 0,
+  // процент не считается.
+  plan Int? @default(0)
+  fact Int? @default(0)
+  // Своё название строки («Встречи / демо» → что угодно) — только для этой
+  // ячейки-строки (сотрудник × неделя). null — название по умолчанию.
+  label String?
+  // Примечания к ячейкам («!» рядом с планом/фактом): например, названия
+  // компаний, из которых сложилась цифра.
+  factNote String?
+  planNote String?
+  // Прежние теги компаний (из Excel) — в интерфейсе больше не показываются,
+  // но остаются в базе.
+  companies String[]
+
+  updatedAt DateTime @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  person       KpiPerson    @relation(fields: [personId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, personId, metric, scope, periodStart])
+  @@index([organizationId, periodStart])
+}
+
+model KpiMonth {
+  id             String @id @default(cuid())
+  organizationId String
+  year           Int
+  month          Int // 1–12
+
+  planOptimal Decimal @default(0) @db.Decimal(14, 2)
+  planMax     Decimal @default(0) @db.Decimal(14, 2)
+  // Отдельный план для сегмента «Авто»: сделки с направлением AUTO в общий
+  // план не входят и сверяются с этой парой.
+  planOptimalAuto Decimal @default(0) @db.Decimal(14, 2)
+  planMaxAuto     Decimal @default(0) @db.Decimal(14, 2)
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, year, month])
+}
+
+model KpiDeal {
+  id             String        @id @default(cuid())
+  organizationId String
+  year           Int
+  month          Int
+  client         String
+  amount         Decimal       @default(0) @db.Decimal(14, 2)
+  direction      KpiDirection?
+  // Менеджер сделки — свободный текст (не привязан к списку участников).
+  managerName    String?
+  note           String?
+  // Резерв (ожидаемая сделка) — показывается отдельно и в итоги не входит.
+  isReserve Boolean @default(false)
+  // «Договор подписан»: пометка (в итоги не влияет — считаются все сделки).
+  confirmed Boolean @default(false)
+  position  Int     @default(0)
+
+  createdAt DateTime @default(now())
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, year, month])
 }
