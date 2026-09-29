@@ -15,6 +15,7 @@
     "check:spec": "tsx scripts/check-spec-values.ts",
     "check:docx": "tsx scripts/check-docx-fill.ts",
     "prepare:spec": "tsx scripts/prepare-spec-template.ts",
+    "check:kpi-export": "tsx --conditions=react-server scripts/check-kpi-export.ts",
     "check:sample": "tsx scripts/check-spec-against-sample.ts",
     "check:auto": "tsx scripts/check-spec-auto-dealer.ts"
   },

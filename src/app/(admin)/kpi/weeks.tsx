@@ -8,13 +8,7 @@ import {
   type KpiWeek,
 } from "@/lib/kpi";
 import type { KpiEntryRow, KpiPersonRow } from "@/lib/kpi-data";
-import {
-  EntryLabelInput,
-  EntryNumber,
-  NoteButton,
-  PersonNameInput,
-  RemoveFromTableButton,
-} from "./cells";
+import { EntryNumber, NoteButton } from "./cells";
 import { toneText } from "./progress";
 
 const SUMMARY_METRICS = ["MEETINGS", "QUALIFIED"] as const;
@@ -156,27 +150,15 @@ export function Weeks({
                               rowSpan={metrics.length}
                               className="px-1 py-1 align-top text-[13px] font-medium"
                             >
-                              <div className="flex items-center gap-0.5">
-                                <PersonNameInput
-                                  id={person.id}
-                                  name={person.name}
-                                />
-                                {canManage ? (
-                                  <RemoveFromTableButton
-                                    id={person.id}
-                                    name={person.name}
-                                  />
-                                ) : null}
-                              </div>
+                              <span className="block px-1.5 py-0.5">
+                                {person.name}
+                              </span>
                             </th>
                           ) : null}
                           <td className="px-0.5 py-0.5">
-                            <EntryLabelInput
-                              entry={ref}
-                              value={e?.label ?? ""}
-                              fallback={fallback}
-                              readOnly={!canManage}
-                            />
+                            <span className="block px-1.5 py-0.5 text-[13px] text-muted">
+                              {e?.label || fallback}
+                            </span>
                           </td>
                           <td className="px-0.5 py-0.5 text-center">
                             <div className="flex items-center justify-center gap-0.5">

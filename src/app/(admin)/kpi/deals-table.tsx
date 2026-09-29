@@ -131,13 +131,49 @@ function RowActions({
   );
 }
 
+/** Выбор менеджера сделки из участников с галочкой «Менеджер». Если у сделки
+ * уже записано имя, которого нет в списке (например, участника переименовали),
+ * оно остаётся отдельным пунктом, чтобы данные не терялись. */
+function ManagerSelect({
+  value,
+  managers,
+  onChange,
+  label,
+}: {
+  value: string;
+  managers: string[];
+  onChange: (v: string) => void;
+  label: string;
+}) {
+  const options =
+    value && !managers.includes(value) ? [value, ...managers] : managers;
+  return (
+    <select
+      value={value}
+      aria-label={label}
+      onChange={(e) => onChange(e.target.value)}
+      className={`${FIELD} min-w-28 flex-1`}
+    >
+      <option value="">Менеджер</option>
+      {options.map((name) => (
+        <option key={name} value={name}>
+          {name}
+        </option>
+      ))}
+    </select>
+  );
+}
+
 function DealRow({
   deal,
   months,
   selected,
   reserve,
+  managers,
 }: {
   deal: KpiDealRow;
+  /** Имена менеджеров для выпадающего списка. */
+  managers: string[];
   /** Месяцы квартала (для выбора месяца сделки); у резерва не нужны. */
   months: Ym[];
   /** Выбранный на странице месяц — куда «→ В сделки» переводит резерв. */
@@ -277,16 +313,11 @@ function DealRow({
           onChange={(v) => save({ direction: v })}
         />
         {reserve ? null : (
-          <input
+          <ManagerSelect
             value={draft.managerName}
-            placeholder="Менеджер"
-            aria-label="Менеджер"
-            onChange={(e) =>
-              setDraft({ ...draft, managerName: e.target.value })
-            }
-            onBlur={() => save({})}
-            onKeyDown={(e) => e.key === "Enter" && e.currentTarget.blur()}
-            className={`${FIELD} min-w-24 flex-1 placeholder:text-muted`}
+            managers={managers}
+            label="Менеджер"
+            onChange={(v) => save({ managerName: v })}
           />
         )}
         <input
@@ -310,7 +341,9 @@ function AddRow({
   months,
   selected,
   reserve,
+  managers,
 }: {
+  managers: string[];
   months: Ym[];
   selected: Ym;
   reserve: boolean;
@@ -398,13 +431,11 @@ function AddRow({
         )}
         <DirectionSelect value={direction} onChange={setDirection} />
         {reserve ? null : (
-          <input
+          <ManagerSelect
             value={managerName}
-            placeholder="Менеджер"
-            aria-label="Менеджер новой сделки"
-            onChange={(e) => setManagerName(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && add()}
-            className={`${FIELD} min-w-24 flex-1 placeholder:text-muted`}
+            managers={managers}
+            label="Менеджер новой сделки"
+            onChange={setManagerName}
           />
         )}
         <input
@@ -428,8 +459,11 @@ export function DealsForm({
   deals,
   months,
   selected,
+  managers,
 }: {
   deals: KpiDealRow[];
+  /** Имена участников с галочкой «Менеджер» — пункты выпадающего списка. */
+  managers: string[];
   /** Месяцы квартала. */
   months: Ym[];
   /** Выбранный на странице месяц — раскрыт и подсвечен, остальные свёрнуты. */
@@ -489,13 +523,19 @@ export function DealsForm({
                     months={months}
                     selected={selected}
                     reserve={false}
+                    managers={managers}
                   />
                 ))
               : null}
           </div>
         );
       })}
-      <AddRow months={months} selected={selected} reserve={false} />
+      <AddRow
+        months={months}
+        selected={selected}
+        reserve={false}
+        managers={managers}
+      />
     </div>
   );
 }
@@ -518,9 +558,10 @@ export function ReserveTable({
           months={[]}
           selected={selected}
           reserve
+          managers={[]}
         />
       ))}
-      <AddRow months={[]} selected={selected} reserve />
+      <AddRow months={[]} selected={selected} reserve managers={[]} />
     </div>
   );
 }

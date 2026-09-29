@@ -47,8 +47,6 @@ const EntrySchema = z.object({
   // null — прочерк в ячейке.
   plan: Int0.nullable().optional(),
   fact: Int0.nullable().optional(),
-  // Своё название строки; пустая строка / null — вернуть название по умолчанию.
-  label: z.string().trim().max(60).nullable().optional(),
   companies: z.array(z.string().trim().min(1).max(120)).max(40).optional(),
   // Примечания «!» к факту / плану; пустая строка — стереть.
   factNote: z.string().trim().max(500).nullable().optional(),
@@ -57,9 +55,7 @@ const EntrySchema = z.object({
 
 export async function saveEntry(input: unknown) {
   const v = EntrySchema.parse(input);
-  // Название строки — настройка таблицы; план/факт/компании доступны всем.
-  const user =
-    v.label !== undefined ? await requireManage() : await requireSection("kpi");
+  const user = await requireSection("kpi");
   await ownPerson(user.organizationId, v.personId);
 
   const data = {
@@ -68,7 +64,6 @@ export async function saveEntry(input: unknown) {
     ...(v.companies !== undefined ? { companies: v.companies } : {}),
     ...(v.factNote !== undefined ? { factNote: v.factNote || null } : {}),
     ...(v.planNote !== undefined ? { planNote: v.planNote || null } : {}),
-    ...(v.label !== undefined ? { label: v.label || null } : {}),
   };
   await db.kpiEntry.upsert({
     where: {
@@ -90,23 +85,6 @@ export async function saveEntry(input: unknown) {
     },
     update: data,
   });
-  done();
-}
-
-const RenamePersonSchema = z.object({
-  id: z.string().min(1),
-  name: z.string().trim().min(1, "Введите имя.").max(60),
-});
-
-/** Переименование сотрудника — меняет имя везде (недели, сделки, менеджеры). */
-export async function renamePerson(input: unknown) {
-  const user = await requireSection("kpi");
-  const v = RenamePersonSchema.parse(input);
-  const res = await db.kpiPerson.updateMany({
-    where: { id: v.id, organizationId: user.organizationId },
-    data: { name: v.name },
-  });
-  if (res.count === 0) throw new Error("Участник не найден.");
   done();
 }
 
@@ -330,17 +308,6 @@ export async function addToTable(input: unknown) {
   } else {
     throw new Error("Выберите сотрудника или введите имя.");
   }
-  done();
-}
-
-/** Убирает сотрудника из таблицы активности; его данные остаются. */
-export async function removeFromTable(personId: string) {
-  const user = await requireManage();
-  await ownPerson(user.organizationId, personId);
-  await db.kpiPerson.update({
-    where: { id: personId },
-    data: { inActivity: false },
-  });
   done();
 }
 

@@ -1,12 +1,7 @@
 "use client";
 
 import { useRef, useState, useTransition } from "react";
-import {
-  removeFromTable,
-  renamePerson,
-  saveEntry,
-  saveMonthPlan,
-} from "@/app/actions/kpi";
+import { saveEntry, saveMonthPlan } from "@/app/actions/kpi";
 
 // Инлайн-ячейки: правка по месту, сохранение по потере фокуса или Enter.
 // Пока сохраняется — ячейка чуть притушена; при ошибке возвращаем старое
@@ -83,80 +78,6 @@ export function EntryNumber({
         if (next !== value) run(() => saveEntry({ ...entry, [field]: next }));
       }}
       className={`${INPUT} w-12 text-center ${pending ? "opacity-50" : ""} ${failed ? "border-danger" : ""}`}
-    />
-  );
-}
-
-/** Название показателя — своё у каждой строки (сотрудник × неделя).
- * Пустое значение возвращает название по умолчанию. */
-export function EntryLabelInput({
-  entry,
-  value,
-  fallback,
-  readOnly = false,
-}: {
-  entry: EntryRef;
-  value: string;
-  fallback: string;
-  /** Нет права менять названия — просто текст. */
-  readOnly?: boolean;
-}) {
-  const { pending, failed, run } = useSave();
-  const shown = value || fallback;
-  if (readOnly)
-    return <span className="block px-2 py-1 text-sm text-muted">{shown}</span>;
-  return (
-    <input
-      key={shown}
-      defaultValue={shown}
-      placeholder={fallback}
-      aria-label={`Название показателя: ${fallback}`}
-      aria-invalid={failed}
-      onFocus={(e) => e.currentTarget.select()}
-      onKeyDown={(e) => {
-        if (e.key === "Enter") e.currentTarget.blur();
-        if (e.key === "Escape") {
-          e.currentTarget.value = shown;
-          e.currentTarget.blur();
-        }
-      }}
-      onBlur={(e) => {
-        const next = e.currentTarget.value.trim();
-        if (!next) e.currentTarget.value = fallback;
-        const stored = !next || next === fallback ? "" : next;
-        if (stored === value) return;
-        run(() => saveEntry({ ...entry, label: stored }));
-      }}
-      className={`${INPUT} w-full min-w-0 text-muted focus:text-foreground ${pending ? "opacity-50" : ""} ${failed ? "border-danger" : ""}`}
-    />
-  );
-}
-
-/** Имя сотрудника: правится по месту, меняется везде, где он встречается. */
-export function PersonNameInput({ id, name }: { id: string; name: string }) {
-  const { pending, failed, run } = useSave();
-  return (
-    <input
-      key={name}
-      defaultValue={name}
-      aria-label={`Имя сотрудника ${name}`}
-      aria-invalid={failed}
-      onKeyDown={(e) => {
-        if (e.key === "Enter") e.currentTarget.blur();
-        if (e.key === "Escape") {
-          e.currentTarget.value = name;
-          e.currentTarget.blur();
-        }
-      }}
-      onBlur={(e) => {
-        const next = e.currentTarget.value.trim();
-        if (!next) {
-          e.currentTarget.value = name;
-          return;
-        }
-        if (next !== name) run(() => renamePerson({ id, name: next }));
-      }}
-      className={`${INPUT} w-full min-w-0 font-medium ${pending ? "opacity-50" : ""} ${failed ? "border-danger" : ""}`}
     />
   );
 }
@@ -335,35 +256,5 @@ export function MonthPlanMoney({
       }}
       className={`${INPUT} w-24 text-right ${pending ? "opacity-50" : ""} ${failed ? "border-danger" : ""}`}
     />
-  );
-}
-
-/** Убрать сотрудника из таблицы (его данные сохраняются). */
-export function RemoveFromTableButton({
-  id,
-  name,
-}: {
-  id: string;
-  name: string;
-}) {
-  const { pending, run } = useSave();
-  return (
-    <button
-      type="button"
-      aria-label={`Убрать ${name} из таблицы`}
-      title="Убрать из таблицы (данные сохранятся)"
-      disabled={pending}
-      onClick={() => {
-        if (
-          window.confirm(
-            `Убрать «${name}» из таблицы? Данные сохранятся, вернуть можно в блоке «Участники» внизу страницы (галочка «Активность»).`,
-          )
-        )
-          run(() => removeFromTable(id));
-      }}
-      className="rounded-md p-1 text-muted transition hover:bg-danger/10 hover:text-danger disabled:opacity-50 pointer-coarse:p-2.5"
-    >
-      ×
-    </button>
   );
 }

@@ -22,13 +22,9 @@ import {
 } from "@/lib/kpi";
 import { Card, PageHeader } from "@/components/ui";
 import { CarryOverButton } from "./carry-over-button";
+import { ExportPanel } from "./export-panel";
 import { DealsForm, ReserveTable } from "./deals-table";
-import {
-  EntryNumber,
-  MonthPlanMoney,
-  PersonNameInput,
-  type MonthPlanValues,
-} from "./cells";
+import { EntryNumber, MonthPlanMoney, type MonthPlanValues } from "./cells";
 import { PeopleManager } from "./people-manager";
 import { ProgressBar, toneText } from "./progress";
 import { Weeks } from "./weeks";
@@ -341,6 +337,7 @@ export default async function KpiPage({
       <PageHeader
         title="KPI план/факт"
         subtitle="Встречи, квалификации, сделки и выручка отдела: план против факта"
+        actions={<ExportPanel year={ym.year} month={ym.month} />}
       />
 
       <div className="flex flex-wrap items-center gap-x-4 gap-y-3">
@@ -506,7 +503,9 @@ export default async function KpiPage({
                             scope="row"
                             className="min-w-32 px-2 py-1 text-[13px] font-medium"
                           >
-                            <PersonNameInput id={p.id} name={p.name} />
+                            <span className="block px-1.5 py-0.5">
+                              {p.name}
+                            </span>
                           </th>
                           <td
                             className={`px-1 py-1.5 text-center text-[13px] tabular-nums ${toneText(toneOf(mp))}`}
@@ -673,6 +672,9 @@ export default async function KpiPage({
               deals={data.deals}
               months={quarter.months}
               selected={ym}
+              managers={people
+                .filter((p) => p.inSales && !p.archived)
+                .map((p) => p.name)}
             />
           </Card>
 
