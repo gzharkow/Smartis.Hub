@@ -84,3 +84,17 @@ const hubCreatedFmt = new Intl.DateTimeFormat("ru-RU", {
 export function formatHubCreated(date: Date): string {
   return hubCreatedFmt.format(date);
 }
+
+const securityEventFmt = new Intl.DateTimeFormat("ru-RU", {
+  day: "2-digit",
+  month: "2-digit",
+  year: "numeric",
+  hour: "2-digit",
+  minute: "2-digit",
+  second: "2-digit",
+});
+
+/** «16.07.2026, 14:30:05» — для журнала безопасности нужны секунды. */
+export function formatSecurityEvent(date: Date): string {
+  return securityEventFmt.format(date);
+}

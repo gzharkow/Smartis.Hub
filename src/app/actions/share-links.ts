@@ -6,6 +6,7 @@ import { requireUser } from "@/lib/auth";
 import { canAccessSection, hasEdit } from "@/lib/permissions";
 import { db } from "@/lib/db";
 import { newShareToken } from "@/lib/tokens";
+import { logSecurityEvent } from "@/lib/security-log";
 
 async function ownedHub(hubId: string) {
   const user = await requireUser();
@@ -56,7 +57,7 @@ export async function createShareLink(
       ? null
       : new Date(Date.now() + parsed.data.expiresInDays * 24 * 60 * 60 * 1000);
 
-  await db.shareLink.create({
+  const link = await db.shareLink.create({
     data: {
       hubId: hub.id,
       createdById: user.id,
@@ -67,30 +68,56 @@ export async function createShareLink(
     },
   });
 
+  // Токен ссылки в журнал не пишем — только id, компания и срок.
+  await logSecurityEvent({
+    type: "SHARE_LINK_CREATED",
+    actor: { id: user.id, email: user.email, organizationId: user.organizationId },
+    target: { id: link.id, label: parsed.data.recipientCompany },
+    details: { hubId: hub.id, expiresAt: expiresAt ? expiresAt.toISOString() : "бессрочно" },
+  });
+
   revalidatePath(`/hubs/${hub.id}`);
   return undefined;
 }
 
 export async function revokeShareLink(hubId: string, linkId: string) {
-  const { hub } = await ownedHub(hubId);
+  const { user, hub } = await ownedHub(hubId);
 
   // Ссылку не удаляем, а помечаем отозванной: удаление утащило бы за собой
   // всю статистику по ней, а она может быть нужна и после отзыва.
-  await db.shareLink.updateMany({
+  const { count } = await db.shareLink.updateMany({
     where: { id: linkId, hubId: hub.id },
     data: { revokedAt: new Date() },
   });
+
+  if (count > 0) {
+    await logSecurityEvent({
+      type: "SHARE_LINK_REVOKED",
+      actor: { id: user.id, email: user.email, organizationId: user.organizationId },
+      target: { id: linkId },
+      details: { hubId: hub.id },
+    });
+  }
 
   revalidatePath(`/hubs/${hub.id}`);
 }
 
 export async function restoreShareLink(hubId: string, linkId: string) {
-  const { hub } = await ownedHub(hubId);
+  const { user, hub } = await ownedHub(hubId);
 
-  await db.shareLink.updateMany({
+  const { count } = await db.shareLink.updateMany({
     where: { id: linkId, hubId: hub.id },
     data: { revokedAt: null },
   });
+
+  if (count > 0) {
+    await logSecurityEvent({
+      type: "SHARE_LINK_RESTORED",
+      actor: { id: user.id, email: user.email, organizationId: user.organizationId },
+      target: { id: linkId },
+      details: { hubId: hub.id },
+    });
+  }
 
   revalidatePath(`/hubs/${hub.id}`);
 }

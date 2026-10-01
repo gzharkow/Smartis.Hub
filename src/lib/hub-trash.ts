@@ -1,6 +1,7 @@
 import "server-only";
 
 import { db } from "./db";
+import { logSecurityEvent } from "@/lib/security-log";
 
 /**
  * Сколько удалённые хабы лежат в «Недавно удалённых», прежде чем исчезнуть
@@ -34,13 +35,34 @@ export function daysLeft(archivedAt: Date, now: Date = new Date()): number {
  * и когда истекает их время — неизвестно. Пусть лежат до ручного решения.
  */
 export async function purgeExpiredHubs(organizationId: string): Promise<number> {
-  const { count } = await db.hub.deleteMany({
+  // Названия берём заранее: после удаления их уже не узнать, а в журнале
+  // должно быть видно, что именно стёрто.
+  const expired = await db.hub.findMany({
     where: {
       organizationId,
       status: "ARCHIVED",
       archivedAt: { not: null, lt: trashCutoff() },
     },
+    select: { id: true, title: true },
   });
+  if (expired.length === 0) return 0;
+
+  const { count } = await db.hub.deleteMany({
+    where: { id: { in: expired.map((h) => h.id) } },
+  });
+
+  // Удаление идёт без человека (при открытии корзины), поэтому актёра нет.
+  if (count > 0) {
+    await logSecurityEvent({
+      type: "ITEM_PURGED",
+      actor: { organizationId },
+      details: {
+        kind: "хабы (автоочистка корзины)",
+        count,
+        title: expired.map((h) => h.title).join("; "),
+      },
+    });
+  }
 
   return count;
 }

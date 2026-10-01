@@ -3,6 +3,7 @@
 import {
   formatEventTime,
   formatHubCreated,
+  formatSecurityEvent,
   formatShortDate,
   formatVisitWhen,
   formatWhen,
@@ -10,6 +11,7 @@ import {
 
 type Props =
   | { kind: "hubCreated"; date: Date }
+  | { kind: "securityEvent"; date: Date }
   | { kind: "relative"; date: Date | null }
   | { kind: "visitWhen"; date: Date }
   | { kind: "eventTime"; date: Date }
@@ -27,6 +29,8 @@ export function LocalDateTime(props: Props) {
   switch (props.kind) {
     case "hubCreated":
       return <>{formatHubCreated(props.date)}</>;
+    case "securityEvent":
+      return <>{formatSecurityEvent(props.date)}</>;
     case "relative":
       return <>{formatWhen(props.date)}</>;
     case "visitWhen":

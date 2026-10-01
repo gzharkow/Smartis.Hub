@@ -12,6 +12,7 @@
     "db:studio": "prisma studio",
     "check:sanitize": "tsx scripts/check-sanitize.ts",
     "check:throttle": "tsx scripts/check-login-throttle.ts",
+    "check:seclog": "tsx scripts/check-security-log.ts",
     "check:signatures": "tsx scripts/check-file-signatures.ts",
     "audit:files": "tsx scripts/audit-stored-files.ts",
     "check:tracking": "tsx scripts/check-tracking.ts",

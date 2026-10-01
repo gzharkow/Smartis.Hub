@@ -6,6 +6,7 @@ import { revalidatePath } from "next/cache";
 import { requireUser } from "@/lib/auth";
 import { canAccessSection, hasEdit } from "@/lib/permissions";
 import { db } from "@/lib/db";
+import { logSecurityEvent } from "@/lib/security-log";
 
 // Каждое действие проверяет вход и владение само — как в actions/hubs.ts:
 // Server Actions вызываются прямым POST-запросом, а не только из нашей формы.
@@ -527,9 +528,16 @@ export async function duplicateQuote(quoteId: string) {
  * если уже был туда добавлен — HubItem это не трогает.
  */
 export async function purgeQuote(quoteId: string) {
-  const { quote } = await ownedQuote(quoteId);
+  const { user, quote } = await ownedQuote(quoteId);
 
   await db.quote.delete({ where: { id: quote.id } });
+
+  await logSecurityEvent({
+    type: "ITEM_PURGED",
+    actor: { id: user.id, email: user.email, organizationId: user.organizationId },
+    target: { id: quote.id, label: quote.clientName },
+    details: { kind: "КП" },
+  });
 
   revalidatePath("/calculator");
   revalidatePath("/calculator/files");

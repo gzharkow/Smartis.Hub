@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { requireAdmin } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { storage } from "@/lib/storage";
+import { logSecurityEvent } from "@/lib/security-log";
 
 // Удаление шаблона Спецификации. Загрузка идёт маршрутом (там FormData и
 // файл), а удаление — обычный server action: передаётся только id.
@@ -23,6 +24,13 @@ export async function deleteSpecTemplate(id: string) {
   if (template.storageKey) {
     await storage.delete(template.storageKey).catch(() => {});
   }
+
+  await logSecurityEvent({
+    type: "ITEM_PURGED",
+    actor: { id: user.id, email: user.email, organizationId: user.organizationId },
+    target: { id: template.id, label: template.fileName },
+    details: { kind: "шаблон спецификации" },
+  });
 
   revalidatePath("/settings/spec-templates");
 }

@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { requireUser } from "@/lib/auth";
 import { canAccessSection, canAddMaterials, canManagePersonalAsset, hasEdit } from "@/lib/permissions";
 import { db } from "@/lib/db";
+import { logSecurityEvent } from "@/lib/security-log";
 import { parseSection, permissionKeyForSection } from "@/lib/asset-sections";
 import { checkLink, downloadLinkImage } from "@/lib/link-check";
 import { storage, storageKeys } from "@/lib/storage";
@@ -139,7 +140,7 @@ export async function getAssetHubUsage(assetId: string) {
  * отвязываем заодно, интерфейс уже предупредил об этом списком хабов.
  */
 export async function deleteAssetPermanently(assetId: string) {
-  const { asset } = await ownedAsset(assetId);
+  const { user, asset } = await ownedAsset(assetId);
   if (asset.archivedAt === null) {
     throw new Error("Сначала удалите материал — он должен быть в «Удалённых».");
   }
@@ -151,6 +152,13 @@ export async function deleteAssetPermanently(assetId: string) {
 
   if (asset.storageKey) await storage.delete(asset.storageKey).catch(() => {});
   if (asset.thumbnailKey) await storage.delete(asset.thumbnailKey).catch(() => {});
+
+  await logSecurityEvent({
+    type: "ITEM_PURGED",
+    actor: { id: user.id, email: user.email, organizationId: user.organizationId },
+    target: { id: asset.id, label: asset.title },
+    details: { kind: "материал" },
+  });
 
   revalidatePath("/assets");
   revalidatePath("/assets/mine");

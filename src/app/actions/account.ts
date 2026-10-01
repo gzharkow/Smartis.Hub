@@ -4,6 +4,7 @@ import { z } from "zod";
 import bcrypt from "bcryptjs";
 import { db } from "@/lib/db";
 import { requireUser } from "@/lib/auth";
+import { logSecurityEvent } from "@/lib/security-log";
 
 const ChangePasswordSchema = z
   .object({
@@ -36,11 +37,19 @@ export async function changePassword(
 
   const currentOk = await bcrypt.compare(parsed.data.currentPassword, user.passwordHash);
   if (!currentOk) {
+    await logSecurityEvent({
+      type: "PASSWORD_CHANGE_FAILED",
+      actor: { id: user.id, email: user.email, organizationId: user.organizationId },
+    });
     return { error: "Текущий пароль неверный." };
   }
 
   const passwordHash = await bcrypt.hash(parsed.data.newPassword, 12);
   await db.user.update({ where: { id: user.id }, data: { passwordHash } });
+  await logSecurityEvent({
+    type: "PASSWORD_CHANGED",
+    actor: { id: user.id, email: user.email, organizationId: user.organizationId },
+  });
 
   return { success: true };
 }

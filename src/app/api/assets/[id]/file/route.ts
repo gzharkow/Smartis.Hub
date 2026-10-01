@@ -4,6 +4,7 @@ import { canAccessSection, canManagePersonalAsset } from "@/lib/permissions";
 import { db } from "@/lib/db";
 import { storage } from "@/lib/storage";
 import { safeServeHeaders } from "@/lib/serve-headers";
+import { logSecurityEvent } from "@/lib/security-log";
 
 // Отдаёт исходный файл СВОЕМУ сотруднику. Нужен, чтобы досоздать превью
 // материалам, загруженным до появления этой возможности: браузер скачивает
@@ -55,6 +56,15 @@ export async function GET(
     const utf8Name = encodeURIComponent(`${asset.title}${ext}`);
     headers["Content-Disposition"] =
       `attachment; filename="${asset.id}${ext}"; filename*=UTF-8''${utf8Name}`;
+
+    // Пишем только явное скачивание: просмотр в интерфейсе — шум.
+    await logSecurityEvent({
+      type: "DATA_EXPORTED",
+      request,
+      actor: { id: user.id, email: user.email, organizationId: user.organizationId },
+      target: { id: asset.id, label: asset.title },
+      details: { what: "скачивание файла материала" },
+    });
   }
 
   return new Response(Readable.toWeb(stream) as ReadableStream, { headers });

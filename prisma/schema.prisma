@@ -458,6 +458,55 @@ model Event {
   @@index([type])
 }
 
+// ─────────────────────────────  Журнал безопасности  ─────────────────────────────
+
+enum SecurityEventType {
+  LOGIN_SUCCESS // вход выполнен
+  LOGIN_FAILED // неверная почта или пароль
+  LOGIN_BLOCKED // вход временно закрыт лимитом попыток
+  LOGOUT // выход
+  PASSWORD_CHANGED // сотрудник сменил свой пароль
+  PASSWORD_CHANGE_FAILED // при смене пароля указан неверный текущий
+  PASSWORD_RESET // администратор выдал новый пароль
+  ACCOUNT_CREATED // заведена учётная запись
+  ACCOUNT_UPDATED // изменены роль или права учётной записи
+  ACCOUNT_DELETED // учётная запись удалена
+  SHARE_LINK_CREATED // выдана ссылка клиенту
+  SHARE_LINK_REVOKED // ссылка отозвана
+  SHARE_LINK_RESTORED // отозванная ссылка возвращена
+  ITEM_PURGED // безвозвратно удалён хаб, материал, КП, папка или шаблон
+  DATA_EXPORTED // выгрузка или скачивание данных
+}
+
+// Журнал «кто и что сделал с доступами и данными». Только дописывается; из
+// интерфейса изменить или удалить запись нельзя. Срок хранения — 12 месяцев:
+// старше удаляются лениво при записи (см. src/lib/security-log.ts).
+//
+// Связей с User и Organization нет НАРОЧНО (как у Event.assetId): запись должна
+// пережить удаление человека или организации — иначе журнал теряет смысл именно
+// тогда, когда он нужен. Почта актёра продублирована сюда по той же причине.
+// Пароли, хэши и токены ссылок сюда не попадают никогда.
+model SecurityEvent {
+  id         String            @id @default(cuid())
+  occurredAt DateTime          @default(now())
+  type       SecurityEventType
+
+  organizationId String?
+  actorId        String? // кто совершил; null — неизвестный (вход под чужой почтой) или система
+  actorEmail     String?
+  targetId       String? // над чем: id учётной записи, ссылки, хаба…
+  targetLabel    String? // почта, название — то, что человеку понятно без базы
+
+  ip        String?
+  userAgent String?
+  details   Json?
+
+  @@index([occurredAt])
+  @@index([organizationId, occurredAt])
+  @@index([type, occurredAt])
+  @@index([actorId, occurredAt])
+}
+
 // ─────────────────────────────  Калькулятор (КП)  ─────────────────────────────
 
 // Расчёт стоимости для клиента — замена общей Google-таблицы отдела продаж.

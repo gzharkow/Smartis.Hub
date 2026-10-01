@@ -7,6 +7,7 @@ import { PDFDocument } from "pdf-lib";
 import { requireUser } from "@/lib/auth";
 import { canAccessSection, hasEdit } from "@/lib/permissions";
 import { db } from "@/lib/db";
+import { logSecurityEvent } from "@/lib/security-log";
 import { isEmptyHtml, sanitizeHtml } from "@/lib/sanitize";
 import { storage, storageKeys } from "@/lib/storage";
 import { renderQuotePdf } from "@/lib/quote-pdf";
@@ -562,13 +563,20 @@ export async function restoreHub(hubId: string) {
  * сперва удалить обычным способом. Одного неверного нажатия мало.
  */
 export async function purgeHub(hubId: string) {
-  const { hub } = await ownedHub(hubId);
+  const { user, hub } = await ownedHub(hubId);
 
   if (hub.status !== "ARCHIVED") {
     throw new Error("Насовсем можно удалить только то, что уже в корзине.");
   }
 
   await db.hub.delete({ where: { id: hub.id } });
+
+  await logSecurityEvent({
+    type: "ITEM_PURGED",
+    actor: { id: user.id, email: user.email, organizationId: user.organizationId },
+    target: { id: hub.id, label: hub.title },
+    details: { kind: "хаб" },
+  });
 
   revalidatePath("/hubs");
   revalidatePath("/hubs/trash");

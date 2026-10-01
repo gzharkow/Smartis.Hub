@@ -7,7 +7,8 @@ import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { db } from "@/lib/db";
 import { loginThrottle, trustedClientIp } from "@/lib/login-throttle";
-import { createSession, deleteSession } from "@/lib/session";
+import { logSecurityEvent, shouldLogBlocked } from "@/lib/security-log";
+import { createSession, deleteSession, readSession } from "@/lib/session";
 
 const LoginSchema = z.object({
   email: z.email({ error: "Введите почту." }),
@@ -44,7 +45,9 @@ export async function login(
 
   const gate = loginThrottle.check(ip, email);
   if (gate.blocked) {
-    console.warn(`[auth] вход временно заблокирован из-за частых неудач, ip=${ip}`);
+    if (shouldLogBlocked(ip, email)) {
+      await logSecurityEvent({ type: "LOGIN_BLOCKED", actor: { email } });
+    }
     const minutes = Math.max(1, Math.ceil(gate.retryAfterMs / 60_000));
     return { error: `Слишком много попыток входа. Попробуйте через ${minutes} мин.` };
   }
@@ -63,6 +66,11 @@ export async function login(
   // кто в системе зарегистрирован.
   if (!user || !passwordMatches) {
     loginThrottle.fail(ip, email);
+    await logSecurityEvent({
+      type: "LOGIN_FAILED",
+      actor: { id: user?.id, email, organizationId: user?.organizationId },
+      details: { reason: user ? "неверный пароль" : "нет такой почты" },
+    });
     return { error: "Неверная почта или пароль." };
   }
 
@@ -72,6 +80,11 @@ export async function login(
     userId: user.id,
     organizationId: user.organizationId,
     role: user.role,
+  });
+
+  await logSecurityEvent({
+    type: "LOGIN_SUCCESS",
+    actor: { id: user.id, email: user.email, organizationId: user.organizationId },
   });
 
   // Пускаем только по внутренним адресам: без этой проверки чужой мог бы
@@ -87,6 +100,17 @@ export async function login(
 }
 
 export async function logout(): Promise<void> {
+  // Кто выходит — смотрим до того, как кука удалена.
+  const session = await readSession();
+  if (session) {
+    const user = await db.user
+      .findUnique({ where: { id: session.userId }, select: { email: true } })
+      .catch(() => null);
+    await logSecurityEvent({
+      type: "LOGOUT",
+      actor: { id: session.userId, email: user?.email, organizationId: session.organizationId },
+    });
+  }
   await deleteSession();
   redirect("/login");
 }

@@ -2,6 +2,7 @@ import { getCurrentUser } from "@/lib/auth";
 import { canAccessSection } from "@/lib/permissions";
 import { buildKpiWorkbook } from "@/lib/kpi-export";
 import type { Ym } from "@/lib/kpi";
+import { logSecurityEvent } from "@/lib/security-log";
 
 // GET /api/kpi/export?months=2026-09,2026-10&quarters=2026-4
 // Каждый месяц — отдельный лист, каждый квартал — тоже. Доступ — как у самого
@@ -59,6 +60,17 @@ export async function GET(request: Request) {
   const bytes = await buildKpiWorkbook(user.organizationId, {
     months,
     quarters,
+  });
+
+  await logSecurityEvent({
+    type: "DATA_EXPORTED",
+    request,
+    actor: { id: user.id, email: user.email, organizationId: user.organizationId },
+    details: {
+      what: "выгрузка KPI в Excel",
+      months: monthRaw.join(", "),
+      quarters: quarterRaw.join(", "),
+    },
   });
 
   // Имя файла: один месяц/квартал — по нему, иначе по году (или общее).

@@ -6,6 +6,7 @@ import bcrypt from "bcryptjs";
 import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
 import { requireAdmin } from "@/lib/auth";
+import { logSecurityEvent } from "@/lib/security-log";
 
 // Пароль генерируется на сервере тем же способом, что и в prisma/seed.ts,
 // и показывается вызывающей стороне РОВНО ОДИН РАЗ — нигде не хранится,
@@ -60,6 +61,16 @@ function parseSectionAccess(formData: FormData, role: "ADMIN" | "MEMBER") {
   };
 }
 
+type SectionFlags = ReturnType<typeof parseSectionAccess>;
+
+/** Какие из флагов доступа включены — одной строкой для журнала. */
+function enabledFlags(flags: SectionFlags): string {
+  return Object.entries(flags)
+    .filter(([, on]) => on)
+    .map(([name]) => name)
+    .join(", ");
+}
+
 export type CreateAccountState =
   | { error: string }
   | { success: true; email: string; password: string }
@@ -90,6 +101,8 @@ export async function createAccount(
   const password = generatePassword();
   const passwordHash = await bcrypt.hash(password, 12);
 
+  let createdId: string | null = null;
+
   try {
     await db.$transaction(async (tx) => {
       const existing = await tx.user.findUnique({
@@ -109,7 +122,7 @@ export async function createAccount(
         if (count !== visibleOwnerIds.length) throw new Error("OWNER_NOT_FOUND");
       }
 
-      await tx.user.create({
+      const created = await tx.user.create({
         data: {
           organizationId: admin.organizationId,
           email,
@@ -120,6 +133,7 @@ export async function createAccount(
           visibleOwners: { connect: visibleOwnerIds.map((id) => ({ id })) },
         },
       });
+      createdId = created.id;
     });
   } catch (e) {
     if (e instanceof Error && e.message === "DUPLICATE_EMAIL") {
@@ -130,6 +144,17 @@ export async function createAccount(
     }
     throw e;
   }
+
+  await logSecurityEvent({
+    type: "ACCOUNT_CREATED",
+    actor: { id: admin.id, email: admin.email, organizationId: admin.organizationId },
+    target: { id: createdId, label: email },
+    details: {
+      role,
+      access: enabledFlags(sectionAccess),
+      visibleOwners: visibleOwnerIds.length,
+    },
+  });
 
   revalidatePath("/settings/administration");
   return { success: true, email, password };
@@ -158,12 +183,31 @@ export async function updateAccountAccess(
   const password = resetPassword ? generatePassword() : null;
   const passwordHash = password ? await bcrypt.hash(password, 12) : undefined;
 
+  const changes: Record<string, string | number | boolean> = {};
+  let targetEmail = "";
+
   try {
     await db.$transaction(async (tx) => {
       const target = await tx.user.findFirst({
         where: { id: userId, organizationId: admin.organizationId },
+        include: { visibleOwners: { select: { id: true } } },
       });
       if (!target) throw new Error("NOT_FOUND");
+      targetEmail = target.email;
+
+      // Что именно меняется — для журнала: до и после.
+      if (target.role !== role) {
+        changes.roleFrom = target.role;
+        changes.roleTo = role;
+      }
+      const flagChanges = (Object.keys(sectionAccess) as (keyof SectionFlags)[]).filter(
+        (k) => target[k] !== sectionAccess[k],
+      );
+      if (flagChanges.length > 0) changes.changed = flagChanges.join(", ");
+      const before = new Set(target.visibleOwners.map((o) => o.id));
+      const sameOwners =
+        before.size === visibleOwnerIds.length && visibleOwnerIds.every((id) => before.has(id));
+      if (!sameOwners) changes.visibleOwners = visibleOwnerIds.length;
 
       if (visibleOwnerIds.length > 0) {
         const count = await tx.user.count({
@@ -192,6 +236,15 @@ export async function updateAccountAccess(
       return { error: "Один из выбранных аккаунтов не найден." };
     }
     throw e;
+  }
+
+  const actor = { id: admin.id, email: admin.email, organizationId: admin.organizationId };
+  const target = { id: userId, label: targetEmail };
+  if (Object.keys(changes).length > 0) {
+    await logSecurityEvent({ type: "ACCOUNT_UPDATED", actor, target, details: changes });
+  }
+  if (password) {
+    await logSecurityEvent({ type: "PASSWORD_RESET", actor, target });
   }
 
   revalidatePath("/settings/administration");
@@ -228,6 +281,12 @@ export async function deleteAccount(
   }
 
   await db.user.delete({ where: { id: userId } });
+
+  await logSecurityEvent({
+    type: "ACCOUNT_DELETED",
+    actor: { id: admin.id, email: admin.email, organizationId: admin.organizationId },
+    target: { id: userId, label: target.email },
+  });
 
   revalidatePath("/settings/administration");
   return { success: true };

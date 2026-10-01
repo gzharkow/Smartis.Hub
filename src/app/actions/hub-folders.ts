@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { requireUser } from "@/lib/auth";
 import { canAccessSection, hasEdit } from "@/lib/permissions";
 import { db } from "@/lib/db";
+import { logSecurityEvent } from "@/lib/security-log";
 import { isValidFolderColor } from "@/lib/folder-colors";
 
 // Папки общие на организацию: сотрудник заводит свою и складывает туда хабы
@@ -112,9 +113,16 @@ export async function updateHubFolderColor(folderId: string, color: string | nul
  * ей не за что.
  */
 export async function deleteHubFolder(folderId: string) {
-  const { folder } = await ownedFolder(folderId);
+  const { user, folder } = await ownedFolder(folderId);
 
   await db.hubFolder.delete({ where: { id: folder.id } });
+
+  await logSecurityEvent({
+    type: "ITEM_PURGED",
+    actor: { id: user.id, email: user.email, organizationId: user.organizationId },
+    target: { id: folder.id, label: folder.name },
+    details: { kind: "папка хабов" },
+  });
 
   revalidate();
 }

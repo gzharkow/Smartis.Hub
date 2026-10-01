@@ -2,6 +2,7 @@ import { getCurrentUser } from "@/lib/auth";
 import { canAccessSection } from "@/lib/permissions";
 import { db } from "@/lib/db";
 import { renderQuotePdf } from "@/lib/quote-pdf";
+import { logSecurityEvent } from "@/lib/security-log";
 
 // Тот же принцип авторизации, что и у src/app/api/assets/[id]/file/route.ts:
 // вход в админку + организация. Плюс здесь ещё владелец — как и у самого КП,
@@ -53,6 +54,14 @@ export async function GET(
       })),
     })),
     boxIntegrationSelected: quote.boxIntegrationSelected,
+  });
+
+  await logSecurityEvent({
+    type: "DATA_EXPORTED",
+    request,
+    actor: { id: user.id, email: user.email, organizationId: user.organizationId },
+    target: { id: quote.id, label: quote.clientName },
+    details: { what: "скачивание КП в PDF" },
   });
 
   const asciiName = `kp-${quote.id}.pdf`;
