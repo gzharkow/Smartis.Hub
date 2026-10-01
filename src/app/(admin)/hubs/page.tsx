@@ -13,7 +13,7 @@ import { ownerLabel } from "@/lib/owner-color";
 import { ViewToggle } from "@/components/view-toggle";
 import { HubSortControl } from "@/components/hub-sort-control";
 import { ListFilterControl } from "@/components/list-filter-control";
-import { loadListFilter } from "@/lib/list-filter-server";
+import { hubIdsForIndustry, loadListFilter } from "@/lib/list-filter-server";
 import { listFilterWhere } from "@/lib/list-filter";
 import { CreateHubForm } from "./create-hub-form";
 import { HubList, type HubRow } from "./hub-list";
@@ -33,6 +33,10 @@ export default async function HubsPage() {
 
   const { filter, creators, active } = await loadListFilter("hubs", user);
 
+  const industryHubIds = filter.industry
+    ? await hubIdsForIndustry(user.organizationId, filter.industry)
+    : null;
+
   const hubs = await db.hub.findMany({
     where: {
       organizationId: user.organizationId,
@@ -41,6 +45,7 @@ export default async function HubsPage() {
       // Удалённые живут в своём разделе — здесь они только мешали бы.
       status: { not: "ARCHIVED" },
       ...listFilterWhere(filter, "hub"),
+      ...(industryHubIds ? { id: { in: industryHubIds } } : {}),
     },
     include: {
       _count: { select: { items: true, shareLinks: true } },
