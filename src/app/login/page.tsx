@@ -10,7 +10,7 @@ export const metadata: Metadata = {
   manifest: "/manifest.webmanifest",
   appleWebApp: {
     capable: true,
-    title: "Smartis.Flite",
+    title: "Smartis.HUB",
     statusBarStyle: "black-translucent",
   },
 };
@@ -55,8 +55,8 @@ export default async function LoginPage({
               alt="Smartis"
               className="h-9 w-auto"
             />
-            <span className="translate-y-[5px] text-[45px] leading-none font-light text-white/70">
-              .F<span className="text-[34px]">LiTE</span>
+            <span className="-ml-1.5 translate-y-[5px] text-[45px] leading-none font-[weight:190] font-[family-name:var(--font-wordmark)] text-white/70">
+              .H<span className="text-[34px]">UB</span>
             </span>
           </div>
         </div>

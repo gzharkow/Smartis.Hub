@@ -405,7 +405,7 @@ export async function buildKpiWorkbook(
   req: KpiExportRequest,
 ): Promise<Buffer> {
   const wb = new ExcelJS.Workbook();
-  wb.creator = "Smartis.Flite";
+  wb.creator = "Smartis.HUB";
 
   type Job =
     | { kind: "month"; ym: Ym; order: number }

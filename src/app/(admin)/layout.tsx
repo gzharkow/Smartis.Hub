@@ -18,7 +18,7 @@ export const metadata: Metadata = {
   manifest: "/manifest.webmanifest",
   appleWebApp: {
     capable: true,
-    title: "Smartis.Flite",
+    title: "Smartis.HUB",
     statusBarStyle: "black-translucent",
   },
 };

@@ -125,7 +125,7 @@ export function Sidebar({
         <Link
           href="/hubs"
           className="flex items-end gap-1"
-          title="Smartis.Flite"
+          title="Smartis.HUB"
         >
           {/* Узкая полоса — мобильный экран или свёрнутое меню — оставляем
               прежнего паучка: новый вордмарк туда по ширине не влезает. */}
@@ -154,9 +154,9 @@ export function Sidebar({
             </>
           )}
           <span
-            className={`not-dark:text-muted translate-y-[3px] text-[30px] leading-none font-light tracking-tight ${collapsed ? "hidden" : "hidden md:inline"}`}
+            className={`not-dark:text-muted -ml-1 translate-y-[3px] text-[30px] leading-none font-[weight:190] font-[family-name:var(--font-wordmark)] tracking-tight ${collapsed ? "hidden" : "hidden md:inline"}`}
           >
-            .F<span className="text-[23px]">LiTE</span>
+            .H<span className="text-[23px]">UB</span>
           </span>
         </Link>
 

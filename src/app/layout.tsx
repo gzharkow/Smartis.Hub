@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { cookies } from "next/headers";
 import { Geist, Geist_Mono } from "next/font/google";
+import localFont from "next/font/local";
 import { parseTheme, THEME_COOKIE, THEME_SCRIPT } from "@/lib/theme";
 import "./globals.css";
 
@@ -14,9 +15,19 @@ const geistMono = Geist_Mono({
   subsets: ["latin", "cyrillic"],
 });
 
+// Только для надписи «.HUB» рядом с логотипом: геометрический гротеск ближе
+// к буквам SMARTIS, чем Geist. Лежит в репозитории, а не тянется из Google
+// Fonts: там, где Google недоступен, next/font молча подставлял запасной шрифт.
+const wordmark = localFont({
+  variable: "--font-wordmark",
+  // Вариативный файл: толщина подбирается любым числом от 100 до 900.
+  src: "./fonts/montserrat-latin-wght-normal.woff2",
+  weight: "100 900",
+});
+
 export const metadata: Metadata = {
-  title: "Smartis.Flite",
-  description: "Контент-хабы для клиентов",
+  title: "Smartis.HUB",
+  description: "Важные материалы всегда под рукой",
 };
 
 export default async function RootLayout({
@@ -41,7 +52,7 @@ export default async function RootLayout({
       // фиксированные элементы (нижний PWA-бар) не долетают до края экрана.
       // dvh браузer пересчитывает под фактический вьюпорт, на десктопе и в
       // обычном мобильном браузере ведёт себя как %, разницы не будет.
-      className={`${geistSans.variable} ${geistMono.variable} h-dvh antialiased`}
+      className={`${geistSans.variable} ${geistMono.variable} ${wordmark.variable} h-dvh antialiased`}
     >
       <head>
         <script dangerouslySetInnerHTML={{ __html: THEME_SCRIPT }} />
