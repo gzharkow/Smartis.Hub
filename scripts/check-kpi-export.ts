@@ -106,6 +106,28 @@ async function main() {
     q.some((r) => r[0] === "Месяц" && r[1] === "Клиент"),
   );
 
+  const novDev = nov.find((r) => r[1] === "Менеджер по развитию");
+  check(
+    "ноябрь (пустой месяц): план сделок по умолчанию = 1",
+    novDev?.[8] === 1,
+    JSON.stringify(novDev),
+  );
+  check(
+    "квартал: план сделок по умолчанию = 1 на каждый месяц (3)",
+    qDev?.[8] === 3,
+    String(qDev?.[8]),
+  );
+
+  const novMeet = nov.find(
+    (r) => r[1] === "Встречи / демо" && r[2] !== undefined && r[0] !== "",
+  );
+  const novQual = nov.find((r) => r[1] === "Квалифицировано");
+  check(
+    "ноябрь (пустой месяц): недельный план по умолчанию 2 встречи и 1 квалификация",
+    novMeet?.[2] === 2 && novQual?.[2] === 1,
+    JSON.stringify([novMeet, novQual]),
+  );
+
   const managerHeader = oct.find((r) => r[0] === "Менеджер" && r[1] === "Чек");
   check("октябрь: блок «Менеджеры» присутствует", !!managerHeader);
 

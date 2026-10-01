@@ -5,7 +5,7 @@ import { z } from "zod";
 import { db } from "@/lib/db";
 import { requireSection } from "@/lib/auth";
 import { canManageKpi } from "@/lib/permissions";
-import { addMonths, quarterOf, toDateOnly } from "@/lib/kpi";
+import { addMonths, defaultPlan, quarterOf, toDateOnly } from "@/lib/kpi";
 
 // Раздел общий для всех, у кого есть доступ (флаг canAccessKpi): «все с
 // доступом редактируют всё». Каждое действие всё равно проверяет доступ и
@@ -56,7 +56,11 @@ const EntrySchema = z.object({
 export async function saveEntry(input: unknown) {
   const v = EntrySchema.parse(input);
   const user = await requireSection("kpi");
-  await ownPerson(user.organizationId, v.personId);
+  const person = await db.kpiPerson.findFirst({
+    where: { id: v.personId, organizationId: user.organizationId },
+    select: { role: true },
+  });
+  if (!person) throw new Error("Участник не найден.");
 
   const data = {
     ...(v.plan !== undefined ? { plan: v.plan } : {}),
@@ -81,6 +85,9 @@ export async function saveEntry(input: unknown) {
       metric: v.metric,
       scope: v.scope,
       periodStart: toDateOnly(v.periodStart),
+      // Запись создаётся, например, вводом одного только факта — план при
+      // этом не должен обнулиться: берём тот же дефолт, что показывает таблица.
+      plan: defaultPlan(person.role, v.metric, v.scope),
       ...data,
     },
     update: data,

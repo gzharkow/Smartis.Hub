@@ -1,5 +1,6 @@
 import {
   DEFAULT_METRIC_LABELS,
+  effectivePlan,
   formatPct,
   metricsFor,
   pct,
@@ -59,7 +60,7 @@ export function Weeks({
           let fact = 0;
           for (const p of development) {
             const e = get(p.id, key, week.start);
-            plan += e?.plan ?? 0;
+            plan += effectivePlan(e, p.role, key, "WEEK") ?? 0;
             fact += e?.fact ?? 0;
           }
           return {
@@ -132,7 +133,13 @@ export function Weeks({
                         periodStart: week.start,
                       } as const;
                       const fallback = DEFAULT_METRIC_LABELS[metric];
-                      const p = pct(e?.fact ?? 0, e?.plan ?? 0);
+                      const planValue = effectivePlan(
+                        e,
+                        person.role,
+                        metric,
+                        "WEEK",
+                      );
+                      const p = pct(e?.fact ?? 0, planValue ?? 0);
                       return (
                         <tr
                           key={`${person.id}-${metric}`}
@@ -165,7 +172,7 @@ export function Weeks({
                               <EntryNumber
                                 entry={ref}
                                 field="plan"
-                                value={e ? e.plan : 0}
+                                value={planValue}
                                 label={`${person.name}: ${fallback}, план, ${week.label}`}
                               />
                               {/* Примечание к плану — только у ассистента. */}

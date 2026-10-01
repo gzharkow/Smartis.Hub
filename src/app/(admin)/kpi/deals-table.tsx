@@ -349,7 +349,17 @@ function AddRow({
   reserve: boolean;
 }) {
   const [pending, start] = useTransition();
-  const [month, setMonth] = useState<Ym>(selected);
+  // Месяц новой сделки: только из месяцев квартала. Состояние нельзя
+  // инициализировать один раз из `selected`: при листании месяцев компонент
+  // не пересоздаётся, и в нём оставался старый месяц (сделка уходила в
+  // прошлый квартал). Поэтому храним только явный выбор пользователя, а
+  // значение по умолчанию вычисляем из текущего `selected`.
+  const [picked, setPicked] = useState<Ym | null>(null);
+  const month: Ym =
+    (picked && months.find((m) => monthKey(m) === monthKey(picked))) ||
+    months.find((m) => monthKey(m) === monthKey(selected)) ||
+    months[0] ||
+    selected;
   const [client, setClient] = useState("");
   const [amount, setAmount] = useState(0);
   const [direction, setDirection] = useState<Direction>(null);
@@ -375,6 +385,7 @@ function AddRow({
         setAmount(0);
         setNote("");
         setManagerName("");
+        setPicked(null);
       } catch {
         /* остаёмся с введёнными данными */
       }
@@ -426,7 +437,7 @@ function AddRow({
             value={month}
             months={months}
             label="Месяц новой сделки"
-            onChange={setMonth}
+            onChange={setPicked}
           />
         )}
         <DirectionSelect value={direction} onChange={setDirection} />
@@ -531,6 +542,7 @@ export function DealsForm({
         );
       })}
       <AddRow
+        key={monthKey(selected)}
         months={months}
         selected={selected}
         reserve={false}

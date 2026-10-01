@@ -3,6 +3,7 @@ import "server-only";
 import ExcelJS from "exceljs";
 import {
   DEFAULT_METRIC_LABELS,
+  effectivePlan,
   MONTH_NAMES,
   ROLE_LABEL,
   metricsFor,
@@ -167,7 +168,21 @@ function writePeopleSummary(w: SheetWriter, s: PeriodSummary) {
     const m = pctCell(p.meetings.fact, p.meetings.plan);
     const q = pctCell(p.qualified.fact, p.qualified.plan);
     const topBorder = i === firstAssistant && firstAssistant > 0;
-    if (p.isAssistant) {
+    if (p.salesOnly) {
+      // Менеджер без «Активности»: прочерки; факт сделок — число его сделок.
+      w.data([
+        p.person.name,
+        "Менеджер",
+        DASH,
+        DASH,
+        DASH,
+        DASH,
+        DASH,
+        DASH,
+        DASH,
+        p.deals.fact,
+      ]);
+    } else if (p.isAssistant) {
       w.data(
         [
           p.person.name,
@@ -233,7 +248,7 @@ function writeWeeks(w: SheetWriter, data: KpiData, month: Ym) {
     people.forEach((person, pi) => {
       metricsFor(person.role).forEach((metric, mi) => {
         const e = byKey.get(`${person.id}|${metric}|WEEK|${week.start}`);
-        const plan = e ? e.plan : 0;
+        const plan = effectivePlan(e, person.role, metric, "WEEK");
         const fact = e ? e.fact : 0;
         const p = pctCell(fact ?? 0, plan ?? 0);
         w.data(

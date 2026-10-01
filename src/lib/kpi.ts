@@ -19,6 +19,35 @@ export const DEFAULT_METRIC_LABELS: Record<KpiMetricKey, string> = {
 export const MONTH_PLAN_MEETINGS = 8;
 export const MONTH_PLAN_QUALIFIED = 3;
 
+/** Планы по умолчанию у менеджера по развитию (пока в ячейке нет записи):
+ * на неделю 2 встречи и 1 квалификация, на месяц 1 сделка. У ассистента
+ * ничего не предзаполняется. Сохранённое значение (в т. ч. 0 и прочерк)
+ * всегда важнее. */
+export const DEFAULT_WEEK_PLAN = { MEETINGS: 2, QUALIFIED: 1 } as const;
+export const DEFAULT_DEALS_PLAN = 1;
+
+export function defaultPlan(
+  role: "DEVELOPMENT" | "ASSISTANT",
+  metric: "MEETINGS" | "QUALIFIED" | "DEALS",
+  scope: "WEEK" | "MONTH",
+): number {
+  if (role === "ASSISTANT") return 0;
+  if (scope === "MONTH") return metric === "DEALS" ? DEFAULT_DEALS_PLAN : 0;
+  if (metric === "MEETINGS") return DEFAULT_WEEK_PLAN.MEETINGS;
+  if (metric === "QUALIFIED") return DEFAULT_WEEK_PLAN.QUALIFIED;
+  return 0;
+}
+
+/** План ячейки: сохранённый или, если записи нет, значение по умолчанию. */
+export function effectivePlan(
+  entry: { plan: number | null } | undefined,
+  role: "DEVELOPMENT" | "ASSISTANT",
+  metric: "MEETINGS" | "QUALIFIED" | "DEALS",
+  scope: "WEEK" | "MONTH",
+): number | null {
+  return entry ? entry.plan : defaultPlan(role, metric, scope);
+}
+
 export type KpiRole = "DEVELOPMENT" | "ASSISTANT";
 
 export const ROLE_LABEL: Record<KpiRole, string> = {
@@ -102,10 +131,12 @@ export function weeksOfMonth({ year, month }: Ym): KpiWeek[] {
   let monday = first - dow * 86400000;
   for (let i = 0; i < 6; i++, monday += 7 * 86400000) {
     const wed = new Date(monday + 2 * 86400000);
-    if (wed.getUTCFullYear() !== year || wed.getUTCMonth() !== month - 1) continue;
+    if (wed.getUTCFullYear() !== year || wed.getUTCMonth() !== month - 1)
+      continue;
     const mon = new Date(monday);
     const fri = new Date(monday + 4 * 86400000);
-    const fmt = (d: Date) => `${pad(d.getUTCDate())}.${pad(d.getUTCMonth() + 1)}`;
+    const fmt = (d: Date) =>
+      `${pad(d.getUTCDate())}.${pad(d.getUTCMonth() + 1)}`;
     weeks.push({
       start: `${mon.getUTCFullYear()}-${pad(mon.getUTCMonth() + 1)}-${pad(mon.getUTCDate())}`,
       label: `${fmt(mon)} – ${fmt(fri)}`,
@@ -146,7 +177,9 @@ export function toneOf(p: number | null): KpiTone {
  * браузер гарантированно дали одну и ту же строку). */
 export function formatRub(n: number): string {
   const sign = n < 0 ? "−" : "";
-  const s = Math.round(Math.abs(n)).toString().replace(/\B(?=(\d{3})+(?!\d))/g, "\u00a0");
+  const s = Math.round(Math.abs(n))
+    .toString()
+    .replace(/\B(?=(\d{3})+(?!\d))/g, "\u00a0");
   return `${sign}${s}\u00a0₽`;
 }
 

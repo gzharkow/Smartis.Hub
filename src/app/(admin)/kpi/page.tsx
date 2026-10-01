@@ -5,6 +5,7 @@ import { loadKpi } from "@/lib/kpi-data";
 import {
   addMonths,
   DEFAULT_METRIC_LABELS,
+  effectivePlan,
   formatPct,
   formatRub,
   MONTH_NAMES,
@@ -226,9 +227,10 @@ export default async function KpiPage({
     teamWeekEntries
       .filter((e) => e.metric === metric)
       .reduce((s, e) => s + (e[field] ?? 0), 0);
-  // Число сделок (факт) вносится вручную у каждого сотрудника, а не берётся
-  // из списка сделок ниже: у списка другая роль — суммы и клиенты.
-  const dealsFact = entries
+  // Число сделок (факт) вносится вручную у каждого сотрудника из таблицы
+  // активности, а не берётся из списка сделок ниже. Исключение — менеджеры
+  // без «Активности»: ручных показателей у них нет, их факт — число их сделок.
+  const manualDealsFact = entries
     .filter(
       (e) =>
         e.scope === "MONTH" &&
@@ -241,14 +243,30 @@ export default async function KpiPage({
   const realDeals = data.deals.filter((d) =>
     months.some((m) => m.year === d.year && m.month === d.month),
   );
-  const dealsPlan = entries
+  // План по сделкам: у каждого менеджера по развитию на каждый месяц периода —
+  // сохранённый или, если записи нет, по умолчанию (1).
+  const dealsPlan = people
     .filter(
-      (e) =>
-        e.scope === "MONTH" &&
-        e.metric === "DEALS" &&
-        developmentIds.has(e.personId),
+      (p) =>
+        p.inActivity &&
+        p.role !== "ASSISTANT" &&
+        (!p.archived || entries.some((e) => e.personId === p.id)),
     )
-    .reduce((s, e) => s + (e.plan ?? 0), 0);
+    .reduce(
+      (sum, p) =>
+        sum +
+        months.reduce((acc, m) => {
+          const e = entries.find(
+            (x) =>
+              x.personId === p.id &&
+              x.scope === "MONTH" &&
+              x.metric === "DEALS" &&
+              x.periodStart === monthStartKey(m),
+          );
+          return acc + (effectivePlan(e, p.role, "DEALS", "MONTH") ?? 0);
+        }, 0),
+      0,
+    );
   const planOf = (m: Ym) =>
     plans.find((p) => p.year === m.year && p.month === m.month);
   const sumPlan = (
@@ -264,6 +282,20 @@ export default async function KpiPage({
   const autoDeals = realDeals.filter((d) => d.direction === "AUTO");
   const revenue = generalDeals.reduce((s, d) => s + d.amount, 0);
   const revenueAuto = autoDeals.reduce((s, d) => s + d.amount, 0);
+
+  // Менеджеры только с галочкой «Менеджер» (без «Активности»), у которых есть
+  // сделка за период: показываются в сводке активности с прочерками и числом
+  // своих сделок; в недельных таблицах их нет.
+  const salesOnlyRows = people
+    .filter((p) => p.inSales && !p.inActivity && !p.archived)
+    .map((p) => ({
+      p,
+      count: realDeals.filter((d) => norm(d.managerName) === norm(p.name))
+        .length,
+    }))
+    .filter((r) => r.count > 0);
+  const dealsFact =
+    manualDealsFact + salesOnlyRows.reduce((sum, r) => sum + r.count, 0);
 
   // ── навигация по периоду ──
   const step = isQuarter ? 3 : 1;
@@ -307,7 +339,20 @@ export default async function KpiPage({
       p.inActivity && (!p.archived || entries.some((e) => e.personId === p.id)),
   );
   const { development, assistants } = splitByRole(activityPeople);
-  const orderedActivity = [...development, ...assistants];
+  // Строки сводной таблицы: менеджеры по развитию, менеджеры без «Активности»
+  // (только со сделками), затем — под чертой — ассистенты.
+  const summaryRows = [
+    ...development.map((p) => ({ p, kind: "dev" as const, count: 0 })),
+    ...salesOnlyRows.map((r) => ({
+      p: r.p,
+      kind: "sales" as const,
+      count: r.count,
+    })),
+    ...assistants.map((p) => ({ p, kind: "assistant" as const, count: 0 })),
+  ];
+  const firstAssistantIndex = summaryRows.findIndex(
+    (r) => r.kind === "assistant",
+  );
   const entryBy = (
     personId: string,
     metric: string,
@@ -434,7 +479,7 @@ export default async function KpiPage({
               Активность по сотрудникам
             </h2>
 
-            {activityPeople.length > 0 ? (
+            {summaryRows.length > 0 ? (
               <Card density="row" className="overflow-x-auto !p-0">
                 <table className="w-full min-w-[520px] table-fixed text-left">
                   <colgroup>
@@ -462,12 +507,11 @@ export default async function KpiPage({
                     </tr>
                   </thead>
                   <tbody>
-                    {orderedActivity.map((p, pi) => {
-                      const isAssistant = p.role === "ASSISTANT";
+                    {summaryRows.map(({ p, kind, count }, pi) => {
+                      const isAssistant = kind === "assistant";
+                      const isSales = kind === "sales";
                       const firstAssistant =
-                        isAssistant &&
-                        development.length > 0 &&
-                        pi === development.length;
+                        isAssistant && pi > 0 && pi === firstAssistantIndex;
                       const planMeetings = isAssistant
                         ? personSum(p.id, "MEETINGS", "plan")
                         : MONTH_PLAN_MEETINGS;
@@ -488,7 +532,12 @@ export default async function KpiPage({
                         "MONTH",
                         monthStartKey(ym),
                       );
-                      const dealPlan = dealEntry ? dealEntry.plan : 0;
+                      const dealPlan = effectivePlan(
+                        dealEntry,
+                        p.role,
+                        "DEALS",
+                        "MONTH",
+                      );
                       const dealFactValue = dealEntry ? dealEntry.fact : 0;
                       return (
                         <tr
@@ -507,16 +556,7 @@ export default async function KpiPage({
                               {p.name}
                             </span>
                           </th>
-                          <td
-                            className={`px-1 py-1.5 text-center text-[13px] tabular-nums ${toneText(toneOf(mp))}`}
-                          >
-                            {personSum(p.id, "MEETINGS", "fact")} /{" "}
-                            {planMeetings}{" "}
-                            <span className="text-[11px]">
-                              ({formatPct(mp)})
-                            </span>
-                          </td>
-                          {isAssistant ? (
+                          {isSales ? (
                             <>
                               <td className="px-1 py-1.5 text-center text-[13px] text-muted">
                                 —
@@ -526,45 +566,76 @@ export default async function KpiPage({
                               </td>
                               <td className="px-1 py-1.5 text-center text-[13px] text-muted">
                                 —
+                              </td>
+                              <td
+                                className="px-1 py-1.5 text-center text-[13px] tabular-nums"
+                                title="Число его сделок за период (из формы сделок)"
+                              >
+                                {count}
                               </td>
                             </>
                           ) : (
                             <>
                               <td
-                                className={`px-1 py-1.5 text-center text-[13px] tabular-nums ${toneText(toneOf(qp))}`}
+                                className={`px-1 py-1.5 text-center text-[13px] tabular-nums ${toneText(toneOf(mp))}`}
                               >
-                                {personSum(p.id, "QUALIFIED", "fact")} /{" "}
-                                {planQualified}{" "}
+                                {personSum(p.id, "MEETINGS", "fact")} /{" "}
+                                {planMeetings}{" "}
                                 <span className="text-[11px]">
-                                  ({formatPct(qp)})
+                                  ({formatPct(mp)})
                                 </span>
                               </td>
-                              <td className="px-2 py-1 text-center">
-                                <EntryNumber
-                                  entry={{
-                                    personId: p.id,
-                                    metric: "DEALS",
-                                    scope: "MONTH",
-                                    periodStart: monthStartKey(ym),
-                                  }}
-                                  field="plan"
-                                  value={dealPlan}
-                                  label={`${p.name}: план по сделкам на месяц`}
-                                />
-                              </td>
-                              <td className="px-2 py-1 text-center">
-                                <EntryNumber
-                                  entry={{
-                                    personId: p.id,
-                                    metric: "DEALS",
-                                    scope: "MONTH",
-                                    periodStart: monthStartKey(ym),
-                                  }}
-                                  field="fact"
-                                  value={dealFactValue}
-                                  label={`${p.name}: факт по сделкам за месяц`}
-                                />
-                              </td>
+                              {isAssistant ? (
+                                <>
+                                  <td className="px-1 py-1.5 text-center text-[13px] text-muted">
+                                    —
+                                  </td>
+                                  <td className="px-1 py-1.5 text-center text-[13px] text-muted">
+                                    —
+                                  </td>
+                                  <td className="px-1 py-1.5 text-center text-[13px] text-muted">
+                                    —
+                                  </td>
+                                </>
+                              ) : (
+                                <>
+                                  <td
+                                    className={`px-1 py-1.5 text-center text-[13px] tabular-nums ${toneText(toneOf(qp))}`}
+                                  >
+                                    {personSum(p.id, "QUALIFIED", "fact")} /{" "}
+                                    {planQualified}{" "}
+                                    <span className="text-[11px]">
+                                      ({formatPct(qp)})
+                                    </span>
+                                  </td>
+                                  <td className="px-2 py-1 text-center">
+                                    <EntryNumber
+                                      entry={{
+                                        personId: p.id,
+                                        metric: "DEALS",
+                                        scope: "MONTH",
+                                        periodStart: monthStartKey(ym),
+                                      }}
+                                      field="plan"
+                                      value={dealPlan}
+                                      label={`${p.name}: план по сделкам на месяц`}
+                                    />
+                                  </td>
+                                  <td className="px-2 py-1 text-center">
+                                    <EntryNumber
+                                      entry={{
+                                        personId: p.id,
+                                        metric: "DEALS",
+                                        scope: "MONTH",
+                                        periodStart: monthStartKey(ym),
+                                      }}
+                                      field="fact"
+                                      value={dealFactValue}
+                                      label={`${p.name}: факт по сделкам за месяц`}
+                                    />
+                                  </td>
+                                </>
+                              )}
                             </>
                           )}
                         </tr>
@@ -669,6 +740,7 @@ export default async function KpiPage({
               />
             </div>
             <DealsForm
+              key={ymKey(ym)}
               deals={data.deals}
               months={quarter.months}
               selected={ym}
