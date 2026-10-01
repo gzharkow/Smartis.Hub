@@ -26,6 +26,8 @@ const wordmark = localFont({
 });
 
 export const metadata: Metadata = {
+  // Без этого og:image получает адрес localhost:3000 и в мессенджерах не открывается.
+  metadataBase: new URL(process.env.APP_URL ?? "http://localhost:3000"),
   title: "Smartis.HUB",
   description: "Важные материалы всегда под рукой",
 };
