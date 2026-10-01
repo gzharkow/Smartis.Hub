@@ -7,7 +7,7 @@ import { DEFAULT_BRAND_COLOR } from "@/lib/brand-color";
 // хаба (HubTilePreview), только паучок крупнее и заметнее: на плитке это
 // водяной знак, здесь — главный элемент. Одинакова для всех витрин и данных
 // из базы не читает: токен в адресе не проверяется и ничего не раскрывает.
-export const alt = "Важные материалы всегда под рукой";
+export const alt = "Контент-хабы для клиентов";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 
