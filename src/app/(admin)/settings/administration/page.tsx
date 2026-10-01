@@ -3,6 +3,7 @@ import { db } from "@/lib/db";
 import { CreateAccountForm } from "./create-account-form";
 import { AccountsTable, type AccountRow } from "./accounts-table";
 import { SecurityJournal, parseJournalParams } from "./security-journal";
+import { AdminAccordion } from "./admin-accordion";
 import { SettingsTabs } from "../settings-tabs";
 import { PageHeader } from "@/components/ui/page-header";
 
@@ -49,24 +50,18 @@ export default async function AdministrationPage({
         <PageHeader title="Администрирование" subtitle="Создание аккаунтов сотрудников и настройка их доступа" />
       </div>
 
-      <section className="grid gap-3">
-        <h2 className="text-sm font-semibold tracking-tight text-muted uppercase">
-          Новый аккаунт
-        </h2>
+      <AdminAccordion title="Новый аккаунт">
         <CreateAccountForm accountOptions={accountOptions} />
-      </section>
+      </AdminAccordion>
 
-      <section className="grid gap-3">
-        <h2 className="text-sm font-semibold tracking-tight text-muted uppercase">
-          Аккаунты
-        </h2>
+      <AdminAccordion title="Аккаунты" hint={String(accounts.length)}>
         <AccountsTable
           accounts={accounts}
           accountOptions={accountOptions}
           currentUserEmail={admin.email}
           currentUserId={admin.id}
         />
-      </section>
+      </AdminAccordion>
 
       <SecurityJournal
         organizationId={admin.organizationId}
