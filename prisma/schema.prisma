@@ -231,13 +231,6 @@ model HubFolder {
   @@index([organizationId])
 }
 
-// Отрасль клиента: по ней фильтруются списки хабов, КП, файлов и спецификаций.
-// null — не указана (всё, что создано до появления поля).
-enum Industry {
-  AUTO // Авторынок
-  REALTY // Недвижимость
-}
-
 model Hub {
   id             String  @id @default(cuid())
   organizationId String
@@ -245,7 +238,6 @@ model Hub {
   // Папки может не быть: хаб лежит «без папки», и это нормальное состояние.
   // Удаление папки хабы не трогает — они просто выпадают из неё (SetNull).
   folderId       String?
-  industry       Industry?
 
   title    String // внутреннее имя, клиент не видит
   headline String? // крупный заголовок на витрине: «Материалы для "ГК ИНСИТИ"»
@@ -300,7 +292,6 @@ model Hub {
   @@index([organizationId])
   @@index([ownerId])
   @@index([folderId])
-  @@index([organizationId, industry])
 }
 
 // Необязательная группировка материалов на витрине: «Презентации», «Кейсы», «Цены»

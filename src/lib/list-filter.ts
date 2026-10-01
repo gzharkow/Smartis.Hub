@@ -29,13 +29,28 @@ export function serializeListFilter(f: ListFilter): string {
   return encodeURIComponent(`${f.industry ?? ""}|${f.creator ?? ""}`);
 }
 
-/** Условие для Prisma. У хаба отрасль — своё поле, у КП — тип клиента расчёта.
- * Для файлов/спецификаций применяется к `quote`. */
+/** Условие для Prisma. У КП отрасль — тип клиента расчёта (для файлов и
+ * спецификаций применяется к `quote`). Хаб относится к отрасли, если в нём
+ * есть хотя бы один живой материал этой отрасли: из раздела библиотеки
+ * «Авторынок»/«Недвижимость» или расчёт КП с подходящим типом клиента
+ * (файлы КП лежат в «Общих», поэтому их отрасль берётся от КП). */
 export function listFilterWhere(f: ListFilter, kind: "hub" | "quote") {
   return {
     ...(f.industry
       ? kind === "hub"
-        ? { industry: f.industry }
+        ? {
+            items: {
+              some: {
+                asset: {
+                  archivedAt: null,
+                  OR: [
+                    { section: f.industry },
+                    { quote: { clientType: INDUSTRY_TO_CLIENT_TYPE[f.industry] } },
+                  ],
+                },
+              },
+            },
+          }
         : { clientType: INDUSTRY_TO_CLIENT_TYPE[f.industry] }
       : {}),
     ...(f.creator ? { ownerId: f.creator } : {}),

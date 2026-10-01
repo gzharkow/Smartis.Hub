@@ -11,7 +11,6 @@ import { isEmptyHtml, sanitizeHtml } from "@/lib/sanitize";
 import { storage, storageKeys } from "@/lib/storage";
 import { renderQuotePdf } from "@/lib/quote-pdf";
 import { newShareToken } from "@/lib/tokens";
-import { parseIndustry } from "@/lib/industry";
 import {
   CONTACT_KIND_LABELS,
   ContactMethodsSchema,
@@ -76,7 +75,6 @@ export async function createHub(
       ownerId: user.id,
       title: parsed.data.title,
       headline: `Материалы для «${parsed.data.title}»`,
-      industry: parseIndustry(formData.get("industry")),
     },
   });
 
@@ -272,7 +270,6 @@ export async function duplicateHub(hubId: string) {
         // Владелец — тот, кто копирует, а не автор исходного хаба.
         ownerId: user.id,
         title,
-        industry: hub.industry,
         headline: hub.headline,
         descriptionHtml: hub.descriptionHtml,
         status: "DRAFT",
@@ -579,16 +576,6 @@ export async function purgeHub(hubId: string) {
 }
 
 /** Переложить хаб в папку. Пустая строка — вынуть из папки. */
-export async function setHubIndustry(hubId: string, industry: string) {
-  const { hub } = await ownedHub(hubId);
-  await db.hub.update({
-    where: { id: hub.id },
-    data: { industry: parseIndustry(industry) },
-  });
-  revalidatePath(`/hubs/${hub.id}`);
-  revalidatePath("/hubs");
-}
-
 export async function setHubFolder(hubId: string, folderId: string) {
   const { user, hub } = await ownedHub(hubId);
 

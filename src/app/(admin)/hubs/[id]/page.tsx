@@ -6,8 +6,6 @@ import { db } from "@/lib/db";
 import { formatFileSize, isSpecAsset, KIND_LABELS } from "@/lib/assets";
 import { parseContactMethods } from "@/lib/contact-methods";
 import { HubSettingsForm } from "./hub-settings-form";
-import { IndustryPicker } from "@/components/industry-picker";
-import { setHubIndustry } from "@/app/actions/hubs";
 import { HubMaterials } from "./hub-materials";
 import { HubQuotePicker } from "./hub-quote-picker";
 import { HubShareLinks } from "./hub-share-links";
@@ -183,8 +181,7 @@ export default async function HubPage({
         {/* У удалённого хаба папку не показываем: он лежит в корзине,
             а не на полке. */}
         {archived || !canEdit ? null : (
-          <div className="mt-3 flex flex-wrap items-center gap-x-6 gap-y-2">
-            <IndustryPicker value={hub.industry} onSave={setHubIndustry.bind(null, hub.id)} />
+          <div className="mt-3">
             <HubFolderPicker
               hubId={hub.id}
               folderId={hub.folderId}
