@@ -11,6 +11,7 @@
     "db:seed": "tsx prisma/seed.ts",
     "db:studio": "prisma studio",
     "check:sanitize": "tsx scripts/check-sanitize.ts",
+    "check:throttle": "tsx scripts/check-login-throttle.ts",
     "check:tracking": "tsx scripts/check-tracking.ts",
     "check:spec": "tsx scripts/check-spec-values.ts",
     "check:docx": "tsx scripts/check-docx-fill.ts",
