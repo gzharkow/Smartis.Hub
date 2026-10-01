@@ -3,6 +3,7 @@ import { getCurrentUser } from "@/lib/auth";
 import { canAccessSection, canManagePersonalAsset } from "@/lib/permissions";
 import { db } from "@/lib/db";
 import { storage } from "@/lib/storage";
+import { safeServeHeaders } from "@/lib/serve-headers";
 
 // Отдаёт исходный файл СВОЕМУ сотруднику. Нужен, чтобы досоздать превью
 // материалам, загруженным до появления этой возможности: браузер скачивает
@@ -42,9 +43,9 @@ export async function GET(
   const stream = await storage.get(asset.storageKey);
 
   const headers: Record<string, string> = {
-    "Content-Type": asset.mimeType ?? "application/octet-stream",
     "Content-Length": String(size),
     "Cache-Control": "private, no-store",
+    ...safeServeHeaders(asset.mimeType),
   };
 
   if (new URL(request.url).searchParams.has("download")) {

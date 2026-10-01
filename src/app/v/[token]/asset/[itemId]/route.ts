@@ -1,6 +1,7 @@
 import { Readable } from "node:stream";
 import { storage } from "@/lib/storage";
 import { resolveShowcase } from "@/lib/showcase";
+import { safeServeHeaders } from "@/lib/serve-headers";
 
 // Единственная дверь к файлам для клиента. Прямых ссылок на хранилище нет:
 // каждый байт уходит только после проверки токена. Поэтому отзыв ссылки
@@ -54,13 +55,15 @@ export async function GET(
   const range = request.headers.get("range");
 
   const headers: Record<string, string> = {
-    "Content-Type": mimeType ?? "application/octet-stream",
     // Скачать не предлагаем — материал смотрят внутри витрины.
     "Content-Disposition": "inline",
     // Кэшировать нельзя: доступ проверяется на каждый запрос, а закэшированный
     // ответ пережил бы отзыв ссылки.
     "Cache-Control": "private, no-store",
     "Accept-Ranges": "bytes",
+    // Тип и защитные заголовки — после, чтобы для опасных типов (SVG, HTML)
+    // перебить inline.
+    ...safeServeHeaders(mimeType),
   };
 
   // Без поддержки диапазонов видео нельзя перемотать: браузер просит кусок

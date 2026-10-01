@@ -6,6 +6,7 @@ import { canAccessSection, canManagePersonalAsset, hasEdit } from "@/lib/permiss
 import { db } from "@/lib/db";
 import { storage, storageKeys } from "@/lib/storage";
 import { permissionKeyForSection } from "@/lib/asset-sections";
+import { safeServeHeaders } from "@/lib/serve-headers";
 
 const MAX_THUMB_BYTES = 2 * 1024 * 1024;
 
@@ -43,10 +44,10 @@ export async function GET(
   const stream = await storage.get(asset.thumbnailKey);
   return new Response(Readable.toWeb(stream) as ReadableStream, {
     headers: {
-      // Превью файлов — JPEG (тип не хранился), у ссылок — свой (og:image).
-      "Content-Type": asset.thumbnailMime ?? "image/jpeg",
       "Content-Length": String(await storage.size(asset.thumbnailKey)),
       "Cache-Control": "private, max-age=60",
+      // Превью файлов — JPEG (тип не хранился), у ссылок — свой (og:image).
+      ...safeServeHeaders(asset.thumbnailMime ?? "image/jpeg"),
     },
   });
 }
