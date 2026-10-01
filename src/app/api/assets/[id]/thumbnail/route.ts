@@ -7,6 +7,7 @@ import { db } from "@/lib/db";
 import { storage, storageKeys } from "@/lib/storage";
 import { permissionKeyForSection } from "@/lib/asset-sections";
 import { safeServeHeaders } from "@/lib/serve-headers";
+import { isJpeg } from "@/lib/file-signature";
 
 const MAX_THUMB_BYTES = 2 * 1024 * 1024;
 
@@ -90,8 +91,13 @@ export async function POST(
     return NextResponse.json({ error: "Нужна картинка JPEG." }, { status: 400 });
   }
 
+  const thumbBytes = Buffer.from(await thumb.arrayBuffer());
+  if (!isJpeg(thumbBytes)) {
+    return NextResponse.json({ error: "Нужна картинка JPEG." }, { status: 400 });
+  }
+
   const key = storageKeys.thumbnail(user.organizationId, asset.id);
-  await storage.put(key, Buffer.from(await thumb.arrayBuffer()), "image/jpeg");
+  await storage.put(key, thumbBytes, "image/jpeg");
 
   await db.asset.update({ where: { id: asset.id }, data: { thumbnailKey: key } });
 

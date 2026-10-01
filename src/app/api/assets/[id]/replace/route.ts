@@ -12,6 +12,7 @@ import {
   SUPPORTED_FORMATS_TEXT,
 } from "@/lib/asset-formats";
 import { storage, storageKeys } from "@/lib/storage";
+import { isJpeg, verifyBuffer, type UploadKind } from "@/lib/file-signature";
 import { revalidatePath } from "next/cache";
 
 // Замена файла материала «на месте»: тот же Asset.id, тот же материал во всех
@@ -86,6 +87,17 @@ export async function POST(
 
   const kind = detectKind(mimeType, file.name);
   const buffer = Buffer.from(await file.arrayBuffer());
+
+  // Как и при обычной загрузке: верим не присланному типу, а самим байтам.
+  const verdict = await verifyBuffer(buffer, kind as UploadKind, file.name, mimeType);
+  if (!verdict.ok) {
+    return NextResponse.json(
+      { error: `Файл «${file.name}» не загружен. ${verdict.reason}` },
+      { status: 415 },
+    );
+  }
+  const storedMime = verdict.mime;
+
   const ext = fileExtension(file.name);
   const pageCount = kind === "PDF" ? await readPdfPageCount(buffer) : null;
 
@@ -94,7 +106,7 @@ export async function POST(
   // удалась, ни БД, ни старый файл не тронуты.
   const newKey = storageKeys.original(user.organizationId, asset.id, ext);
   try {
-    await storage.put(newKey, buffer, mimeType);
+    await storage.put(newKey, buffer, storedMime);
   } catch {
     return NextResponse.json({ error: "Не удалось сохранить файл." }, { status: 500 });
   }
@@ -113,8 +125,11 @@ export async function POST(
     thumb.type === "image/jpeg"
   ) {
     try {
-      await storage.put(thumbKey, Buffer.from(await thumb.arrayBuffer()), "image/jpeg");
-      newThumbnailKey = thumbKey;
+      const thumbBytes = Buffer.from(await thumb.arrayBuffer());
+      if (isJpeg(thumbBytes)) {
+        await storage.put(thumbKey, thumbBytes, "image/jpeg");
+        newThumbnailKey = thumbKey;
+      }
     } catch {
       // Не фатально — как и при обычной загрузке, материал просто
       // останется без превью (см. ниже — старое тоже будет удалено).
@@ -128,7 +143,7 @@ export async function POST(
       data: {
         kind,
         storageKey: newKey,
-        mimeType,
+        mimeType: storedMime,
         sizeBytes: file.size,
         pageCount,
         thumbnailKey: newThumbnailKey,

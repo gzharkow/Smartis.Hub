@@ -253,7 +253,10 @@ export function judge(
   const mismatch = (): SignatureVerdict => ({
     ok: false,
     format,
-    reason: `Содержимое файла не похоже на ${KIND_LABELS[kind]}: ${describeFormat(format)}.`,
+    reason:
+      format === "svg"
+        ? "SVG не поддерживается — загрузите PNG или JPG."
+        : `Содержимое файла не похоже на ${KIND_LABELS[kind]}: ${describeFormat(format)}.`,
   });
 
   if (!KIND_FORMATS[kind].includes(format)) return mismatch();

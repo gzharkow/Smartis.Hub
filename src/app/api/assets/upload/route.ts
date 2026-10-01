@@ -12,6 +12,7 @@ import {
   SUPPORTED_FORMATS_TEXT,
 } from "@/lib/asset-formats";
 import { parseSection } from "@/lib/asset-sections";
+import { isJpeg, verifyBuffer, type UploadKind } from "@/lib/file-signature";
 
 export async function POST(request: Request) {
   // Маршрут дёргают напрямую, а не только из нашей формы — проверяем вход здесь,
@@ -56,6 +57,17 @@ export async function POST(request: Request) {
   const kind = detectKind(mimeType, file.name);
   const buffer = Buffer.from(await file.arrayBuffer());
 
+  // Тип и расширение присылает браузер — подделать их одной правкой. Смотрим
+  // на сами байты: что внутри на самом деле, и какой тип честно записать.
+  const verdict = await verifyBuffer(buffer, kind as UploadKind, file.name, mimeType);
+  if (!verdict.ok) {
+    return NextResponse.json(
+      { error: `Файл «${file.name}» не загружен. ${verdict.reason}` },
+      { status: 415 },
+    );
+  }
+  const storedMime = verdict.mime;
+
   // Имя файла берём как заголовок по умолчанию — продавец потом переименует.
   // Расширение убираем: «Прайс 2026», а не «Прайс 2026.pdf».
   const ext = fileExtension(file.name);
@@ -83,7 +95,7 @@ export async function POST(request: Request) {
       kind,
       section,
       title,
-      mimeType,
+      mimeType: storedMime,
       sizeBytes: file.size,
       pageCount,
       ownerId: isPersonal ? user.id : null,
@@ -93,7 +105,7 @@ export async function POST(request: Request) {
   const key = storageKeys.original(user.organizationId, asset.id, ext);
 
   try {
-    await storage.put(key, buffer, mimeType);
+    await storage.put(key, buffer, storedMime);
   } catch (e) {
     // Файл не лёг — убираем запись, чтобы в библиотеке не появился
     // материал, который невозможно открыть.
@@ -115,12 +127,13 @@ export async function POST(request: Request) {
   ) {
     const thumbKey = storageKeys.thumbnail(user.organizationId, asset.id);
     try {
-      await storage.put(
-        thumbKey,
-        Buffer.from(await thumb.arrayBuffer()),
-        "image/jpeg",
-      );
-      thumbnailKey = thumbKey;
+      const thumbBytes = Buffer.from(await thumb.arrayBuffer());
+      // Заявлен JPEG, а внутри нет — молча не берём, как и любую другую
+      // неудачу с превью.
+      if (isJpeg(thumbBytes)) {
+        await storage.put(thumbKey, thumbBytes, "image/jpeg");
+        thumbnailKey = thumbKey;
+      }
     } catch {
       // Сам файл уже лёг — терять материал из-за картинки не станем.
     }
