@@ -12,6 +12,9 @@ import { hasEdit, showsOtherOwners, visibleOwnerFilter } from "@/lib/permissions
 import { ownerLabel } from "@/lib/owner-color";
 import { ViewToggle } from "@/components/view-toggle";
 import { HubSortControl } from "@/components/hub-sort-control";
+import { ListFilterControl } from "@/components/list-filter-control";
+import { loadListFilter } from "@/lib/list-filter-server";
+import { listFilterWhere } from "@/lib/list-filter";
 import { CreateHubForm } from "./create-hub-form";
 import { HubList, type HubRow } from "./hub-list";
 import { HubTabs } from "./hub-tabs";
@@ -28,6 +31,8 @@ export default async function HubsPage() {
   // откатываем на дефолт, а не падаем и не даём подглядывать порядок.
   if (sort.field === "creator" && !isAdmin) sort = DEFAULT_HUB_SORT;
 
+  const { filter, creators, active } = await loadListFilter("hubs", user);
+
   const hubs = await db.hub.findMany({
     where: {
       organizationId: user.organizationId,
@@ -35,6 +40,7 @@ export default async function HubsPage() {
       ...visibleOwnerFilter(user),
       // Удалённые живут в своём разделе — здесь они только мешали бы.
       status: { not: "ARCHIVED" },
+      ...listFilterWhere(filter),
     },
     include: {
       _count: { select: { items: true, shareLinks: true } },
@@ -80,8 +86,9 @@ export default async function HubsPage() {
       <HubTabs
         current="all"
         right={
-          rows.length > 0 ? (
+          rows.length > 0 || active ? (
             <div className="flex flex-wrap items-center gap-2">
+              <ListFilterControl scope="hubs" filter={filter} creators={creators} />
               <HubSortControl sort={sort} isAdmin={isAdmin} />
               <ViewToggle value={view} />
             </div>
@@ -91,10 +98,9 @@ export default async function HubsPage() {
 
       {rows.length === 0 ? (
         <div className="rounded-xl border border-dashed border-border py-16 text-center">
-          <p className="font-medium">Пока ни одного хаба</p>
+          <p className="font-medium">{active ? "Ничего не найдено" : "Пока ни одного хаба"}</p>
           <p className="mx-auto mt-1 max-w-md text-sm text-muted">
-            Хаб — это брендированная страница с подборкой материалов, которую вы
-            отправляете клиенту одной ссылкой.
+            {active ? "Измените фильтр, чтобы увидеть другие хабы." : "Хаб — это брендированная страница с подборкой материалов, которую вы отправляете клиенту одной ссылкой."}
           </p>
         </div>
       ) : (

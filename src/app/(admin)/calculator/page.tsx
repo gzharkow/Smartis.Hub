@@ -14,6 +14,9 @@ import {
   QUOTE_SORT_COOKIE,
 } from "@/lib/quote-sort";
 import { QuoteSortControl } from "@/components/quote-sort-control";
+import { ListFilterControl } from "@/components/list-filter-control";
+import { loadListFilter } from "@/lib/list-filter-server";
+import { listFilterWhere } from "@/lib/list-filter";
 import { CreateQuoteForm } from "./create-quote-form";
 import { QuoteListRowActions } from "./quote-list-row-actions";
 import { CalculatorTabs } from "./calculator-tabs";
@@ -24,11 +27,14 @@ export default async function CalculatorPage() {
   const jar = await cookies();
   const sort = parseQuoteSort(jar.get(QUOTE_SORT_COOKIE)?.value);
 
+  const { filter, creators, active } = await loadListFilter("calculator", user);
+
   const quotes = await db.quote.findMany({
     where: {
       organizationId: user.organizationId,
       // Продавец видит свои расчёты плюс те, что явно открыл суперадмин.
       ...visibleOwnerFilter(user),
+      ...listFilterWhere(filter),
     },
     include: {
       // Порядок секций важен теперь, когда список различает «первую» секцию
@@ -83,19 +89,24 @@ export default async function CalculatorPage() {
 
       <CalculatorTabs current="quotes" />
 
+      {rows.length > 0 || active ? (
+        <div className="mb-2 flex flex-wrap items-center justify-end gap-2">
+          <ListFilterControl scope="calculator" filter={filter} creators={creators} />
+          {rows.length > 0 ? <QuoteSortControl sort={sort} /> : null}
+        </div>
+      ) : null}
+
       {rows.length === 0 ? (
         <div className="rounded-xl border border-dashed border-border py-16 text-center">
-          <p className="font-medium">Пока ни одного расчёта</p>
+          <p className="font-medium">{active ? "Ничего не найдено" : "Пока ни одного расчёта"}</p>
           <p className="mx-auto mt-1 max-w-md text-sm text-muted">
-            Создайте расчёт для клиента — секции и строки заполнятся
-            привычным шаблоном, дальше всё можно свободно менять.
+            {active
+              ? "Измените фильтр, чтобы увидеть другие расчёты."
+              : "Создайте расчёт для клиента — секции и строки заполнятся привычным шаблоном, дальше всё можно свободно менять."}
           </p>
         </div>
       ) : (
         <>
-          <div className="mb-2 flex justify-end">
-            <QuoteSortControl sort={sort} />
-          </div>
           <ul className="grid grid-cols-1 gap-2">
             {rows.map(({ quote, saTotal, solutionsTotal }) => {
               const canEdit = hasEdit(user, "calculator");

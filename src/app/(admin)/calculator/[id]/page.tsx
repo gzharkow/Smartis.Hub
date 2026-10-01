@@ -8,6 +8,8 @@ import { specAvailability } from "@/lib/spec-build";
 import { QuoteEditor } from "./quote-editor";
 import { QuoteActionsBar } from "./quote-actions-bar";
 import { PageHeader } from "@/components/ui/page-header";
+import { IndustryPicker } from "@/components/industry-picker";
+import { setQuoteIndustry } from "@/app/actions/quotes";
 
 export default async function QuotePage({
   params,
@@ -65,6 +67,12 @@ export default async function QuotePage({
             />
           }
         />
+
+        {canEdit ? (
+          <div className="mt-3">
+            <IndustryPicker value={quote.industry} onSave={setQuoteIndustry.bind(null, quote.id)} />
+          </div>
+        ) : null}
       </div>
 
       <QuoteEditor

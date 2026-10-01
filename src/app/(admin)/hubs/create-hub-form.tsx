@@ -4,6 +4,7 @@ import { useActionState, useState } from "react";
 import { createHub, type CreateHubState } from "@/app/actions/hubs";
 import { buttonClasses } from "@/components/ui/button";
 import { fieldClasses } from "@/components/ui/field";
+import { IndustrySelect } from "@/components/industry-select";
 
 export function CreateHubForm() {
   const [open, setOpen] = useState(false);
@@ -48,6 +49,8 @@ export function CreateHubForm() {
           </span>
         )}
       </span>
+
+      <IndustrySelect />
 
       <button
         type="submit"

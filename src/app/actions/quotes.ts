@@ -6,6 +6,7 @@ import { revalidatePath } from "next/cache";
 import { requireUser } from "@/lib/auth";
 import { canAccessSection, hasEdit } from "@/lib/permissions";
 import { db } from "@/lib/db";
+import { parseIndustry } from "@/lib/industry";
 
 // Каждое действие проверяет вход и владение само — как в actions/hubs.ts:
 // Server Actions вызываются прямым POST-запросом, а не только из нашей формы.
@@ -171,6 +172,7 @@ export async function createQuote(
         organizationId: user.organizationId,
         ownerId: user.id,
         clientName: parsed.data.clientName,
+        industry: parseIndustry(formData.get("industry")),
       },
     });
 
@@ -246,6 +248,15 @@ export async function updateQuoteMeta(
 
   revalidateQuote(quote.id);
   return { saved: true };
+}
+
+export async function setQuoteIndustry(quoteId: string, industry: string) {
+  const { quote } = await ownedQuote(quoteId);
+  await db.quote.update({
+    where: { id: quote.id },
+    data: { industry: parseIndustry(industry) },
+  });
+  revalidateQuote(quote.id);
 }
 
 // ─────────────────────────────  Секции  ─────────────────────────────
@@ -486,6 +497,7 @@ export async function duplicateQuote(quoteId: string) {
         organizationId: user.organizationId,
         ownerId: user.id,
         clientName,
+        industry: quote.industry,
         vatRatePct: quote.vatRatePct,
       },
     });

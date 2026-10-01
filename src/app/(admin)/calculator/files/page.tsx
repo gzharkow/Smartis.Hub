@@ -2,6 +2,9 @@ import { hasEdit, showsOtherOwners, visibleOwnerFilter } from "@/lib/permissions
 import { requireSection } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { formatFileSize } from "@/lib/assets";
+import { ListFilterControl } from "@/components/list-filter-control";
+import { loadListFilter } from "@/lib/list-filter-server";
+import { listFilterWhere } from "@/lib/list-filter";
 import { ownerLabel } from "@/lib/owner-color";
 import { withPlural, WORDS } from "@/lib/plural";
 import { QuoteFileRow, type QuoteFileRowData } from "./quote-file-row";
@@ -21,6 +24,8 @@ export const dynamic = "force-dynamic";
 export default async function CalculatorFilesPage() {
   const user = await requireSection("calculator");
 
+  const { filter, creators, active: filtered } = await loadListFilter("files", user);
+
   const files = await db.asset.findMany({
     where: {
       organizationId: user.organizationId,
@@ -28,7 +33,7 @@ export default async function CalculatorFilesPage() {
       kind: "PDF",
       // Продавец видит файлы своих расчётов плюс те, что явно открыл
       // суперадмин, как и в самом списке «Генератор КП».
-      quote: visibleOwnerFilter(user),
+      quote: { ...visibleOwnerFilter(user), ...listFilterWhere(filter) },
     },
     include: {
       quote: {
@@ -79,6 +84,12 @@ export default async function CalculatorFilesPage() {
       />
 
       <CalculatorTabs current="files" />
+
+      {active.length > 0 || archived.length > 0 || filtered ? (
+        <div className="mb-2 flex justify-end">
+          <ListFilterControl scope="files" filter={filter} creators={creators} />
+        </div>
+      ) : null}
 
       {active.length === 0 ? (
         <div className="rounded-xl border border-dashed border-border py-16 text-center">
