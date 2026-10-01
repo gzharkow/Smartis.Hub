@@ -33,7 +33,7 @@ export default async function CalculatorFilesPage() {
       kind: "PDF",
       // Продавец видит файлы своих расчётов плюс те, что явно открыл
       // суперадмин, как и в самом списке «Генератор КП».
-      quote: { ...visibleOwnerFilter(user), ...listFilterWhere(filter) },
+      quote: { ...visibleOwnerFilter(user), ...listFilterWhere(filter, "quote") },
     },
     include: {
       quote: {

@@ -488,7 +488,6 @@ model Quote {
   organizationId String
   ownerId        String
 
-  industry   Industry?
   clientName String // «Расчет стоимости для: …» в шапке PDF
   // Ставка НДС хранится на КП, а не зашита в код, — на случай другой ставки
   // для будущего расчёта, хотя редактор пока не даёт её менять.
@@ -526,7 +525,6 @@ model Quote {
 
   @@index([organizationId])
   @@index([ownerId])
-  @@index([organizationId, industry])
 }
 
 // Секция — таблица с зелёной плашкой в PDF («Сквозная аналитика Smartis»,

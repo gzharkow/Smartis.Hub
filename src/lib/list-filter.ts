@@ -2,7 +2,7 @@
 // "server-only": разбор нужен и серверу (условие запроса), и браузеру (панель).
 // Выбор запоминаем в cookie, как сортировку (см. hub-sort.ts).
 
-import { parseIndustry, type IndustryValue } from "./industry";
+import { INDUSTRY_TO_CLIENT_TYPE, parseIndustry, type IndustryValue } from "./industry";
 
 export const LIST_FILTER_COOKIE_MAX_AGE = 365 * 24 * 60 * 60;
 
@@ -29,10 +29,15 @@ export function serializeListFilter(f: ListFilter): string {
   return encodeURIComponent(`${f.industry ?? ""}|${f.creator ?? ""}`);
 }
 
-/** Условие для Prisma. Для файлов/спецификаций применяется к `quote`. */
-export function listFilterWhere(f: ListFilter) {
+/** Условие для Prisma. У хаба отрасль — своё поле, у КП — тип клиента расчёта.
+ * Для файлов/спецификаций применяется к `quote`. */
+export function listFilterWhere(f: ListFilter, kind: "hub" | "quote") {
   return {
-    ...(f.industry ? { industry: f.industry } : {}),
+    ...(f.industry
+      ? kind === "hub"
+        ? { industry: f.industry }
+        : { clientType: INDUSTRY_TO_CLIENT_TYPE[f.industry] }
+      : {}),
     ...(f.creator ? { ownerId: f.creator } : {}),
   };
 }

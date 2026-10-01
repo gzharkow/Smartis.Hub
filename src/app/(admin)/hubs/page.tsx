@@ -40,7 +40,7 @@ export default async function HubsPage() {
       ...visibleOwnerFilter(user),
       // Удалённые живут в своём разделе — здесь они только мешали бы.
       status: { not: "ARCHIVED" },
-      ...listFilterWhere(filter),
+      ...listFilterWhere(filter, "hub"),
     },
     include: {
       _count: { select: { items: true, shareLinks: true } },

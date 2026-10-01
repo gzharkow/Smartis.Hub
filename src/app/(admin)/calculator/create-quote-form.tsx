@@ -4,7 +4,6 @@ import { useActionState, useState } from "react";
 import { createQuote, type CreateQuoteState } from "@/app/actions/quotes";
 import { buttonClasses } from "@/components/ui/button";
 import { fieldClasses } from "@/components/ui/field";
-import { IndustrySelect } from "@/components/industry-select";
 
 export function CreateQuoteForm() {
   const [open, setOpen] = useState(false);
@@ -46,8 +45,6 @@ export function CreateQuoteForm() {
           </span>
         )}
       </span>
-
-      <IndustrySelect />
 
       <button
         type="submit"
