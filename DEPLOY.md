@@ -288,3 +288,27 @@ git не попадает (см. `.gitignore`), `git reset --hard` его не
 - `git reset --hard origin/main` корректно удаляет на сервере файлы,
   убранные из репозитория локально (в отличие от старой tar-схемы) —
   отдельно синхронизировать `public/` вручную больше не нужно.
+
+## Известные принятые уязвимости (`npm audit`, на 2026-10-01)
+
+`npm audit` показывает 6 записей; чинить их автоматически (`npm audit fix
+--force`) нельзя — он откатил бы Prisma до 6.x и `exceljs` до 3.x. Все они
+проверены на достижимость и сознательно оставлены:
+
+- **`deepmerge-ts`, `@prisma/config`, `prisma`** (high). Prisma CLI запускается
+  только при деплое (`prisma generate`, `prisma migrate deploy`) и читает наш
+  собственный `prisma.config.ts`. В процессе сайта (`next start`) он не
+  работает, `src/lib/db.ts` использует только `@prisma/adapter-pg`. Версия
+  `deepmerge-ts` зафиксирована внутри `@prisma/config` точным номером;
+  принудительное повышение до v8 может сломать `prisma generate/migrate`.
+- **`mysql2`** (high). Подтягивается Prisma CLI ради MySQL; проект работает на
+  PostgreSQL, нигде в коде не импортируется и ни в каком процессе не запускается.
+- **`uuid` через `exceljs`** (moderate). Уязвима только генерация v3/v5/v6 с
+  аргументом `buf`; `exceljs` вызывает лишь `v4()` без аргументов. Код
+  выполняется в браузере (xlsx-вьюер и превью).
+
+**Когда пересмотреть:** при выходе стабильного Prisma 8 (проверить, обновлены
+ли `@prisma/config` и `mysql2`) или новой версии `exceljs` с `uuid` ≥ 11.1.1.
+Dependabot (`.github/dependabot.yml`) раз в неделю присылает обновления сам.
+Перед любым повышением версий — `npm run check:sanitize`, `check:signatures`,
+`check:docx`, `check:throttle` и ручная проверка вьюеров.
