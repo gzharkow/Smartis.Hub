@@ -1,4 +1,4 @@
-import Link from "next/link";
+import { PendingLink } from "@/components/pending-link";
 
 // Две вкладки статистики — тот же паттерн, что у HubTabs: обычные ссылки,
 // без клиентского кода, что открыто — видно из адреса. Слот `right` — под
@@ -24,7 +24,7 @@ export function StatsTabs({
         {STATS_TABS.map((tab) => {
           const active = tab.key === current;
           return (
-            <Link
+            <PendingLink
               key={tab.key}
               href={tab.href}
               aria-current={active ? "page" : undefined}
@@ -35,7 +35,7 @@ export function StatsTabs({
               }`}
             >
               {tab.label}
-            </Link>
+            </PendingLink>
           );
         })}
       </nav>

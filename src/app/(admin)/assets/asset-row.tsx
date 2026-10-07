@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, useState, useTransition } from "react";
+import dynamic from "next/dynamic";
 import { usePathname, useRouter } from "next/navigation";
 import {
   archiveAsset,
@@ -19,9 +20,14 @@ import { isUploadSupported, SUPPORTED_FORMATS_TEXT, UPLOAD_ACCEPT } from "@/lib/
 import { withPlural, WORDS } from "@/lib/plural";
 import type { ViewMode } from "@/lib/view-mode";
 import type { AssetKind, AssetSection } from "@/generated/prisma/enums";
-import { AssetPreviewModal } from "@/components/asset-preview-modal";
 import { buttonClasses } from "@/components/ui/button";
 import { iconButtonClasses } from "@/components/ui/icon-button";
+
+// Просмотрщики (PDF, Word, Excel) тяжёлые, а нужны только по клику: грузим
+// их отдельным куском, чтобы список материалов открывался быстрее.
+const AssetPreviewModal = dynamic(() =>
+  import("@/components/asset-preview-modal").then((m) => m.AssetPreviewModal),
+);
 
 // Та же XHR-загрузка с прогрессом, что и в asset-uploader.tsx (fetch не
 // умеет сообщать процент отправки) — здесь на один файл и на другой адрес.
@@ -430,7 +436,9 @@ export function AssetRow({
           {asset.hasThumbnail ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img
-              src={`/api/assets/${asset.id}/thumbnail`}
+              src={`/api/assets/${asset.id}/thumbnail?v=${asset.updatedAt.getTime()}`}
+              loading="lazy"
+              decoding="async"
               alt=""
               className="aspect-[16/10] w-full border-b border-border object-cover object-top"
             />
@@ -506,7 +514,9 @@ export function AssetRow({
           // Обычный img: файл приватный, оптимизатор Next до него не достанет.
           // eslint-disable-next-line @next/next/no-img-element
           <img
-            src={`/api/assets/${asset.id}/thumbnail`}
+            src={`/api/assets/${asset.id}/thumbnail?v=${asset.updatedAt.getTime()}`}
+              loading="lazy"
+              decoding="async"
             alt=""
             className="h-11 w-16 rounded border border-border object-cover object-top"
           />

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 
 /**
  * Анимированный фон экрана входа.
@@ -18,6 +18,14 @@ import { useEffect, useRef } from "react";
  */
 export function LoginBackdrop() {
   const videoRef = useRef<HTMLVideoElement>(null);
+  // На телефоне ролик (~2 МБ) не грузим: вход открывается по мобильной сети,
+  // а вместо него остаётся та же картинка-постер.
+  const [withVideo, setWithVideo] = useState(false);
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setWithVideo(window.matchMedia("(min-width: 768px)").matches);
+  }, []);
 
   useEffect(() => {
     const video = videoRef.current;
@@ -27,13 +35,14 @@ export function LoginBackdrop() {
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
       video.pause();
     }
-  }, []);
+  }, [withVideo]);
 
   return (
     <div
       aria-hidden="true"
       className="pointer-events-none fixed inset-0 -z-10 overflow-hidden bg-[#0b0f14]"
     >
+      {withVideo ? (
       <video
         ref={videoRef}
         autoPlay
@@ -48,6 +57,14 @@ export function LoginBackdrop() {
       >
         <source src="/login-bg.mp4" type="video/mp4" />
       </video>
+      ) : (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src="/hub-bg.jpg"
+          alt=""
+          className="absolute inset-0 h-full w-full object-cover"
+        />
+      )}
 
       {/* Затемнение к центру: под карточкой фон спокойнее, текст читается. */}
       <div className="absolute inset-0 bg-[radial-gradient(70%_60%_at_50%_50%,transparent,rgba(4,7,11,0.55))]" />

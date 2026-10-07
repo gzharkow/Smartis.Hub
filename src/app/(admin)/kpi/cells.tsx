@@ -1,6 +1,7 @@
 "use client";
 
-import { useRef, useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
+import { createPortal } from "react-dom";
 import { saveEntry, saveMonthPlan } from "@/app/actions/kpi";
 
 // Инлайн-ячейки: правка по месту, сохранение по потере фокуса или Enter.
@@ -101,12 +102,33 @@ export function NoteButton({
   const [open, setOpen] = useState(false);
   const [draft, setDraft] = useState(value);
   const [pos, setPos] = useState({ left: 8, top: 8, width: 288 });
+  // Узкий экран: окошко становится панелью у нижнего края, над клавиатурой.
+  // Привязанное к кнопке окно с гадаемой высотой уезжало за экран, когда
+  // клавиатура съедала половину видимой области.
+  const [sheet, setSheet] = useState(false);
+  const [kb, setKb] = useState(0);
   const btn = useRef<HTMLButtonElement>(null);
   const has = value.trim() !== "";
 
+  useEffect(() => {
+    const vv = window.visualViewport;
+    if (!open || !sheet || !vv) return;
+    const apply = () =>
+      setKb(Math.max(0, window.innerHeight - (vv.height + vv.offsetTop)));
+    apply();
+    vv.addEventListener("resize", apply);
+    vv.addEventListener("scroll", apply);
+    return () => {
+      vv.removeEventListener("resize", apply);
+      vv.removeEventListener("scroll", apply);
+    };
+  }, [open, sheet]);
+
   function show() {
     const r = btn.current?.getBoundingClientRect();
-    if (r) {
+    const narrow = window.matchMedia("(max-width: 767px)").matches;
+    setSheet(narrow);
+    if (r && !narrow) {
       const width = Math.min(288, window.innerWidth - 16);
       const left = Math.min(
         Math.max(8, r.right - width),
@@ -146,7 +168,7 @@ export function NoteButton({
         aria-haspopup="dialog"
         aria-expanded={open}
         title={has ? value : "Добавить примечание"}
-        className={`flex size-5 shrink-0 items-center justify-center rounded-full border text-[11px] leading-none font-bold transition duration-100 pointer-coarse:size-8 ${
+        className={`flex size-5 shrink-0 items-center justify-center rounded-full border text-[11px] leading-none font-bold transition duration-100 pointer-coarse:size-9 ${
           has
             ? "border-accent bg-accent-fill text-on-accent"
             : "border-border text-muted hover:border-muted hover:text-foreground"
@@ -154,61 +176,76 @@ export function NoteButton({
       >
         !
       </button>
-      {open ? (
-        <>
-          <div
-            className="fixed inset-0 z-40"
-            onClick={close}
-            aria-hidden="true"
-          />
-          <div
-            role="dialog"
-            aria-label={label}
-            style={{ left: pos.left, top: pos.top, width: pos.width }}
-            className="fixed z-50 grid gap-2 rounded-xl border border-border bg-surface p-3 text-left shadow-[0_8px_24px_rgba(0,0,0,0.35)]"
-          >
-            <textarea
-              autoFocus
-              value={draft}
-              rows={4}
-              maxLength={500}
-              placeholder="Примечание, например названия компаний"
-              onChange={(e) => setDraft(e.target.value)}
-              onKeyDown={(e) => {
-                if (
-                  e.key === "Escape" ||
-                  (e.key === "Enter" && (e.ctrlKey || e.metaKey))
-                ) {
-                  e.preventDefault();
-                  close();
+      {open
+        ? // В портал на body: кнопка лежит внутри <details>, а содержимое
+          // <details> в Chromium изолировано (content-visibility) и для
+          // fixed-потомков становится «экраном» — окно считало координаты
+          // от края таблицы и уезжало за страницу.
+          createPortal(
+            <>
+              <div
+                className="fixed inset-0 z-40"
+                onClick={close}
+                aria-hidden="true"
+              />
+              <div
+                role="dialog"
+                aria-label={label}
+                style={
+                  sheet
+                    ? {
+                        left: 8,
+                        right: 8,
+                        bottom: `calc(${kb}px + env(safe-area-inset-bottom) + 8px)`,
+                      }
+                    : { left: pos.left, top: pos.top, width: pos.width }
                 }
-              }}
-              className="w-full resize-none rounded-md border border-border bg-background p-2 text-[13px] leading-snug placeholder:text-muted focus:border-accent focus:outline-none"
-            />
-            <div className="flex items-center justify-between gap-2 text-xs text-muted">
-              <span>{draft.length}/500</span>
-              <div className="flex gap-1">
-                {draft.trim() ? (
-                  <button
-                    type="button"
-                    onClick={() => setDraft("")}
-                    className="rounded-md px-2 py-1 transition hover:bg-border/60 hover:text-foreground"
-                  >
-                    Очистить
-                  </button>
-                ) : null}
-                <button
-                  type="button"
-                  onClick={close}
-                  className="rounded-md bg-accent-fill px-2.5 py-1 font-medium text-on-accent transition hover:bg-accent-fill-hover"
-                >
-                  Готово
-                </button>
+                className="fixed z-50 grid max-h-[calc(100dvh-1rem-env(safe-area-inset-top))] gap-2 overflow-y-auto rounded-xl border border-border bg-surface p-3 text-left shadow-[0_8px_24px_rgba(0,0,0,0.35)]"
+              >
+                <textarea
+                  autoFocus
+                  value={draft}
+                  rows={4}
+                  maxLength={500}
+                  placeholder="Примечание, например названия компаний"
+                  onChange={(e) => setDraft(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (
+                      e.key === "Escape" ||
+                      (e.key === "Enter" && (e.ctrlKey || e.metaKey))
+                    ) {
+                      e.preventDefault();
+                      close();
+                    }
+                  }}
+                  className="w-full resize-none rounded-md border border-border bg-background p-2 text-[13px] leading-snug placeholder:text-muted focus:border-accent focus:outline-none"
+                />
+                <div className="flex items-center justify-between gap-2 text-xs text-muted">
+                  <span>{draft.length}/500</span>
+                  <div className="flex gap-1">
+                    {draft.trim() ? (
+                      <button
+                        type="button"
+                        onClick={() => setDraft("")}
+                        className="rounded-md px-2 py-1 transition hover:bg-border/60 hover:text-foreground pointer-coarse:min-h-11 pointer-coarse:px-3"
+                      >
+                        Очистить
+                      </button>
+                    ) : null}
+                    <button
+                      type="button"
+                      onClick={close}
+                      className="rounded-md bg-accent-fill px-2.5 py-1 font-medium text-on-accent transition hover:bg-accent-fill-hover pointer-coarse:min-h-11 pointer-coarse:px-4"
+                    >
+                      Готово
+                    </button>
+                  </div>
+                </div>
               </div>
-            </div>
-          </div>
-        </>
-      ) : null}
+            </>,
+            document.body,
+          )
+        : null}
     </>
   );
 }

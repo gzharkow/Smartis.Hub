@@ -12,7 +12,7 @@ import {
 } from "@/lib/list-filter";
 
 const selectCls =
-  "rounded-lg border border-border bg-background px-2 py-1 text-sm pointer-coarse:min-h-11 disabled:opacity-50";
+  "rounded-lg border border-border bg-background px-2 py-1 text-sm pointer-coarse:min-h-11 max-w-full disabled:opacity-50";
 
 /**
  * Фильтр списка: отрасль (всем) и создатель (только ADMIN — creators передаётся
@@ -36,7 +36,7 @@ export function ListFilterControl({
   }
 
   return (
-    <div className="flex shrink-0 flex-wrap items-center gap-1.5 text-sm">
+    <div className="flex max-w-full min-w-0 flex-wrap items-center gap-1.5 text-sm">
       <select
         value={filter.industry ?? ""}
         disabled={pending}

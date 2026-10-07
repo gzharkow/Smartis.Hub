@@ -46,7 +46,11 @@ export async function GET(
   return new Response(Readable.toWeb(stream) as ReadableStream, {
     headers: {
       "Content-Length": String(await storage.size(asset.thumbnailKey)),
-      "Cache-Control": "private, max-age=60",
+      // С ?v=<updatedAt> заменённое превью получает новый адрес — кэшируем
+      // надолго; без него картинка может смениться под тем же адресом.
+      "Cache-Control": new URL(request.url).searchParams.has("v")
+        ? "private, max-age=86400"
+        : "private, max-age=60",
       // Превью файлов — JPEG (тип не хранился), у ссылок — свой (og:image).
       ...safeServeHeaders(asset.thumbnailMime ?? "image/jpeg"),
     },

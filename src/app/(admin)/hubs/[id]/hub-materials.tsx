@@ -69,6 +69,8 @@ function PickRow({
           // eslint-disable-next-line @next/next/no-img-element
           <img
             src={`/api/assets/${asset.id}/thumbnail`}
+            loading="lazy"
+            decoding="async"
             alt=""
             className="h-full w-full object-cover object-top"
           />

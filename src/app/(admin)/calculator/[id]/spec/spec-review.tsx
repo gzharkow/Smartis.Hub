@@ -380,7 +380,7 @@ function Preview({
           <iframe
             src={url}
             title="Предпросмотр Спецификации"
-            className="h-[80vh] w-full rounded-xl border border-border bg-white pointer-coarse:hidden"
+            className="h-[80dvh] w-full rounded-xl border border-border bg-white pointer-coarse:hidden"
           />
           {/* Обёртка отдельно от buttonClasses() — у неё самой уже есть
               безусловный inline-flex, и hidden/pointer-coarse:inline-flex
@@ -405,7 +405,7 @@ function Preview({
           ) : null}
         </>
       ) : (
-        <div className="grid h-[80vh] place-items-center rounded-xl border border-dashed border-border text-sm text-muted">
+        <div className="grid h-[80dvh] place-items-center rounded-xl border border-dashed border-border text-sm text-muted">
           {blocked ? "Поправьте суммы слева" : "Собираем предпросмотр…"}
         </div>
       )}

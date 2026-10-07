@@ -1,7 +1,7 @@
 {
   "id": "/hubs",
-  "name": "Smartis.Flite — Админка",
-  "short_name": "Smartis.Flite",
+  "name": "Smartis.HUB — Админка",
+  "short_name": "Smartis.HUB",
   "description": "Контент-хабы для клиентов",
   "start_url": "/hubs",
   "scope": "/",

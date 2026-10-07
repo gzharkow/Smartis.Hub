@@ -1,4 +1,4 @@
-import Link from "next/link";
+import { PendingLink } from "@/components/pending-link";
 import { SECTIONS } from "@/lib/asset-sections";
 
 /**
@@ -8,8 +8,8 @@ import { SECTIONS } from "@/lib/asset-sections";
  * узком экране подписей в нём нет вовсе — тогда разделы остались бы
  * недоступны. Здесь же они видны всегда и рядом с тем, что переключают.
  *
- * Обычные ссылки, без клиентского кода: какая вкладка выбрана, видно
- * из адреса, и страница всё равно перерисовывается на сервере.
+ * Какая вкладка выбрана, видно из адреса, страница перерисовывается на
+ * сервере. PendingLink показывает крутилку, пока страница грузится.
  */
 export function SectionTabs({
   current,
@@ -33,7 +33,7 @@ export function SectionTabs({
         {tabs.map((tab) => {
           const active = current === tab.slug;
           return (
-            <Link
+            <PendingLink
               key={tab.label}
               href={
                 tab.slug === "mine"
@@ -50,7 +50,7 @@ export function SectionTabs({
               }`}
             >
               {tab.label}
-            </Link>
+            </PendingLink>
           );
         })}
       </nav>

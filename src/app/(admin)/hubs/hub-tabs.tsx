@@ -1,4 +1,4 @@
-import Link from "next/link";
+import { PendingLink } from "@/components/pending-link";
 
 /**
  * Разделы страницы хабов. Как и у материалов, дублируют подпункты бокового
@@ -33,7 +33,7 @@ export function HubTabs({
         {tabs.map((tab) => {
           const active = tab.key === current;
           return (
-            <Link
+            <PendingLink
               key={tab.key}
               href={tab.href}
               aria-current={active ? "page" : undefined}
@@ -44,7 +44,7 @@ export function HubTabs({
               }`}
             >
               {tab.label}
-            </Link>
+            </PendingLink>
           );
         })}
       </nav>
