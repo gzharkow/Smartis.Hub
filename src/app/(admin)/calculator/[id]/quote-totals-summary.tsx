@@ -32,7 +32,7 @@ export function QuoteTotalsSummary({
         ) : null}
         <div>
           <dt className="text-sm text-muted">
-            Итого платёж на период внедрения
+            Итого ежемесячный платеж на период внедрения
           </dt>
           <dd className="text-lg font-semibold">
             {formatMoney(totals.implementationPayment)}

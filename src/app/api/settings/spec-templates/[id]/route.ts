@@ -27,7 +27,7 @@ export async function GET(
   const size = await storage.size(template.storageKey);
   const stream = await storage.get(template.storageKey);
 
-  const name = `Спецификация — ${SPEC_TEMPLATE_TITLES[template.kind]} (НДС ${template.vatRatePct}%).docx`;
+  const name = `Спецификация — ${SPEC_TEMPLATE_TITLES[template.kind]}.docx`;
 
   return new Response(Readable.toWeb(stream) as ReadableStream, {
     headers: {

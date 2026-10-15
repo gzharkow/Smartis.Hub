@@ -5,7 +5,6 @@ import { storage } from "./storage";
 import { extractPlainText, fillDocxStrict } from "./docx-fill";
 import { SPEC_TAGS, SPEC_TAG_NAMES, findTags } from "./spec-tags";
 import {
-  BUILTIN_VAT_RATE_PCT,
   SPEC_TEMPLATE_TITLES,
   builtinSpecTemplate,
   hasBuiltinSpecTemplate,
@@ -97,21 +96,19 @@ export type SpecQuoteRecord = {
 };
 
 /**
- * Байты шаблона под вид и ставку НДС.
+ * Байты шаблона под вид.
  *
  * Загруженный админом главнее встроенного: правку от юристов иначе пришлось
- * бы ждать до следующего релиза. Встроенный остаётся запасным вариантом и
- * существует только под ставку BUILTIN_VAT_RATE_PCT — она зашита в его текст.
+ * бы ждать до следующего релиза. Ставка НДС в шаблон приходит меткой
+ * {{VAT_PCT}}, поэтому один файл подходит под любую ставку.
  */
 export async function resolveSpecTemplate(
   organizationId: string,
   kind: SpecTemplateKind,
-  vatRatePct: Decimal | string | number,
 ): Promise<Buffer | null> {
-  const rate = new Decimal(vatRatePct);
-
   const uploaded = await db.specTemplate.findFirst({
-    where: { organizationId, kind, vatRatePct: rate.toString() },
+    where: { organizationId, kind },
+    orderBy: { updatedAt: "desc" },
   });
 
   if (uploaded) {
@@ -121,44 +118,23 @@ export async function resolveSpecTemplate(
     return Buffer.concat(chunks);
   }
 
-  if (!rate.equals(BUILTIN_VAT_RATE_PCT)) return null;
   return builtinSpecTemplate(kind);
 }
 
 export async function specAvailability(quote: SpecQuoteRecord): Promise<SpecAvailability> {
   const kind = specTemplateKind(quote.clientType, quote.boxIntegrationSelected);
-  const rate = new Decimal(quote.vatRatePct);
 
   const uploaded = await db.specTemplate.findFirst({
-    where: { organizationId: quote.organizationId, kind, vatRatePct: rate.toString() },
+    where: { organizationId: quote.organizationId, kind },
     select: { id: true },
   });
 
-  if (uploaded) return { ok: true, kind };
+  if (uploaded || hasBuiltinSpecTemplate(kind)) return { ok: true, kind };
 
-  // Дальше — только встроенный запасной вариант, и он один: застройщик,
-  // облако, НДС 5%. Ошибку формулируем так, чтобы из неё было ясно, что
-  // именно загрузить в «Настройки → Шаблоны документов».
-  const title = SPEC_TEMPLATE_TITLES[kind];
-
-  if (!hasBuiltinSpecTemplate(kind)) {
-    return {
-      ok: false,
-      reason: `Шаблон «${title}» не загружен. Загрузите его в «Настройки → Шаблоны документов».`,
-    };
-  }
-
-  if (!rate.equals(BUILTIN_VAT_RATE_PCT)) {
-    return {
-      ok: false,
-      reason:
-        `Встроенный шаблон «${title}» согласован для ставки НДС ${BUILTIN_VAT_RATE_PCT}%, ` +
-        `а в расчёте указано ${rate.toString()}%. Поправьте ставку или загрузите шаблон под неё ` +
-        "в «Настройки → Шаблоны документов».",
-    };
-  }
-
-  return { ok: true, kind };
+  return {
+    ok: false,
+    reason: `Шаблон «${SPEC_TEMPLATE_TITLES[kind]}» не загружен. Загрузите его в «Настройки → Шаблоны документов».`,
+  };
 }
 
 /** Собирает .docx. Падает, если выпускать документ нельзя, — вызывается и из
@@ -174,9 +150,17 @@ export async function renderSpecDocx(
   const template = await resolveSpecTemplate(
     quote.organizationId,
     availability.kind,
-    quote.vatRatePct,
   );
   if (!template) throw new Error("Шаблон Спецификации не найден.");
+
+  // Шаблон, загруженный до появления метки ставки, держит «5%» текстом —
+  // с другой ставкой в расчёте документ вышел бы с неверным НДС.
+  if (!findTags(await extractPlainText(template)).includes("VAT_PCT")) {
+    throw new Error(
+      "Шаблон Спецификации устарел: в нём нет метки ставки НДС. " +
+        "Загрузите его заново в «Настройки → Шаблоны документов» — метки расставятся сами.",
+    );
+  }
 
   // Пересчитываем производные суммы здесь, а не принимаем их из браузера:
   // из клиента приходят только базовые числа.

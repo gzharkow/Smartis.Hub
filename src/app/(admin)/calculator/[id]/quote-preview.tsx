@@ -178,7 +178,7 @@ export function QuotePreview({
         ) : null}
         <div className="flex items-center justify-between gap-3 text-[11.5px] font-bold">
           <span>
-            Итого платёж на период внедрения{flagged ? ":*" : ""}
+            Итого ежемесячный платеж на период внедрения{flagged ? ":*" : ""}
           </span>
           <span>{formatMoney(totals.implementationPayment)}</span>
         </div>

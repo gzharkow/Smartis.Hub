@@ -1,4 +1,3 @@
-import Decimal from "decimal.js";
 import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
 import { db } from "@/lib/db";
@@ -9,6 +8,7 @@ import {
   validateSpecTemplate,
 } from "@/lib/spec-build";
 import { isSpecTemplateKind } from "@/lib/spec-template";
+import { prepareSpecTemplate, type SpecPrepareReport } from "@/lib/spec-prepare";
 
 // Загрузка шаблона Спецификации. Route handler, а не server action: файл
 // приезжает FormData, а у server actions тело по умолчанию ограничено
@@ -27,7 +27,6 @@ export async function POST(request: Request) {
   const form = await request.formData();
   const file = form.get("file");
   const kind = form.get("kind");
-  const vatRaw = String(form.get("vatRatePct") ?? "5").replace(",", ".");
 
   if (!isSpecTemplateKind(kind)) {
     return NextResponse.json({ error: "Не выбран вид шаблона." }, { status: 400 });
@@ -51,32 +50,39 @@ export async function POST(request: Request) {
     );
   }
 
-  let rate: Decimal;
-  try {
-    rate = new Decimal(vatRaw);
-    if (rate.isNegative() || rate.greaterThan(100)) throw new Error();
-  } catch {
-    return NextResponse.json({ error: "Ставка НДС должна быть числом от 0 до 100." }, { status: 400 });
-  }
+  const original = Buffer.from(await file.arrayBuffer());
 
-  const bytes = Buffer.from(await file.arrayBuffer());
+  // Метки расставляем сами: прочерки и «НДС (N%)» превращаются в {{…}}, чтобы
+  // админу не пришлось править шаблон в Word. Файл, где метки уже есть,
+  // проходит как есть. Не .docx отсюда выйдет ошибкой — её нормально покажет
+  // validateSpecTemplate ниже.
+  let bytes: Buffer = original;
+  let report: SpecPrepareReport | null = null;
+  try {
+    const prepared = await prepareSpecTemplate(original);
+    bytes = prepared.bytes;
+    report = prepared.report;
+  } catch (e) {
+    console.error("[spec-templates] автоподготовка не удалась:", e);
+  }
 
   // Метки проверяем до записи: шаблон без нужных меток дал бы документ с
   // пустыми местами, и заметили бы это уже перед отправкой клиенту.
   const problems = await validateSpecTemplate(bytes);
   if (problems.length > 0) {
     return NextResponse.json(
-      { error: problems.map((p) => p.message).join("\n"), problems },
+      { error: problems.map((p) => p.message).join("\n"), problems, report },
       { status: 422 },
     );
   }
 
+  // Ставка в ключ не входит — храним найденную в файле, только чтобы
+  // показать в списке. Не нашли ровно одну — 7 (ставка по умолчанию).
+  const detectedRate =
+    report && report.vatRatesFound.length === 1 ? report.vatRatesFound[0] : "7";
+
   const where = {
-    organizationId_kind_vatRatePct: {
-      organizationId: user.organizationId,
-      kind,
-      vatRatePct: rate.toString(),
-    },
+    organizationId_kind: { organizationId: user.organizationId, kind },
   };
 
   // Запись первой: ключ в хранилище содержит её id. Повторная загрузка
@@ -87,13 +93,18 @@ export async function POST(request: Request) {
   const template = existing
     ? await db.specTemplate.update({
         where,
-        data: { fileName: file.name, sizeBytes: bytes.length, uploadedById: user.id },
+        data: {
+          fileName: file.name,
+          sizeBytes: bytes.length,
+          vatRatePct: detectedRate,
+          uploadedById: user.id,
+        },
       })
     : await db.specTemplate.create({
         data: {
           organizationId: user.organizationId,
           kind,
-          vatRatePct: rate.toString(),
+          vatRatePct: detectedRate,
           fileName: file.name,
           sizeBytes: bytes.length,
           uploadedById: user.id,
@@ -116,5 +127,5 @@ export async function POST(request: Request) {
     await db.specTemplate.update({ where: { id: template.id }, data: { storageKey: key } });
   }
 
-  return NextResponse.json({ id: template.id, replaced: existing !== null });
+  return NextResponse.json({ id: template.id, replaced: existing !== null, report });
 }

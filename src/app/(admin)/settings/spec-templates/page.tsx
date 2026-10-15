@@ -4,7 +4,6 @@ import { formatFileSize } from "@/lib/assets";
 import { ownerLabel } from "@/lib/owner-color";
 import { MAX_SPEC_TEMPLATE_BYTES } from "@/lib/spec-build";
 import {
-  BUILTIN_VAT_RATE_PCT,
   SPEC_TEMPLATE_KINDS,
   SPEC_TEMPLATE_TITLES,
   hasBuiltinSpecTemplate,
@@ -28,7 +27,7 @@ export default async function SpecTemplatesPage() {
   const uploaded = await db.specTemplate.findMany({
     where: { organizationId: user.organizationId },
     include: { uploadedBy: { select: { id: true, name: true, email: true } } },
-    orderBy: [{ kind: "asc" }, { vatRatePct: "asc" }],
+    orderBy: [{ kind: "asc" }],
   });
 
   const rows: SpecTemplateRow[] = uploaded.map((t) => ({
@@ -64,8 +63,10 @@ export default async function SpecTemplatesPage() {
               Спецификация собирается из вашего .docx: мы подставляем суммы в
               метки вида{" "}
               <code className="rounded bg-border/60 px-1">{"{{MONTH_SUM}}"}</code>
-              , не трогая шрифты и вёрстку. Загруженный здесь шаблон главнее
-              встроенного в программу.
+              , не трогая шрифты и вёрстку. Метки расставлять не нужно:
+              загрузите согласованный документ с прочерками — мы расставим их
+              сами, а ставку НДС возьмём из расчёта. Загруженный здесь шаблон
+              главнее встроенного в программу.
             </span>
           }
         />
@@ -74,7 +75,6 @@ export default async function SpecTemplatesPage() {
       <SpecTemplatesPanel
         rows={rows}
         kinds={kinds}
-        builtinVatRatePct={BUILTIN_VAT_RATE_PCT}
         maxBytes={MAX_SPEC_TEMPLATE_BYTES}
       />
 

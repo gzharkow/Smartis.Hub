@@ -50,16 +50,13 @@ export function specTemplateKind(
   return box ? "BUILDER_BOX" : "BUILDER_CLOUD";
 }
 
-/** Шаблоны, приехавшие вместе с кодом. Размечен только застройщик-облако:
- * остальные три ждут согласованных документов и загружаются админом. */
+/** Шаблоны, приехавшие вместе с кодом: застройщик и автодилер, облако.
+ * Коробочные ждут согласованных документов и загружаются админом. Ставка НДС
+ * в них — метка {{VAT_PCT}}, так что они подходят под любую ставку. */
 const BUILTIN: Partial<Record<SpecTemplateKind, string>> = {
   BUILDER_CLOUD: "templates/spec/builder-cloud.docx",
+  AUTO_DEALER_CLOUD: "templates/spec/auto-dealer-cloud.docx",
 };
-
-/** Ставка НДС, под которую согласованы встроенные шаблоны: она зашита в их
- * текст примерно в десяти местах, поэтому расчёт с другой ставкой этим
- * шаблоном заполнять нельзя. Под другую ставку админ грузит свой файл. */
-export const BUILTIN_VAT_RATE_PCT = 5;
 
 export function hasBuiltinSpecTemplate(kind: SpecTemplateKind): boolean {
   return BUILTIN[kind] !== undefined;

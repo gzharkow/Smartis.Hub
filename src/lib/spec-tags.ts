@@ -7,12 +7,18 @@
 // латинской «О» глазом не отличить от правильной, и баг невоспроизводим.
 
 export type SpecTagGroup =
+  | "general"
   | "stage"
   | "month"
   | "t22"
   | "t23";
 
 export const SPEC_TAG_GROUPS: { key: SpecTagGroup; title: string; hint: string }[] = [
+  {
+    key: "general",
+    title: "Ставка НДС и тариф дополнительных услуг",
+    hint: "Ставка подставляется из расчёта, поэтому один шаблон подходит под любую ставку НДС. Вместо «(5%)» в тексте пишется «({{VAT_PCT}}%)».",
+  },
   {
     key: "stage",
     title: "Платёж за этапы — п.1.2.1 и п.1.2.2",
@@ -45,6 +51,11 @@ export type SpecTag = {
 };
 
 export const SPEC_TAGS: SpecTag[] = [
+  { tag: "VAT_PCT",         group: "general", label: "Ставка НДС, % (число без знака процента)", example: "7" },
+  { tag: "EXTRA_HOUR_SUM",  group: "general", label: "Стоимость дополнительной услуги за час с НДС, рубли цифрами", example: "3 745" },
+  { tag: "EXTRA_HOUR_WORDS",group: "general", label: "То же прописью (в скобках)", example: "три тысячи семьсот сорок пять" },
+  { tag: "EXTRA_HOUR_RUB",  group: "general", label: "Слово «рублей» в нужной форме", example: "рублей" },
+
   { tag: "STAGE_SUM",   group: "stage", label: "Сумма этапа, рубли цифрами", example: "101 850" },
   { tag: "STAGE_WORDS", group: "stage", label: "Сумма этапа прописью (в скобках)", example: "сто одна тысяча восемьсот пятьдесят" },
   { tag: "STAGE_RUB",   group: "stage", label: "Слово «рублей» в нужной форме", example: "рублей" },

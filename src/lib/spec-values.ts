@@ -124,7 +124,14 @@ export type SpecValues = {
   monthly: SpecMoney;
   /** Половина месячной суммы — п.1.2.1 и п.1.2.2. */
   stage: SpecMoney;
+  /** Час дополнительных услуг (раздел об иных услугах): тариф без НДС
+   * фиксирован, с НДС зависит от ставки — раньше «3 675» было зашито в текст
+   * шаблона и не пересчитывалось при смене ставки. */
+  extraHour: SpecMoney;
 };
+
+/** Стоимость часа дополнительных услуг без НДС, рублей. */
+export const EXTRA_HOUR_NET = 3500;
 
 export type SpecIssueCode =
   | "NO_IMPLEMENTATION_SECTION"
@@ -401,6 +408,7 @@ export function computeSpecValues(
     },
     monthly,
     stage,
+    extraHour: money(EXTRA_HOUR_NET, rate),
   };
 }
 
@@ -418,6 +426,10 @@ export function unsupportedKopecks(values: SpecValues): number[] {
     const kop = moneyParts(amount).kopValue;
     if (kop !== 0 && kop !== 50) bad.push(kop);
   }
+  // Час доп. услуг печатается целыми рублями без копеек: ставка, при которой
+  // 3500 × (1+НДС) даёт копейки, в этот текст не ложится.
+  const hourKop = moneyParts(values.extraHour.gross).kopValue;
+  if (hourKop !== 0) bad.push(hourKop);
   return bad;
 }
 
@@ -460,7 +472,14 @@ export function specValuesToTags(values: SpecValues): Record<string, string | nu
   const stage = moneyParts(values.stage.gross);
   const month = moneyParts(values.monthly.gross);
 
+  const hour = moneyParts(values.extraHour.gross);
+
   return {
+    VAT_PCT: values.vatRatePct.toString().replace(".", ","),
+    EXTRA_HOUR_SUM: hour.sum,
+    EXTRA_HOUR_WORDS: hour.words,
+    EXTRA_HOUR_RUB: hour.rub,
+
     STAGE_SUM: stage.sum,
     STAGE_WORDS: stage.words,
     STAGE_RUB: stage.rub,

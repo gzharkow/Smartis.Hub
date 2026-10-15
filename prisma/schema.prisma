@@ -531,7 +531,7 @@ model Quote {
   clientName String // «Расчет стоимости для: …» в шапке PDF
   // Ставка НДС хранится на КП, а не зашита в код, — на случай другой ставки
   // для будущего расчёта, хотя редактор пока не даёт её менять.
-  vatRatePct Decimal @default(5) @db.Decimal(5, 2)
+  vatRatePct Decimal @default(7) @db.Decimal(5, 2)
 
   // Дата в футере PDF («Данное предложение действительно 30 дней, начиная
   // с …»). По умолчанию — момент создания КП, но продавец может поправить
@@ -639,7 +639,7 @@ model SpecTemplate {
   id             String           @id @default(cuid())
   organizationId String
   kind           SpecTemplateKind
-  vatRatePct     Decimal          @default(5) @db.Decimal(5, 2)
+  vatRatePct     Decimal          @default(7) @db.Decimal(5, 2)
 
   // Имя исходного файла — только чтобы админ узнал в списке то, что грузил.
   fileName   String
@@ -656,9 +656,9 @@ model SpecTemplate {
   organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   uploadedBy   User?        @relation(fields: [uploadedById], references: [id], onDelete: SetNull)
 
-  // Один действующий шаблон на вид и ставку. Повторная загрузка заменяет
-  // файл, а не плодит вторую запись, между которыми потом гадать.
-  @@unique([organizationId, kind, vatRatePct])
+  // Один действующий шаблон на вид. Повторная загрузка заменяет файл, а не
+  // плодит вторую запись, между которыми потом гадать.
+  @@unique([organizationId, kind])
   @@index([organizationId])
 }
 

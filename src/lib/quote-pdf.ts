@@ -331,7 +331,7 @@ export async function renderQuotePdf(data: QuotePdfData): Promise<Uint8Array> {
   }
 
   text(
-    flagged ? "Итого платёж на период внедрения:*" : "Итого платёж на период внедрения",
+    flagged ? "Итого ежемесячный платеж на период внедрения:*" : "Итого ежемесячный платеж на период внедрения",
     MARGIN,
     cursorY,
     { font: bold, size: 11 },

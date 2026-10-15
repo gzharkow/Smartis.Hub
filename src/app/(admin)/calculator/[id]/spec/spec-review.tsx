@@ -618,14 +618,14 @@ function Totals({ values }: { values: SpecValues | null }) {
           <dt className="text-xs text-muted">п.2.1 — ежемесячная стоимость</dt>
           <dd>
             {month.sum} ({month.words}) {month.rub} {month.kop} копеек, включая НДС
-            (5%) — {formatAmount(values.monthly.vat)} рублей
+            ({values.vatRatePct.toString().replace(".", ",")}%) — {formatAmount(values.monthly.vat)} рублей
           </dd>
         </div>
         <div>
           <dt className="text-xs text-muted">п.1.2.1 и п.1.2.2 — платёж за этап</dt>
           <dd>
             {stage.sum} ({stage.words}) {stage.rub} {stage.kop} копеек, включая НДС
-            (5%) — {formatAmount(values.stage.vat)} рублей
+            ({values.vatRatePct.toString().replace(".", ",")}%) — {formatAmount(values.stage.vat)} рублей
           </dd>
         </div>
       </dl>

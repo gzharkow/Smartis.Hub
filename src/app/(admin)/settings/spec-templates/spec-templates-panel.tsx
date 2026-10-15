@@ -35,39 +35,39 @@ export type KindSummary = {
 export function SpecTemplatesPanel({
   rows,
   kinds,
-  builtinVatRatePct,
   maxBytes,
 }: {
   rows: SpecTemplateRow[];
   kinds: KindSummary[];
-  builtinVatRatePct: number;
   maxBytes: number;
 }) {
   const router = useRouter();
   const fileInput = useRef<HTMLInputElement>(null);
 
   const [kind, setKind] = useState<SpecTemplateKind>(kinds[0]?.kind ?? "BUILDER_CLOUD");
-  const [vatRatePct, setVatRatePct] = useState(String(builtinVatRatePct));
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [done, setDone] = useState<string | null>(null);
+  const [report, setReport] = useState<PrepareReport | null>(null);
 
   async function upload(file: File) {
     setBusy(true);
     setError(null);
     setDone(null);
+    setReport(null);
 
     try {
       const form = new FormData();
       form.set("file", file);
       form.set("kind", kind);
-      form.set("vatRatePct", vatRatePct);
 
       const response = await fetch("/api/settings/spec-templates", {
         method: "POST",
         body: form,
       });
       const body = await response.json().catch(() => null);
+
+      if (body?.report) setReport(body.report);
 
       if (!response.ok) {
         setError(body?.error ?? "Не удалось загрузить шаблон.");
@@ -89,11 +89,12 @@ export function SpecTemplatesPanel({
       <section className={cardClasses("panel")}>
         <h2 className="text-sm font-medium">Загрузить шаблон</h2>
         <p className="mt-1 text-xs text-muted">
-          Файл .docx до {Math.round(maxBytes / 1024 / 1024)} МБ. Перед сохранением
-          проверим, что в нём есть все нужные метки — список ниже.
+          Файл .docx до {Math.round(maxBytes / 1024 / 1024)} МБ. Прочерки и ставку
+          НДС в нём мы превратим в метки сами — вручную ничего расставлять не
+          нужно. Если что-то не нашлось, покажем, чего именно.
         </p>
 
-        <div className="mt-4 grid gap-3 sm:grid-cols-[1fr_auto]">
+        <div className="mt-4 grid gap-3">
           <label className="grid gap-1 text-xs text-muted">
             Вид документа
             <select
@@ -109,22 +110,7 @@ export function SpecTemplatesPanel({
             </select>
           </label>
 
-          <label className="grid gap-1 text-xs text-muted">
-            Ставка НДС, %
-            <input
-              value={vatRatePct}
-              onChange={(e) => setVatRatePct(e.target.value)}
-              inputMode="decimal"
-              className="w-28 rounded-lg border border-border bg-background px-2 py-1.5 text-sm text-foreground focus:border-accent"
-            />
-          </label>
         </div>
-
-        <p className="mt-2 text-xs text-muted">
-          Ставка — часть шаблона: она напечатана в его тексте примерно в десяти
-          местах. Расчёт с другой ставкой этим файлом не заполнить, для неё
-          нужен свой.
-        </p>
 
         <input
           ref={fileInput}
@@ -147,6 +133,8 @@ export function SpecTemplatesPanel({
         ) : null}
 
         {done ? <p className="mt-3 text-sm text-accent">{done}</p> : null}
+
+        {report ? <PrepareReportView report={report} /> : null}
       </section>
 
       <section className="rounded-xl border border-border">
@@ -164,7 +152,7 @@ export function SpecTemplatesPanel({
                 {own.length === 0 ? (
                   <p className="mt-1 text-xs text-muted">
                     {k.hasBuiltin
-                      ? `Свой шаблон не загружен — используется встроенный (НДС ${builtinVatRatePct}%).`
+                      ? "Свой шаблон не загружен — используется встроенный."
                       : "Шаблон не загружен. Выпустить Спецификацию по такому расчёту нельзя."}
                   </p>
                 ) : (
@@ -183,6 +171,44 @@ export function SpecTemplatesPanel({
   );
 }
 
+type PrepareReport = {
+  alreadyTagged: boolean;
+  vatRatesFound: string[];
+  steps: { title: string; count: number }[];
+  warnings: string[];
+};
+
+function PrepareReportView({ report }: { report: PrepareReport }) {
+  const steps = report.steps.filter((s) => s.count > 0);
+
+  return (
+    <div className="mt-3 rounded-lg border border-border bg-border/20 px-3 py-2 text-xs">
+      <p className="font-medium">
+        {report.alreadyTagged
+          ? "В файле уже были метки — они сохранены как есть."
+          : "Метки расставлены автоматически."}
+        {report.vatRatesFound.length > 0
+          ? ` Ставка НДС в тексте: ${report.vatRatesFound.join("%, ")}% — заменена меткой, в документ подставится ставка из расчёта.`
+          : ""}
+      </p>
+      {steps.length > 0 ? (
+        <ul className="mt-1 list-disc pl-4 text-muted">
+          {steps.map((s) => (
+            <li key={s.title}>
+              {s.title}: {s.count}
+            </li>
+          ))}
+        </ul>
+      ) : null}
+      {report.warnings.map((w) => (
+        <p key={w} className="mt-1 text-warn">
+          {w}
+        </p>
+      ))}
+    </div>
+  );
+}
+
 function TemplateRow({ row }: { row: SpecTemplateRow }) {
   const router = useRouter();
   const [confirming, setConfirming] = useState(false);
@@ -190,10 +216,6 @@ function TemplateRow({ row }: { row: SpecTemplateRow }) {
 
   return (
     <li className="flex flex-wrap items-center gap-2 rounded-lg border border-border bg-background px-3 py-2 text-sm">
-      <span className="shrink-0 rounded-md bg-border/70 px-2 py-0.5 text-xs font-medium">
-        НДС {row.vatRatePct}%
-      </span>
-
       <span className="min-w-32 flex-1 truncate" title={row.fileName}>
         {row.fileName}
       </span>
